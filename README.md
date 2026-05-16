@@ -402,3 +402,6 @@ Before adding features, check [plan.md](./plan.md) and follow the phase order. K
 ## License
 
 Add a license before publishing this project publicly.
+
+## Authon
+- Ankit Kumar 
