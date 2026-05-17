@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/modules/auth/password";
 
 const prisma = new PrismaClient();
+const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin@12345";
 
 const roles = [
   { name: "SUPER_ADMIN", description: "Full system access" },
@@ -11,12 +13,29 @@ const roles = [
 
 const permissions = [
   { key: "dashboard:read", description: "View dashboard" },
+  { key: "profile:read", description: "View own user profile" },
   { key: "users:manage", description: "Manage users and roles" },
   { key: "employees:manage", description: "Manage employees" },
   { key: "attendance:read", description: "View attendance" },
+  { key: "attendance:write", description: "Record own attendance" },
+  { key: "leave:request", description: "Request leave" },
   { key: "leave:approve", description: "Approve leave requests" },
   { key: "payroll:manage", description: "Manage payroll" }
 ];
+
+const rolePermissions: Record<string, string[]> = {
+  SUPER_ADMIN: permissions.map((permission) => permission.key),
+  HR_ADMIN: [
+    "dashboard:read",
+    "profile:read",
+    "employees:manage",
+    "attendance:read",
+    "leave:approve",
+    "payroll:manage"
+  ],
+  MANAGER: ["dashboard:read", "profile:read", "attendance:read", "leave:approve"],
+  EMPLOYEE: ["dashboard:read", "profile:read", "attendance:write", "leave:request"]
+};
 
 async function main() {
   const createdPermissions = await Promise.all(
@@ -39,43 +58,63 @@ async function main() {
     )
   );
 
-  const superAdmin = createdRoles.find((role) => role.name === "SUPER_ADMIN");
+  await Promise.all(
+    createdRoles.flatMap((role) => {
+      const permissionKeys = rolePermissions[role.name] ?? [];
+      const permissionsForRole = createdPermissions.filter((permission) =>
+        permissionKeys.includes(permission.key)
+      );
 
-  if (superAdmin) {
-    await Promise.all(
-      createdPermissions.map((permission) =>
+      return permissionsForRole.map((permission) =>
         prisma.rolePermission.upsert({
           where: {
             roleId_permissionId: {
-              roleId: superAdmin.id,
+              roleId: role.id,
               permissionId: permission.id
             }
           },
           update: {},
           create: {
-            roleId: superAdmin.id,
+            roleId: role.id,
             permissionId: permission.id
           }
         })
-      )
-    );
-  }
+      );
+    })
+  );
+
+  const superAdmin = createdRoles.find((role) => role.name === "SUPER_ADMIN");
+  const passwordHash = await hashPassword(seedAdminPassword);
 
   const user = await prisma.user.upsert({
     where: { email: "admin@hrms.local" },
     update: {
-      name: "Phase 1 Admin",
+      name: "Phase 2 Admin",
+      passwordHash,
       status: "ACTIVE"
     },
     create: {
       email: "admin@hrms.local",
-      name: "Phase 1 Admin",
-      passwordHash: "phase-1-placeholder",
+      name: "Phase 2 Admin",
+      passwordHash,
       status: "ACTIVE"
     }
   });
 
   if (superAdmin) {
+    await Promise.all(
+      createdRoles
+        .filter((role) => role.id !== superAdmin.id)
+        .map((role) =>
+          prisma.userRole.deleteMany({
+            where: {
+              userId: user.id,
+              roleId: role.id
+            }
+          })
+        )
+    );
+
     await prisma.userRole.upsert({
       where: {
         userId_roleId: {

@@ -4,7 +4,7 @@ A full-stack HR Management System for managing employees, attendance, leave, pay
 
 ## Project Status
 
-Phase 1 foundation code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, environment templates, a base dashboard layout, and the first API routes from [plan.md](./plan.md). Local Phase 1 verification still requires PostgreSQL to be running at the configured `DATABASE_URL`.
+Phase 2 authentication and role-based access code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, password reset tokens, protected frontend pages, role-filtered navigation, and the first secure API routes from [plan.md](./plan.md).
 
 ## Table Of Contents
 
@@ -149,9 +149,14 @@ Create environment files for the frontend and backend when the application is im
 Backend environment variables:
 
 ```env
+NODE_ENV="development"
+PORT="5000"
+CORS_ORIGIN="http://localhost:3000"
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/hrms?schema=public"
-JWT_SECRET="change-this-secret"
-JWT_EXPIRES_IN="1d"
+JWT_SECRET="replace-with-a-random-secret-at-least-32-characters"
+JWT_EXPIRES_IN_SECONDS="86400"
+PASSWORD_RESET_EXPIRES_IN_MINUTES="30"
+SEED_ADMIN_PASSWORD="Admin@12345"
 REDIS_URL="redis://localhost:6379"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
@@ -204,7 +209,7 @@ postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 npm run prisma:migrate
 ```
 
-5. Seed base roles, permissions, and the phase 1 admin user.
+5. Seed base roles, permissions, and the phase 2 admin user.
 
 ```bash
 npm run db:seed
@@ -404,4 +409,4 @@ Before adding features, check [plan.md](./plan.md) and follow the phase order. K
 Add a license before publishing this project publicly.
 
 ## Authon
-- Ankit Kumar 
+- Ankit Kumar Singh

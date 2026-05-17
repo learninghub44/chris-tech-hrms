@@ -1,12 +1,12 @@
-import type { DemoUser } from "@/types";
+import type { AuthSession, AuthUser } from "@/types";
 
-const SESSION_KEY = "hrms_demo_user";
+const SESSION_KEY = "hrms_auth_session";
 
-export function setDemoSession(user: DemoUser) {
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+export function setAuthSession(session: AuthSession): void {
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-export function getDemoSession(): DemoUser | null {
+export function getAuthSession(): AuthSession | null {
   const rawSession = window.localStorage.getItem(SESSION_KEY);
 
   if (!rawSession) {
@@ -14,13 +14,29 @@ export function getDemoSession(): DemoUser | null {
   }
 
   try {
-    return JSON.parse(rawSession) as DemoUser;
+    return JSON.parse(rawSession) as AuthSession;
   } catch {
-    clearDemoSession();
+    clearAuthSession();
     return null;
   }
 }
 
-export function clearDemoSession() {
+export function updateAuthUser(user: AuthUser): AuthSession | null {
+  const session = getAuthSession();
+
+  if (!session) {
+    return null;
+  }
+
+  const nextSession = {
+    ...session,
+    user
+  };
+
+  setAuthSession(nextSession);
+  return nextSession;
+}
+
+export function clearAuthSession(): void {
   window.localStorage.removeItem(SESSION_KEY);
 }

@@ -8,30 +8,81 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  UserCircle,
   Users
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { clearDemoSession } from "@/lib/auth";
-import type { DemoUser } from "@/types";
+import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { logout } from "@/lib/api";
+import { clearAuthSession } from "@/lib/auth";
+import { hasEveryPermission, roleLabels } from "@/lib/permissions";
+import type { AuthUser } from "@/types";
 
 type AppShellProps = {
-  user: DemoUser;
+  user: AuthUser;
+  token: string;
   children: React.ReactNode;
 };
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Employees", icon: Users, active: false },
-  { label: "Attendance", icon: ClipboardList, active: false },
-  { label: "Leave", icon: CalendarDays, active: false },
-  { label: "Payroll", icon: ReceiptText, active: false }
+type NavItem = {
+  label: string;
+  icon: LucideIcon;
+  permissions: string[];
+  href?: string;
+};
+
+const navItems: NavItem[] = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    href: "/dashboard",
+    permissions: ["dashboard:read"]
+  },
+  {
+    label: "Profile",
+    icon: UserCircle,
+    href: "/profile",
+    permissions: ["profile:read"]
+  },
+  {
+    label: "Employees",
+    icon: Users,
+    permissions: ["employees:manage"]
+  },
+  {
+    label: "Attendance",
+    icon: ClipboardList,
+    permissions: ["attendance:read"]
+  },
+  {
+    label: "Leave",
+    icon: CalendarDays,
+    permissions: ["leave:approve"]
+  },
+  {
+    label: "Payroll",
+    icon: ReceiptText,
+    permissions: ["payroll:manage"]
+  }
 ];
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({ user, token, children }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const primaryRole = user.roles[0];
+  const visibleNavItems = navItems.filter((item) =>
+    hasEveryPermission(user, item.permissions)
+  );
 
-  function signOut() {
-    clearDemoSession();
+  async function signOut() {
+    setIsSigningOut(true);
+    await logout(token).catch((error: unknown) => {
+      console.error(error);
+    });
+    clearAuthSession();
     router.push("/login");
   }
 
@@ -44,24 +95,31 @@ export function AppShell({ user, children }: AppShellProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">HRMS</p>
-            <p className="text-xs text-slate-500">Phase 1</p>
+            <p className="text-xs text-slate-500">Phase 2</p>
           </div>
         </div>
 
         <nav className="space-y-1 p-3">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
+            const active = item.href === pathname;
+            const className = `flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition ${
+              active
+                ? "bg-brand-50 font-semibold text-brand-700"
+                : "text-slate-600 hover:bg-surface"
+            }`;
+
+            if (item.href) {
+              return (
+                <Link key={item.label} className={className} href={item.href}>
+                  <Icon size={18} aria-hidden="true" />
+                  {item.label}
+                </Link>
+              );
+            }
 
             return (
-              <button
-                key={item.label}
-                className={`flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition ${
-                  item.active
-                    ? "bg-brand-50 font-semibold text-brand-700"
-                    : "text-slate-600 hover:bg-surface"
-                }`}
-                type="button"
-              >
+              <button key={item.label} className={className} type="button" disabled>
                 <Icon size={18} aria-hidden="true" />
                 {item.label}
               </button>
@@ -82,7 +140,9 @@ export function AppShell({ user, children }: AppShellProps) {
             </button>
             <div>
               <p className="text-sm font-medium text-ink">Company Workspace</p>
-              <p className="text-xs text-slate-500">{user.email}</p>
+              <p className="text-xs text-slate-500">
+                {primaryRole ? roleLabels[primaryRole] : "User"} | {user.email}
+              </p>
             </div>
           </div>
 
@@ -95,9 +155,10 @@ export function AppShell({ user, children }: AppShellProps) {
               <Bell size={17} aria-hidden="true" />
             </button>
             <button
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-slate-700 transition hover:bg-surface"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-slate-700 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
               onClick={signOut}
+              disabled={isSigningOut}
             >
               <LogOut size={16} aria-hidden="true" />
               Sign out

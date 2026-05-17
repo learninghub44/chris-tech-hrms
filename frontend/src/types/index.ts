@@ -1,8 +1,17 @@
-export type DemoRole = "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE";
+export type RoleName = "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE";
 
-export type DemoUser = {
+export type AccountStatus = "ACTIVE" | "INACTIVE" | "TERMINATED";
+
+export type AuthUser = {
   id: string;
   name: string;
   email: string;
-  role: DemoRole;
+  status: AccountStatus;
+  roles: RoleName[];
+  permissions: string[];
+};
+
+export type AuthSession = {
+  token: string;
+  user: AuthUser;
 };

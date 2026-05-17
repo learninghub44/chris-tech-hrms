@@ -1,41 +1,47 @@
 "use client";
 
 import { BriefcaseBusiness, LogIn, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { setDemoSession } from "@/lib/auth";
-import type { DemoRole } from "@/types";
+import { getApiErrorMessage, login } from "@/lib/api";
+import { setAuthSession } from "@/lib/auth";
 
 type LoginFormValues = {
   email: string;
-};
-
-const roles: DemoRole[] = ["SUPER_ADMIN", "HR_ADMIN", "MANAGER", "EMPLOYEE"];
-
-const roleLabels: Record<DemoRole, string> = {
-  SUPER_ADMIN: "Super Admin",
-  HR_ADMIN: "HR Admin",
-  MANAGER: "Manager",
-  EMPLOYEE: "Employee"
+  password: string;
 };
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState<DemoRole>("SUPER_ADMIN");
-  const { handleSubmit, register } = useForm<LoginFormValues>({
+  const [error, setError] = useState<string | null>(null);
+  const {
+    formState: { isSubmitting },
+    handleSubmit,
+    register
+  } = useForm<LoginFormValues>({
     defaultValues: {
-      email: "admin@hrms.local"
+      email: "admin@hrms.local",
+      password: "Admin@12345"
     }
   });
 
-  function onSubmit(values: LoginFormValues) {
-    setDemoSession({
-      id: "phase-1-user",
-      name: roleLabels[role],
-      email: values.email,
-      role
-    });
+  async function onSubmit(values: LoginFormValues) {
+    setError(null);
+    const response = await login(values).catch(() => null);
+
+    if (!response) {
+      setError("Unable to reach the API");
+      return;
+    }
+
+    if (!response.success) {
+      setError(getApiErrorMessage(response));
+      return;
+    }
+
+    setAuthSession(response.data);
     router.push("/dashboard");
   }
 
@@ -47,20 +53,20 @@ export default function LoginPage() {
             <BriefcaseBusiness size={22} aria-hidden="true" />
           </div>
           <div>
-          <p className="text-sm text-white/60">HR Management System</p>
+            <p className="text-sm text-white/60">HR Management System</p>
             <h1 className="text-xl font-semibold tracking-normal">Workspace</h1>
           </div>
         </div>
 
         <div className="max-w-2xl py-10">
           <p className="text-sm font-medium uppercase tracking-[0.16em] text-brand-100">
-            Phase 1
+            Phase 2
           </p>
           <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-            Core access and dashboard foundation
+            Secure role-based access
           </h2>
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {["Frontend", "Backend", "Database"].map((item) => (
+            {["JWT", "Roles", "Permissions"].map((item) => (
               <div
                 key={item}
                 className="rounded-md border border-white/10 bg-white/10 px-4 py-3"
@@ -85,9 +91,15 @@ export default function LoginPage() {
             </div>
             <div>
               <h2 className="text-xl font-semibold tracking-normal">Sign in</h2>
-              <p className="text-sm text-slate-500">Phase 1 demo access</p>
+              <p className="text-sm text-slate-500">Use your HRMS account</p>
             </div>
           </div>
+
+          {error ? (
+            <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
 
           <label className="mt-7 block text-sm font-medium text-slate-700">
             Email
@@ -100,26 +112,31 @@ export default function LoginPage() {
           </label>
 
           <label className="mt-5 block text-sm font-medium text-slate-700">
-            Role
-            <select
-              className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-              value={role}
-              onChange={(event) => setRole(event.target.value as DemoRole)}
-            >
-              {roles.map((item) => (
-                <option key={item} value={item}>
-                  {roleLabels[item]}
-                </option>
-              ))}
-            </select>
+            Password
+            <input
+              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              type="password"
+              autoComplete="current-password"
+              {...register("password", { required: true })}
+            />
           </label>
 
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+            <Link className="font-medium text-brand-700" href="/register">
+              Create account
+            </Link>
+            <Link className="font-medium text-brand-700" href="/forgot-password">
+              Forgot password
+            </Link>
+          </div>
+
           <button
-            className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
             type="submit"
+            disabled={isSubmitting}
           >
             <LogIn size={18} aria-hidden="true" />
-            Continue
+            Sign in
           </button>
         </form>
       </section>
