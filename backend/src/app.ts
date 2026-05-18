@@ -6,8 +6,10 @@ import { env } from "./config/env";
 import { errorHandler } from "./middleware/error-handler";
 import { notFoundHandler } from "./middleware/not-found";
 import { authRouter } from "./modules/auth/auth.routes";
+import { attendanceRouter } from "./modules/attendance/attendance.routes";
 import { employeeCoreRouter } from "./modules/employees/employees.routes";
 import { healthRouter } from "./modules/health/health.routes";
+import { leaveRouter } from "./modules/leaves/leaves.routes";
 
 export function createApp() {
   const app = express();
@@ -25,6 +27,8 @@ export function createApp() {
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api", employeeCoreRouter);
+  app.use("/api", attendanceRouter);
+  app.use("/api", leaveRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

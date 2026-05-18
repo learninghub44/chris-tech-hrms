@@ -9,6 +9,21 @@ export type EmploymentStatus =
   | "INACTIVE"
   | "TERMINATED";
 
+export type AttendanceStatus =
+  | "PRESENT"
+  | "LATE"
+  | "HALF_DAY"
+  | "ABSENT"
+  | "WORK_FROM_HOME";
+
+export type AttendanceWorkMode = "OFFICE" | "WORK_FROM_HOME";
+
+export type HolidayType = "PUBLIC" | "COMPANY" | "OPTIONAL";
+
+export type LeaveRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+export type LeaveDayType = "FULL_DAY" | "HALF_DAY";
+
 export type AuthUser = {
   id: string;
   name: string;
@@ -109,6 +124,122 @@ export type Employee = {
   manager: EmployeeManager | null;
   emergencyContacts: EmergencyContact[];
   documents: EmployeeDocument[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Shift = {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  lateAfterMinutes: number;
+  halfDayAfterMinutes: number;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Holiday = {
+  id: string;
+  name: string;
+  date: string;
+  type: HolidayType;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AttendanceEmployee = {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  department: Department | null;
+  designation: Designation | null;
+};
+
+export type AttendanceRecord = {
+  id: string;
+  employeeId: string;
+  employee: AttendanceEmployee;
+  shiftId: string | null;
+  shift: Shift | null;
+  date: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  status: AttendanceStatus;
+  workMode: AttendanceWorkMode;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LeaveType = {
+  id: string;
+  name: string;
+  description: string | null;
+  defaultAnnualAllowance: number;
+  isPaid: boolean;
+  requiresApproval: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LeaveEmployee = {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  userId?: string | null;
+  department: Department | null;
+  designation?: Designation | null;
+};
+
+export type LeaveReviewer = {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+};
+
+export type LeaveRequest = {
+  id: string;
+  employeeId: string;
+  employee: LeaveEmployee;
+  leaveTypeId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  dayType: LeaveDayType;
+  totalDays: number;
+  reason: string;
+  status: LeaveRequestStatus;
+  reviewerId: string | null;
+  reviewer: LeaveReviewer | null;
+  reviewedAt: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LeaveBalance = {
+  id: string;
+  employeeId: string;
+  employee: LeaveEmployee;
+  leaveTypeId: string;
+  leaveType: LeaveType;
+  year: number;
+  openingBalance: number;
+  accrued: number;
+  used: number;
+  pending: number;
+  available: number;
   createdAt: string;
   updatedAt: string;
 };

@@ -4,7 +4,7 @@ import { EmploymentStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
-import { requirePermissions } from "../../middleware/authorize";
+import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -677,7 +677,7 @@ employeeCoreRouter.post(
 
 employeeCoreRouter.get(
   "/departments",
-  requirePermissions(["employees:manage"]),
+  requireAnyPermission(["employees:manage", "attendance:read", "leave:approve"]),
   asyncHandler(async (_req, res) => {
     const departments = await prisma.department.findMany({
       include: {

@@ -1,10 +1,21 @@
 import type {
+  AttendanceRecord,
+  AttendanceStatus,
+  AttendanceWorkMode,
   AuthUser,
   Department,
   Designation,
   Employee,
   EmployeeDocument,
-  EmploymentStatus
+  EmploymentStatus,
+  Holiday,
+  HolidayType,
+  LeaveBalance,
+  LeaveDayType,
+  LeaveRequest,
+  LeaveRequestStatus,
+  LeaveType,
+  Shift
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
@@ -97,6 +108,56 @@ export type EmployeeDocumentInput = {
   mimeType: string | null;
   sizeBytes: number | null;
   notes: string | null;
+};
+
+export type AttendanceFilters = {
+  dateFrom?: string;
+  dateTo?: string;
+  employeeId?: string;
+  departmentId?: string;
+  status?: AttendanceStatus | "";
+};
+
+export type ShiftInput = {
+  name: string;
+  startTime: string;
+  endTime: string;
+  lateAfterMinutes: number;
+  halfDayAfterMinutes: number;
+  isDefault: boolean;
+  isActive: boolean;
+};
+
+export type HolidayInput = {
+  name: string;
+  date: string;
+  type: HolidayType;
+  description: string | null;
+};
+
+export type LeaveInput = {
+  leaveTypeId: string;
+  startDate: string;
+  endDate: string;
+  dayType: LeaveDayType;
+  reason: string;
+};
+
+export type LeaveFilters = {
+  status?: LeaveRequestStatus | "";
+  employeeId?: string;
+  departmentId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type LeaveTypeInput = {
+  name: string;
+  description: string | null;
+  defaultAnnualAllowance: number;
+  isPaid: boolean;
+  requiresApproval: boolean;
+  isActive: boolean;
 };
 
 async function request<T>(
@@ -299,4 +360,225 @@ export function createDesignation(
     body: input,
     token
   });
+}
+
+export function clockIn(
+  token: string,
+  input: { workMode: AttendanceWorkMode; notes: string | null }
+) {
+  return request<{ attendance: AttendanceRecord }>("/attendance/clock-in", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function clockOut(token: string, input: { notes: string | null }) {
+  return request<{ attendance: AttendanceRecord }>("/attendance/clock-out", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function getMyAttendance(
+  token: string,
+  input: { dateFrom?: string; dateTo?: string }
+) {
+  const params = new URLSearchParams();
+
+  if (input.dateFrom) {
+    params.set("dateFrom", input.dateFrom);
+  }
+
+  if (input.dateTo) {
+    params.set("dateTo", input.dateTo);
+  }
+
+  const query = params.toString();
+
+  return request<{
+    attendance: AttendanceRecord[];
+    todayAttendance: AttendanceRecord | null;
+  }>(`/attendance/me${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getAttendanceReport(token: string, filters: AttendanceFilters) {
+  const params = new URLSearchParams();
+
+  if (filters.dateFrom) {
+    params.set("dateFrom", filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    params.set("dateTo", filters.dateTo);
+  }
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  const query = params.toString();
+
+  return request<{ attendance: AttendanceRecord[] }>(
+    `/attendance/report${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function listShifts(token: string) {
+  return request<{ shifts: Shift[] }>("/shifts", {
+    method: "GET",
+    token
+  });
+}
+
+export function createShift(token: string, input: ShiftInput) {
+  return request<{ shift: Shift }>("/shifts", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function listHolidays(token: string, year: number) {
+  return request<{ holidays: Holiday[] }>(`/holidays?year=${year}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function createHoliday(token: string, input: HolidayInput) {
+  return request<{ holiday: Holiday }>("/holidays", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function listLeaveTypes(token: string) {
+  return request<{ leaveTypes: LeaveType[] }>("/leave-types", {
+    method: "GET",
+    token
+  });
+}
+
+export function createLeaveType(token: string, input: LeaveTypeInput) {
+  return request<{ leaveType: LeaveType }>("/leave-types", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function applyLeave(token: string, input: LeaveInput) {
+  return request<{ leaveRequest: LeaveRequest }>("/leaves", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function listMyLeaves(token: string) {
+  return request<{ leaveRequests: LeaveRequest[] }>("/leaves/me", {
+    method: "GET",
+    token
+  });
+}
+
+export function listLeaveRequests(token: string, filters: LeaveFilters) {
+  const params = new URLSearchParams();
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  if (filters.dateFrom) {
+    params.set("dateFrom", filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    params.set("dateTo", filters.dateTo);
+  }
+
+  const query = params.toString();
+
+  return request<{ leaveRequests: LeaveRequest[] }>(
+    `/leaves${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function approveLeave(
+  token: string,
+  id: string,
+  input: { decisionNote: string | null }
+) {
+  return request<{ leaveRequest: LeaveRequest }>(`/leaves/${id}/approve`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function rejectLeave(
+  token: string,
+  id: string,
+  input: { decisionNote: string | null }
+) {
+  return request<{ leaveRequest: LeaveRequest }>(`/leaves/${id}/reject`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listLeaveBalances(
+  token: string,
+  input: { year?: number; employeeId?: string }
+) {
+  const params = new URLSearchParams();
+
+  if (input.year) {
+    params.set("year", String(input.year));
+  }
+
+  if (input.employeeId) {
+    params.set("employeeId", input.employeeId);
+  }
+
+  const query = params.toString();
+
+  return request<{ leaveBalances: LeaveBalance[] }>(
+    `/leaves/balance${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
 }

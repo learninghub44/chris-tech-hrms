@@ -4,12 +4,15 @@ import {
   Bell,
   BriefcaseBusiness,
   Building2,
+  CalendarCheck,
   CalendarDays,
   ClipboardList,
+  Clock3,
   LayoutDashboard,
   LogOut,
   Menu,
   ReceiptText,
+  Settings,
   UserCircle,
   Users
 } from "lucide-react";
@@ -67,14 +70,58 @@ const navItems: NavItem[] = [
     permissions: ["employees:manage"]
   },
   {
-    label: "Attendance",
+    label: "My Attendance",
+    icon: Clock3,
+    href: "/attendance",
+    permissions: ["attendance:write"]
+  },
+  {
+    label: "Attendance Report",
     icon: ClipboardList,
+    href: "/attendance/report",
     permissions: ["attendance:read"]
   },
   {
-    label: "Leave",
+    label: "Shift Settings",
+    icon: Settings,
+    href: "/shifts",
+    permissions: ["attendance:manage"]
+  },
+  {
+    label: "Holidays",
+    icon: CalendarCheck,
+    href: "/holidays",
+    permissions: ["attendance:manage"]
+  },
+  {
+    label: "Apply Leave",
     icon: CalendarDays,
+    href: "/leaves/apply",
+    permissions: ["leave:request"]
+  },
+  {
+    label: "My Leaves",
+    icon: CalendarDays,
+    href: "/leaves/me",
+    permissions: ["leave:request"]
+  },
+  {
+    label: "Leave Approvals",
+    icon: CalendarDays,
+    href: "/leaves/approvals",
     permissions: ["leave:approve"]
+  },
+  {
+    label: "Leave Balances",
+    icon: ClipboardList,
+    href: "/leaves/balances",
+    permissions: ["leave:request"]
+  },
+  {
+    label: "Leave Settings",
+    icon: Settings,
+    href: "/leave-types",
+    permissions: ["leave:manage"]
   },
   {
     label: "Payroll",
@@ -110,7 +157,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">HRMS</p>
-            <p className="text-xs text-slate-500">Phase 3</p>
+            <p className="text-xs text-slate-500">Phase 5</p>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ A full-stack HR Management System for managing employees, attendance, leave, pay
 
 ## Project Status
 
-Phase 3 employee core code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, password reset tokens, role-based pages, employee CRUD, departments, designations, emergency contacts, and local employee document uploads from [plan.md](./plan.md).
+Phase 5 leave management code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, role-based pages, employee CRUD, document uploads, attendance clock in/out, shifts, holidays, attendance reports, leave requests, approvals, leave balances, leave types, and in-app notification records from [plan.md](./plan.md).
 
 ## Table Of Contents
 
@@ -209,7 +209,7 @@ postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 npm run prisma:migrate
 ```
 
-5. Seed base roles, permissions, departments, designations, and the phase 3 admin employee.
+5. Seed base roles, permissions, departments, designations, shifts, holidays, leave types, and the admin employee.
 
 ```bash
 npm run db:seed
@@ -276,7 +276,10 @@ Main API groups:
 /api/departments
 /api/designations
 /api/attendance
+/api/shifts
+/api/holidays
 /api/leaves
+/api/leave-types
 /api/payroll
 /api/reports
 /api/notifications
@@ -302,8 +305,20 @@ GET  /api/designations
 POST /api/designations
 POST /api/attendance/clock-in
 POST /api/attendance/clock-out
+GET  /api/attendance/me
+GET  /api/attendance/report
+GET  /api/shifts
+POST /api/shifts
+GET  /api/holidays
+POST /api/holidays
 POST /api/leaves
+GET  /api/leaves
+GET  /api/leaves/me
+GET  /api/leaves/balance
 PUT  /api/leaves/:id/approve
+PUT  /api/leaves/:id/reject
+GET  /api/leave-types
+POST /api/leave-types
 POST /api/payroll/generate
 GET  /api/reports/attendance
 ```

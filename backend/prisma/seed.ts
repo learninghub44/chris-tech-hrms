@@ -18,8 +18,10 @@ const permissions = [
   { key: "employees:manage", description: "Manage employees" },
   { key: "attendance:read", description: "View attendance" },
   { key: "attendance:write", description: "Record own attendance" },
+  { key: "attendance:manage", description: "Manage shifts and holidays" },
   { key: "leave:request", description: "Request leave" },
   { key: "leave:approve", description: "Approve leave requests" },
+  { key: "leave:manage", description: "Manage leave settings" },
   { key: "payroll:manage", description: "Manage payroll" }
 ];
 
@@ -30,10 +32,21 @@ const rolePermissions: Record<string, string[]> = {
     "profile:read",
     "employees:manage",
     "attendance:read",
+    "attendance:write",
+    "attendance:manage",
+    "leave:request",
     "leave:approve",
+    "leave:manage",
     "payroll:manage"
   ],
-  MANAGER: ["dashboard:read", "profile:read", "attendance:read", "leave:approve"],
+  MANAGER: [
+    "dashboard:read",
+    "profile:read",
+    "attendance:read",
+    "attendance:write",
+    "leave:request",
+    "leave:approve"
+  ],
   EMPLOYEE: ["dashboard:read", "profile:read", "attendance:write", "leave:request"]
 };
 
@@ -58,6 +71,45 @@ const designations = [
     title: "Software Engineer",
     description: "Builds and maintains product systems",
     departmentName: "Engineering"
+  }
+];
+
+const leaveTypes = [
+  {
+    name: "Annual Leave",
+    description: "Paid planned leave for vacation and personal time",
+    defaultAnnualAllowance: 18,
+    isPaid: true,
+    requiresApproval: true
+  },
+  {
+    name: "Sick Leave",
+    description: "Paid leave for illness or medical care",
+    defaultAnnualAllowance: 10,
+    isPaid: true,
+    requiresApproval: true
+  },
+  {
+    name: "Unpaid Leave",
+    description: "Unpaid leave for exceptional cases",
+    defaultAnnualAllowance: 0,
+    isPaid: false,
+    requiresApproval: true
+  }
+];
+
+const holidays = [
+  {
+    name: "New Year's Day",
+    date: new Date("2026-01-01T00:00:00.000Z"),
+    type: "PUBLIC" as const,
+    description: "Public holiday"
+  },
+  {
+    name: "Company Foundation Day",
+    date: new Date("2026-05-18T00:00:00.000Z"),
+    type: "COMPANY" as const,
+    description: "Company holiday"
   }
 ];
 
@@ -248,6 +300,79 @@ async function main() {
       isPrimary: true
     }
   });
+
+  await prisma.shift.upsert({
+    where: {
+      name: "General Shift"
+    },
+    update: {
+      startTime: "09:30",
+      endTime: "18:30",
+      lateAfterMinutes: 15,
+      halfDayAfterMinutes: 240,
+      isDefault: true,
+      isActive: true
+    },
+    create: {
+      name: "General Shift",
+      startTime: "09:30",
+      endTime: "18:30",
+      lateAfterMinutes: 15,
+      halfDayAfterMinutes: 240,
+      isDefault: true,
+      isActive: true
+    }
+  });
+
+  await Promise.all(
+    holidays.map((holiday) =>
+      prisma.holiday.upsert({
+        where: {
+          date: holiday.date
+        },
+        update: {
+          name: holiday.name,
+          type: holiday.type,
+          description: holiday.description
+        },
+        create: holiday
+      })
+    )
+  );
+
+  const createdLeaveTypes = await Promise.all(
+    leaveTypes.map((leaveType) =>
+      prisma.leaveType.upsert({
+        where: {
+          name: leaveType.name
+        },
+        update: leaveType,
+        create: leaveType
+      })
+    )
+  );
+
+  await Promise.all(
+    createdLeaveTypes.map((leaveType) =>
+      prisma.leaveBalance.upsert({
+        where: {
+          employeeId_leaveTypeId_year: {
+            employeeId: employee.id,
+            leaveTypeId: leaveType.id,
+            year: 2026
+          }
+        },
+        update: {},
+        create: {
+          employeeId: employee.id,
+          leaveTypeId: leaveType.id,
+          year: 2026,
+          openingBalance: leaveType.defaultAnnualAllowance,
+          available: leaveType.defaultAnnualAllowance
+        }
+      })
+    )
+  );
 }
 
 main()

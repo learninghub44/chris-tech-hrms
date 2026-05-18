@@ -54,14 +54,14 @@ function DashboardContent({ user, token }: DashboardContentProps) {
     {
       label: "Active Staff",
       value: canManageEmployees ? String(activeEmployeeCount) : "-",
-      detail: "Employee core",
+      detail: "Employee records",
       icon: Clock3,
       tone: "blue" as const
     },
     {
       label: "Leave Requests",
       value: "0",
-      detail: "Ready for Phase 5",
+      detail: "Phase 5 enabled",
       icon: CalendarDays,
       tone: "amber" as const
     },
@@ -97,7 +97,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
           <div>
             <p className="text-sm font-medium text-brand-700">Dashboard</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal text-ink">
-              HRMS Employee Core
+              HRMS Operations
             </h1>
           </div>
           <div className="inline-flex h-10 items-center gap-2 self-start rounded-md border border-line bg-white px-3 text-sm text-slate-600 md:self-auto">

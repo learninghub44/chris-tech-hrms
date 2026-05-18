@@ -21,6 +21,37 @@ enum EmploymentStatus {
   TERMINATED
 }
 
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
+  WORK_FROM_HOME
+}
+
+enum AttendanceWorkMode {
+  OFFICE
+  WORK_FROM_HOME
+}
+
+enum HolidayType {
+  PUBLIC
+  COMPANY
+  OPTIONAL
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveDayType {
+  FULL_DAY
+  HALF_DAY
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -33,6 +64,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   employee            Employee?
   uploadedDocuments   EmployeeDocument[]   @relation("UploadedEmployeeDocuments")
+  notifications       Notification[]
 
   @@map("users")
 }
@@ -144,6 +176,10 @@ model Employee {
   reports           Employee[]         @relation("EmployeeManager")
   emergencyContacts EmergencyContact[]
   documents         EmployeeDocument[]
+  attendanceRecords Attendance[]
+  leaveRequests     LeaveRequest[]     @relation("EmployeeLeaveRequests")
+  reviewedLeaves    LeaveRequest[]     @relation("ReviewedLeaveRequests")
+  leaveBalances     LeaveBalance[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -186,4 +222,134 @@ model EmployeeDocument {
   @@index([employeeId])
   @@index([uploadedById])
   @@map("employee_documents")
+}
+
+model Shift {
+  id                  String       @id @default(uuid())
+  name                String       @unique
+  startTime           String
+  endTime             String
+  lateAfterMinutes    Int          @default(15)
+  halfDayAfterMinutes Int          @default(240)
+  isDefault           Boolean      @default(false)
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  attendanceRecords   Attendance[]
+
+  @@map("shifts")
+}
+
+model Holiday {
+  id          String      @id @default(uuid())
+  name        String
+  date        DateTime    @unique @db.Date
+  type        HolidayType @default(PUBLIC)
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("holidays")
+}
+
+model Attendance {
+  id         String             @id @default(uuid())
+  employeeId String
+  employee   Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId    String?
+  shift      Shift?             @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  date       DateTime           @db.Date
+  clockInAt  DateTime?
+  clockOutAt DateTime?
+  status     AttendanceStatus   @default(PRESENT)
+  workMode   AttendanceWorkMode @default(OFFICE)
+  notes      String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([shiftId])
+  @@index([date])
+  @@map("attendance")
+}
+
+model LeaveType {
+  id                     String         @id @default(uuid())
+  name                   String         @unique
+  description            String?
+  defaultAnnualAllowance Float          @default(0)
+  isPaid                 Boolean        @default(true)
+  requiresApproval       Boolean        @default(true)
+  isActive               Boolean        @default(true)
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  leaveRequests          LeaveRequest[]
+  leaveBalances          LeaveBalance[]
+
+  @@map("leave_types")
+}
+
+model LeaveRequest {
+  id           String             @id @default(uuid())
+  employeeId   String
+  employee     Employee           @relation("EmployeeLeaveRequests", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId  String
+  leaveType    LeaveType          @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  startDate    DateTime           @db.Date
+  endDate      DateTime           @db.Date
+  dayType      LeaveDayType       @default(FULL_DAY)
+  totalDays    Float
+  reason       String
+  status       LeaveRequestStatus @default(PENDING)
+  reviewerId   String?
+  reviewer     Employee?          @relation("ReviewedLeaveRequests", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+  decisionNote String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@index([reviewerId])
+  @@index([startDate])
+  @@index([status])
+  @@map("leave_requests")
+}
+
+model LeaveBalance {
+  id             String    @id @default(uuid())
+  employeeId     String
+  employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId    String
+  leaveType      LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year           Int
+  openingBalance Float     @default(0)
+  accrued        Float     @default(0)
+  used           Float     @default(0)
+  pending        Float     @default(0)
+  available      Float     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@map("leave_balances")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  category  String
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
