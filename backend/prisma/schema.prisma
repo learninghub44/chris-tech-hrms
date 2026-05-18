@@ -13,6 +13,14 @@ enum AccountStatus {
   TERMINATED
 }
 
+enum EmploymentStatus {
+  ONBOARDING
+  ACTIVE
+  PROBATION
+  INACTIVE
+  TERMINATED
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -23,6 +31,8 @@ model User {
   updatedAt           DateTime             @updatedAt
   roles               UserRole[]
   passwordResetTokens PasswordResetToken[]
+  employee            Employee?
+  uploadedDocuments   EmployeeDocument[]   @relation("UploadedEmployeeDocuments")
 
   @@map("users")
 }
@@ -81,4 +91,99 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model Department {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  employees    Employee[]
+  designations Designation[]
+
+  @@map("departments")
+}
+
+model Designation {
+  id           String      @id @default(uuid())
+  title        String
+  description  String?
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  employees    Employee[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([title, departmentId])
+  @@index([departmentId])
+  @@map("designations")
+}
+
+model Employee {
+  id                String             @id @default(uuid())
+  employeeCode      String             @unique
+  userId            String?            @unique
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName         String
+  lastName          String
+  workEmail         String             @unique
+  personalEmail     String?
+  phone             String?
+  dateOfBirth       DateTime?
+  dateOfJoining     DateTime
+  dateOfExit        DateTime?
+  status            EmploymentStatus   @default(ACTIVE)
+  location          String?
+  departmentId      String?
+  department        Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designationId     String?
+  designation       Designation?       @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  managerId         String?
+  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports           Employee[]         @relation("EmployeeManager")
+  emergencyContacts EmergencyContact[]
+  documents         EmployeeDocument[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([managerId])
+  @@map("employees")
+}
+
+model EmergencyContact {
+  id           String   @id @default(uuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String
+  phone        String
+  email        String?
+  isPrimary    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([employeeId])
+  @@map("emergency_contacts")
+}
+
+model EmployeeDocument {
+  id           String   @id @default(uuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  documentType String
+  fileName     String
+  fileUrl      String   @db.Text
+  mimeType     String?
+  sizeBytes    Int?
+  notes        String?
+  uploadedById String?
+  uploadedBy   User?    @relation("UploadedEmployeeDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([uploadedById])
+  @@map("employee_documents")
 }

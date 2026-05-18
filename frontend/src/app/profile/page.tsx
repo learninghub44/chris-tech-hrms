@@ -1,8 +1,15 @@
 "use client";
 
 import { Mail, ShieldCheck, UserCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
+import { getMyEmployeeProfile } from "@/lib/api";
+import {
+  employmentStatusLabels,
+  formatDate,
+  getEmployeeName
+} from "@/lib/employee-format";
 import { roleLabels } from "@/lib/permissions";
 import type { AuthUser } from "@/types";
 
@@ -12,6 +19,15 @@ type ProfileContentProps = {
 };
 
 function ProfileContent({ user, token }: ProfileContentProps) {
+  const employeeQuery = useQuery({
+    queryKey: ["my-employee-profile", token],
+    queryFn: () => getMyEmployeeProfile(token),
+    retry: false
+  });
+  const employee = employeeQuery.data?.success
+    ? employeeQuery.data.data.employee
+    : null;
+
   return (
     <AppShell user={user} token={token}>
       <div className="space-y-6">
@@ -59,6 +75,68 @@ function ProfileContent({ user, token }: ProfileContentProps) {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+          <h2 className="text-lg font-semibold tracking-normal">Employee Record</h2>
+          {employee ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Name</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {getEmployeeName(employee)}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Code</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employee.employeeCode}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Status</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employmentStatusLabels[employee.status]}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Joining</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {formatDate(employee.dateOfJoining)}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Department</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employee.department?.name ?? "Unassigned"}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Designation</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employee.designation?.title ?? "Unassigned"}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Manager</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employee.manager ? getEmployeeName(employee.manager) : "Unassigned"}
+                </p>
+              </div>
+              <div className="rounded-md bg-surface px-4 py-3">
+                <p className="text-xs font-medium uppercase text-slate-500">Documents</p>
+                <p className="mt-1 text-sm font-medium text-ink">
+                  {employee.documents.length}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-5 rounded-md border border-dashed border-line px-4 py-5 text-sm text-slate-500">
+              {employeeQuery.isLoading
+                ? "Loading employee record."
+                : "No employee record linked."}
+            </p>
+          )}
         </section>
       </div>
     </AppShell>

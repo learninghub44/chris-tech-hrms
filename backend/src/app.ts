@@ -6,6 +6,7 @@ import { env } from "./config/env";
 import { errorHandler } from "./middleware/error-handler";
 import { notFoundHandler } from "./middleware/not-found";
 import { authRouter } from "./modules/auth/auth.routes";
+import { employeeCoreRouter } from "./modules/employees/employees.routes";
 import { healthRouter } from "./modules/health/health.routes";
 
 export function createApp() {
@@ -18,11 +19,12 @@ export function createApp() {
       credentials: true
     })
   );
-  app.use(express.json({ limit: "1mb" }));
+  app.use(express.json({ limit: "5mb" }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api", employeeCoreRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

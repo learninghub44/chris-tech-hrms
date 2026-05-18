@@ -60,10 +60,10 @@ export default function LoginPage() {
 
         <div className="max-w-2xl py-10">
           <p className="text-sm font-medium uppercase tracking-[0.16em] text-brand-100">
-            Phase 2
+            Phase 3
           </p>
           <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-            Secure role-based access
+            Employee core workspace
           </h2>
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             {["JWT", "Roles", "Permissions"].map((item) => (

@@ -2,6 +2,8 @@
 
 import {
   Bell,
+  BriefcaseBusiness,
+  Building2,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
@@ -49,6 +51,19 @@ const navItems: NavItem[] = [
   {
     label: "Employees",
     icon: Users,
+    href: "/employees",
+    permissions: ["employees:manage"]
+  },
+  {
+    label: "Departments",
+    icon: Building2,
+    href: "/departments",
+    permissions: ["employees:manage"]
+  },
+  {
+    label: "Designations",
+    icon: BriefcaseBusiness,
+    href: "/designations",
     permissions: ["employees:manage"]
   },
   {
@@ -95,14 +110,16 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">HRMS</p>
-            <p className="text-xs text-slate-500">Phase 2</p>
+            <p className="text-xs text-slate-500">Phase 3</p>
           </div>
         </div>
 
         <nav className="space-y-1 p-3">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
-            const active = item.href === pathname;
+            const active = item.href
+              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+              : false;
             const className = `flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition ${
               active
                 ? "bg-brand-50 font-semibold text-brand-700"

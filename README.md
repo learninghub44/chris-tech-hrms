@@ -4,7 +4,7 @@ A full-stack HR Management System for managing employees, attendance, leave, pay
 
 ## Project Status
 
-Phase 2 authentication and role-based access code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, password reset tokens, protected frontend pages, role-filtered navigation, and the first secure API routes from [plan.md](./plan.md).
+Phase 3 employee core code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, password reset tokens, role-based pages, employee CRUD, departments, designations, emergency contacts, and local employee document uploads from [plan.md](./plan.md).
 
 ## Table Of Contents
 
@@ -209,7 +209,7 @@ postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 npm run prisma:migrate
 ```
 
-5. Seed base roles, permissions, and the phase 2 admin user.
+5. Seed base roles, permissions, departments, designations, and the phase 3 admin employee.
 
 ```bash
 npm run db:seed
@@ -292,6 +292,14 @@ POST /api/auth/login
 GET  /api/auth/me
 GET  /api/employees
 POST /api/employees
+GET  /api/employees/:id
+PUT  /api/employees/:id
+DELETE /api/employees/:id
+POST /api/employees/:id/documents
+GET  /api/departments
+POST /api/departments
+GET  /api/designations
+POST /api/designations
 POST /api/attendance/clock-in
 POST /api/attendance/clock-out
 POST /api/leaves

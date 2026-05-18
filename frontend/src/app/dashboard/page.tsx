@@ -15,40 +15,9 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
 import { StatusCard } from "@/components/status-card";
-import { getHealth } from "@/lib/api";
-import { roleLabels } from "@/lib/permissions";
+import { getHealth, listEmployees } from "@/lib/api";
+import { hasEveryPermission, roleLabels } from "@/lib/permissions";
 import type { AuthUser } from "@/types";
-
-const metrics = [
-  {
-    label: "Employees",
-    value: "0",
-    detail: "Ready for Phase 3",
-    icon: Users,
-    tone: "brand"
-  },
-  {
-    label: "Present Today",
-    value: "0",
-    detail: "Ready for Phase 4",
-    icon: Clock3,
-    tone: "blue"
-  },
-  {
-    label: "Leave Requests",
-    value: "0",
-    detail: "Ready for Phase 5",
-    icon: CalendarDays,
-    tone: "amber"
-  },
-  {
-    label: "Payroll Runs",
-    value: "0",
-    detail: "Ready for Phase 6",
-    icon: Activity,
-    tone: "slate"
-  }
-] as const;
 
 type DashboardContentProps = {
   user: AuthUser;
@@ -61,6 +30,49 @@ function DashboardContent({ user, token }: DashboardContentProps) {
     queryFn: getHealth,
     retry: false
   });
+  const canManageEmployees = hasEveryPermission(user, ["employees:manage"]);
+  const employeesQuery = useQuery({
+    queryKey: ["dashboard-employees", token],
+    queryFn: () => listEmployees(token, {}),
+    retry: false,
+    enabled: canManageEmployees
+  });
+  const employeeCount = employeesQuery.data?.success
+    ? employeesQuery.data.data.employees.length
+    : 0;
+  const activeEmployeeCount = employeesQuery.data?.success
+    ? employeesQuery.data.data.employees.filter((employee) => employee.status === "ACTIVE").length
+    : 0;
+  const metrics = [
+    {
+      label: "Employees",
+      value: canManageEmployees ? String(employeeCount) : "-",
+      detail: "Managed records",
+      icon: Users,
+      tone: "brand" as const
+    },
+    {
+      label: "Active Staff",
+      value: canManageEmployees ? String(activeEmployeeCount) : "-",
+      detail: "Employee core",
+      icon: Clock3,
+      tone: "blue" as const
+    },
+    {
+      label: "Leave Requests",
+      value: "0",
+      detail: "Ready for Phase 5",
+      icon: CalendarDays,
+      tone: "amber" as const
+    },
+    {
+      label: "Payroll Runs",
+      value: "0",
+      detail: "Ready for Phase 6",
+      icon: Activity,
+      tone: "slate" as const
+    }
+  ];
 
   const databaseStatus = useMemo(() => {
     if (health.isLoading) {
@@ -85,7 +97,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
           <div>
             <p className="text-sm font-medium text-brand-700">Dashboard</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal text-ink">
-              HRMS Foundation
+              HRMS Employee Core
             </h1>
           </div>
           <div className="inline-flex h-10 items-center gap-2 self-start rounded-md border border-line bg-white px-3 text-sm text-slate-600 md:self-auto">
