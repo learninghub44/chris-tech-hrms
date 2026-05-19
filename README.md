@@ -1,111 +1,127 @@
 # HR Management System
 
-A full-stack HR Management System for managing employees, attendance, leave, payroll, recruitment, performance, notifications, and reports from one web application.
+A full-stack, role-based HR Management System built with Next.js, Express, Prisma, and PostgreSQL. The project brings core HR workflows into one web application: employee records, attendance, leave, payroll, recruitment, performance management, notifications, announcements, and reporting.
 
+This repository is designed to show practical product engineering: a real data model, protected workflows, role-aware UI, reusable API patterns, and an end-to-end local setup.
 
-## Table Of Contents
+## Why This Project Stands Out
 
-- [Overview](#overview)
-- [Main Features](#main-features)
-- [User Roles](#user-roles)
-- [Recommended Tech Stack](#recommended-tech-stack)
-- [Architecture](#architecture)
-- [Core Modules](#core-modules)
-- [Suggested Project Structure](#suggested-project-structure)
-- [Environment Variables](#environment-variables)
-- [Local Setup](#local-setup)
-- [API Overview](#api-overview)
-- [Database Entities](#database-entities)
-- [Development Roadmap](#development-roadmap)
-- [MVP Scope](#mvp-scope)
-- [Testing Plan](#testing-plan)
-- [Deployment](#deployment)
-- [Security Notes](#security-notes)
-- [Contributing](#contributing)
-- [License](#license)
+- Built as a production-style HR operations platform, not a static dashboard.
+- Uses JWT authentication and permission-based access control across frontend and backend.
+- Covers multiple business domains: employees, attendance, leave, payroll, recruitment, performance, and reports.
+- Includes Prisma migrations and seed data for a repeatable local demo.
+- Uses typed frontend and backend code with validation, protected routes, and reusable API helpers.
+- Includes smoke-test coverage for critical backend workflows.
 
-## Overview
+## Recruiter-Friendly Summary
 
-This project is planned as a role-based HRMS for companies. It gives HR teams one place to manage employee data and gives employees a self-service portal for attendance, leave, documents, and payslips.
+| Area | What It Demonstrates |
+| --- | --- |
+| Full-stack engineering | Next.js frontend, Express API, PostgreSQL database, Prisma ORM |
+| Product thinking | HR workflows organized around real users: HR admins, managers, and employees |
+| Authorization | Role and permission checks for protected pages and API endpoints |
+| Data modeling | Employees, departments, payroll, leaves, attendance, jobs, candidates, reviews, and more |
+| Frontend craft | Responsive dashboard, protected app shell, forms, API state caching, polished login/signup UI |
+| Backend craft | Modular routes, middleware, async handlers, API response utilities, validation, smoke tests |
 
-Detailed implementation phases are available in [plan.md](./plan.md).
+## Features
 
-## Main Features
+### Authentication and Access
 
-- Authentication and role-based access control
-- Employee management
+- Login, registration, logout, forgot password, and reset password flows
+- JWT-based session handling
+- Role-based permissions for Super Admin, HR Admin, Manager, and Employee
+- Protected frontend routes and backend authorization middleware
+
+### Employee Management
+
+- Employee records with departments, designations, managers, status, joining date, and contact details
 - Department and designation management
-- Employee document uploads
-- Attendance clock in and clock out
-- Shift and holiday management
-- Leave requests and approvals
-- Leave balance tracking
-- Basic payroll generation
-- Payslip download
-- Dashboards and reports
-- In-app notifications
-- Email notifications
-- Recruitment management
+- Emergency contact and employee document metadata support
+- Employee profile and self-service access
+
+### Attendance and Time
+
+- Clock in and clock out workflows
+- Attendance records by employee and date
+- Shift configuration
+- Holiday management
+- Attendance reports and filters
+
+### Leave Management
+
+- Leave type configuration
+- Leave application flow
+- Manager/HR approval and rejection flow
+- Leave balances and leave history
+
+### Payroll
+
+- Salary setup with allowances and deductions
+- Payroll generation
+- Payslip records and download response support
+- Payroll reports
+
+### Dashboard, Notifications, and Reports
+
+- Role-aware dashboard summary
+- Notifications and announcements
+- Employee, attendance, leave, and payroll reports
+- Optimized frontend data caching for faster navigation
+
+### Recruitment
+
+- Job opening management
+- Candidate tracking
+- Applications, interviews, and offers
+- Candidate detail pages
+
+### Performance Management
+
+- Goals
 - Performance reviews
+- Feedback
+- Appraisal history
 
-## User Roles
+## Tech Stack
 
-| Role | Access |
+| Layer | Technology |
 | --- | --- |
-| Super Admin | Full system access, company settings, HR users, roles, permissions |
-| HR Admin | Employees, attendance, leave, payroll, documents, recruitment |
-| Manager | Team members, leave approvals, performance reviews |
-| Employee | Own profile, attendance, leave requests, documents, payslips |
-
-## Recommended Tech Stack
-
-| Layer | Tool |
-| --- | --- |
-| Frontend | Next.js |
+| Frontend | Next.js 15, React 19, TypeScript |
 | Styling | Tailwind CSS |
 | Forms | React Hook Form |
 | API State | TanStack Query |
-| Charts | Recharts |
-| Backend | Node.js with Express.js or NestJS |
+| Icons | Lucide React |
+| Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
-| Authentication | JWT |
-| Cache | Redis |
-| File Storage | Cloudinary or S3 |
-| Email | Nodemailer |
-| Background Jobs | Cron jobs |
+| Validation | Zod |
+| Security | JWT, Helmet, CORS, password hashing |
+| Tooling | npm workspaces, Docker Compose, ESLint |
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    Web["Web App"] --> Frontend["Frontend UI"]
-    Frontend --> API["Backend REST API"]
-    API --> Auth["JWT Auth"]
-    API --> RBAC["Role-Based Access"]
-    RBAC --> Modules["HRMS Modules"]
-    Modules --> DB[("PostgreSQL")]
-    Modules --> Cache[("Redis")]
-    API --> Files[("Cloudinary or S3")]
-    Jobs["Cron Jobs"] --> Modules
-    Modules --> Email["Email Notifications"]
+```text
+Browser
+  |
+  v
+Next.js Frontend
+  |
+  v
+Express REST API
+  |
+  +-- Auth middleware
+  +-- Permission middleware
+  +-- Domain route modules
+  |
+  v
+Prisma ORM
+  |
+  v
+PostgreSQL
 ```
 
-## Core Modules
-
-| Module | Description |
-| --- | --- |
-| Authentication | Login, register, forgot password, reset password, protected routes |
-| Employee Management | Employees, departments, designations, emergency contacts, documents |
-| Attendance | Clock in, clock out, daily records, shifts, holidays, reports |
-| Leave | Leave types, leave requests, approvals, balances, history |
-| Payroll | Salaries, allowances, deductions, payroll generation, payslips |
-| Dashboard and Reports | HR summaries, charts, employee reports, attendance reports, payroll reports |
-| Notifications | In-app alerts, email alerts, announcements |
-| Recruitment | Jobs, candidates, applications, interviews, offers |
-| Performance | Goals, reviews, ratings, feedback, appraisals |
-
-## Suggested Project Structure
+## Repository Structure
 
 ```text
 HRMS/
@@ -114,163 +130,146 @@ HRMS/
 |   |   |-- migrations/
 |   |   |-- schema.prisma
 |   |   `-- seed.ts
+|   |-- scripts/
+|   |   `-- smoke-test.ts
 |   |-- src/
 |   |   |-- config/
 |   |   |-- lib/
 |   |   |-- middleware/
 |   |   |-- modules/
+|   |   |-- types/
 |   |   `-- utils/
-|   |-- .env.example
-|   |-- package.json
-|   `-- tsconfig.json
+|   `-- package.json
 |-- frontend/
 |   |-- src/
 |   |   |-- app/
+|   |   |-- assets/
 |   |   |-- components/
 |   |   |-- lib/
 |   |   |-- providers/
 |   |   `-- types/
-|   |-- .env.example
-|   |-- package.json
-|   `-- tsconfig.json
+|   `-- package.json
 |-- docker-compose.yml
 |-- package.json
 |-- plan.md
 `-- README.md
 ```
 
-## Environment Variables
+## Local Demo Account
 
-Create environment files for the frontend and backend when the application is implemented.
+After running the seed command, the local demo account is:
 
-Backend environment variables:
-
-```env
-NODE_ENV="development"
-PORT="5000"
-CORS_ORIGIN="http://localhost:3000"
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/hrms?schema=public"
-JWT_SECRET="replace-with-a-random-secret-at-least-32-characters"
-JWT_EXPIRES_IN_SECONDS="86400"
-PASSWORD_RESET_EXPIRES_IN_MINUTES="30"
-SEED_ADMIN_PASSWORD="Admin@12345"
-PRISMA_QUERY_LOGS="false"
-REDIS_URL="redis://localhost:6379"
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
-SMTP_HOST=""
-SMTP_PORT="587"
-SMTP_USER=""
-SMTP_PASS=""
+```text
+Email: admin@hrms.local
+Password: Admin@12345
 ```
 
-Frontend environment variables:
+This is for local development only. Change seeded credentials and secrets before any production deployment.
 
-```env
-NEXT_PUBLIC_API_URL="http://localhost:5000/api"
-```
+## Getting Started
 
-## Local Setup
+### Prerequisites
 
-Run these commands from the repository root.
+- Node.js 20+
+- npm 10+
+- Docker Desktop, or a local PostgreSQL instance
 
-1. Install dependencies.
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-2. Generate the Prisma client.
+### 2. Configure Environment Files
+
+Create the backend environment file from the example:
 
 ```bash
-npm run prisma:generate
+copy backend\.env.example backend\.env
 ```
 
-3. Start PostgreSQL.
+Create the frontend environment file from the example:
 
-Use an existing local PostgreSQL server, or use the included compose file if Docker is installed:
+```bash
+copy frontend\.env.example frontend\.env.local
+```
+
+Default local values are configured for:
+
+```text
+Frontend: http://localhost:3000
+Backend:  http://localhost:5000/api
+Database: postgresql://postgres:postgres@localhost:5432/hrms?schema=public
+```
+
+### 3. Start PostgreSQL
 
 ```bash
 npm run db:up
 ```
 
-If `docker` is not recognized, install Docker Desktop or start a local PostgreSQL service manually. It must match `backend/.env`:
+### 4. Generate Prisma Client
 
-```text
-postgresql://postgres:postgres@localhost:5432/hrms?schema=public
+```bash
+npm run prisma:generate
 ```
 
-4. Create and migrate the PostgreSQL database.
+### 5. Run Migrations
 
 ```bash
 npm run prisma:migrate
 ```
 
-5. Seed base roles, permissions, departments, designations, shifts, holidays, leave types, and the admin employee.
+### 6. Seed Demo Data
 
 ```bash
 npm run db:seed
 ```
 
-6. Start frontend and backend together.
+### 7. Start the App
 
 ```bash
 npm run dev
 ```
 
-Local URLs:
+Open:
 
-- Frontend: `http://localhost:3000`
-- Backend health: `http://localhost:5000/api/health`
-- Backend current user: `http://localhost:5000/api/auth/me`
+```text
+Frontend: http://localhost:3000
+Backend health: http://localhost:5000/api/health
+```
 
-## Useful Scripts
-
-Recommended scripts once the frontend and backend are implemented:
-
-Root:
+## Useful Commands
 
 ```bash
 npm run dev
 npm run dev:frontend
 npm run dev:backend
-npm run db:up
-npm run db:status
-npm run db:down
-npm run setup:db
-npm run build
 npm run typecheck
 npm run lint
+npm run build
 npm run test:smoke
 npm run verify
-npm run prisma:generate
-npm run prisma:migrate
-npm run db:seed
+npm run db:up
+npm run db:down
+npm run db:status
+npm run setup:db
 ```
 
-Frontend workspace:
+## Validation
+
+The project includes practical validation commands:
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-```
-
-Backend workspace:
-
-```bash
-npm run dev
-npm run build
 npm run typecheck
+npm run lint
+npm run build
 npm run test:smoke
-npx prisma migrate dev
-npx prisma studio
 ```
 
-## API Overview
+The backend smoke test verifies key workflows including health checks, login, current user, unauthenticated rejection, employee RBAC, employee details, document metadata upload, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
 
-Main API groups:
+## API Modules
 
 ```text
 /api/auth
@@ -295,67 +294,9 @@ Main API groups:
 /api/feedback
 ```
 
-Example routes:
+## Database Coverage
 
-```text
-POST /api/auth/login
-GET  /api/auth/me
-GET  /api/employees
-POST /api/employees
-GET  /api/employees/:id
-PUT  /api/employees/:id
-DELETE /api/employees/:id
-POST /api/employees/:id/documents
-GET  /api/departments
-POST /api/departments
-GET  /api/designations
-POST /api/designations
-POST /api/attendance/clock-in
-POST /api/attendance/clock-out
-GET  /api/attendance/me
-GET  /api/attendance/report
-GET  /api/shifts
-POST /api/shifts
-GET  /api/holidays
-POST /api/holidays
-POST /api/leaves
-GET  /api/leaves
-GET  /api/leaves/me
-GET  /api/leaves/balance
-PUT  /api/leaves/:id/approve
-PUT  /api/leaves/:id/reject
-GET  /api/leave-types
-POST /api/leave-types
-POST /api/payroll/generate
-GET  /api/reports/attendance
-GET  /api/jobs
-POST /api/jobs
-GET  /api/jobs/:id
-GET  /api/candidates
-POST /api/candidates
-GET  /api/candidates/:id
-GET  /api/applications
-PUT  /api/applications/:id/status
-GET  /api/interviews
-POST /api/interviews
-PUT  /api/interviews/:id/status
-GET  /api/offers
-POST /api/offers
-PUT  /api/offers/:id/status
-GET  /api/performance/employees
-GET  /api/goals
-POST /api/goals
-PUT  /api/goals/:id
-GET  /api/performance-reviews
-POST /api/performance-reviews
-PUT  /api/performance-reviews/:id/status
-GET  /api/feedback
-POST /api/feedback
-```
-
-## Database Entities
-
-Main entities:
+The Prisma schema models the main HRMS domain:
 
 ```text
 User
@@ -370,108 +311,44 @@ Holiday
 LeaveRequest
 LeaveType
 LeaveBalance
-Payroll
 Salary
+Payroll
 Payslip
-Document
-Job
-Candidate
-Application
-Interview
-Offer
-PerformanceReview
-Goal
-Feedback
+EmployeeDocument
 Notification
 Announcement
+Job
+Candidate
+JobApplication
+Interview
+Offer
+Goal
+PerformanceReview
+Feedback
 ```
 
-## Development Roadmap
+## Engineering Notes
 
-| Phase | Focus |
-| --- | --- |
-| Phase 0 | Requirements and project decisions |
-| Phase 1 | Project foundation |
-| Phase 2 | Authentication and role-based access |
-| Phase 3 | Employee core |
-| Phase 4 | Attendance management |
-| Phase 5 | Leave management |
-| Phase 6 | Basic payroll |
-| Phase 7 | Dashboard, reports, and notifications |
-| Phase 8 | Recruitment |
-| Phase 9 | Performance management |
-| Phase 10 | Testing, polish, and deployment |
+- Frontend routes are protected by session and permission checks.
+- Backend routes enforce authentication and authorization server-side.
+- API responses use a consistent success/error shape.
+- React Query caches API responses to reduce repeated network work and improve navigation speed.
+- Prisma migrations keep the database schema reproducible.
+- Generated folders such as `.next/`, `dist/`, and `node_modules/` are intentionally ignored.
 
-## MVP Scope
+## Future Improvements
 
-The first usable version should include:
-
-- Authentication
-- Role-based access
-- Employee management
-- Departments and designations
-- Attendance
-- Leave management
-- Basic payroll
-- Basic dashboards
-- Basic reports
-- Notifications
-
-Recruitment and performance management are implemented as post-MVP modules. Advanced reports, mobile app support, and advanced automation can be added after the MVP.
-
-## Testing Plan
-
-Implemented validation:
-
-- `npm run typecheck`
-- `npm run lint`
-- `npm run build`
-- `npm run test:smoke`
-- `npm run verify`
-
-The backend smoke test starts the API on a temporary local port and verifies health, login, current user, unauthenticated rejection, employee RBAC, employee detail, document upload, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
-
-Recommended future tests:
-
-- Authentication tests
-- Role permission tests
-- Employee CRUD tests
-- Attendance workflow tests
-- Leave approval tests
-- Payroll calculation tests
-- Report data tests
-- API validation tests
-
-## Deployment
-
-Recommended deployment setup:
-
-- Frontend on Vercel or Netlify
-- Backend on Render, Railway, AWS, or DigitalOcean
-- PostgreSQL on Supabase, Neon, RDS, or Railway
-- Files on Cloudinary or S3
-- Redis on Upstash, Railway, or a managed Redis provider
-
-Production startup requires an explicit `DATABASE_URL` and a non-default `JWT_SECRET`.
-
-## Security Notes
-
-- Hash passwords before storing them.
-- Use a strong `JWT_SECRET` from environment variables.
-- Validate every API request.
-- Check role permissions on the backend.
-- Do not trust frontend-only authorization.
-- Store uploaded files in a controlled storage service.
-- Restrict document access by employee and role.
-- Log important HR and payroll actions.
-
-## Contributing
-
-Before adding features, check [plan.md](./plan.md) and follow the phase order. Keep each pull request focused on one module or workflow.
+- Add hosted demo URL and screenshots
+- Add chart visualizations for reports
+- Add audit logs for HR/payroll-sensitive actions
+- Add email delivery for production password reset and notifications
+- Add file storage integration for employee documents
+- Add CI workflow for typecheck, lint, build, and smoke tests
 
 ## License
 
-Add a license before publishing this project publicly.
+This project is licensed under the MIT License. See [LICENSE](./LICENSE).
 
-## Authon
-- Ankit Kumar
+## Author
+
+Ankit Kumar
