@@ -51,12 +51,14 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
     queryFn: () => listDepartments(token),
     retry: false
   });
-  const employees = employeesQuery.data?.success
-    ? employeesQuery.data.data.employees
-    : [];
-  const departments = departmentsQuery.data?.success
-    ? departmentsQuery.data.data.departments
-    : [];
+  const employees = useMemo(
+    () => (employeesQuery.data?.success ? employeesQuery.data.data.employees : []),
+    [employeesQuery.data]
+  );
+  const departments = useMemo(
+    () => (departmentsQuery.data?.success ? departmentsQuery.data.data.departments : []),
+    [departmentsQuery.data]
+  );
   const metrics = useMemo(() => {
     const activeEmployees = employees.filter((employee) => employee.status === "ACTIVE");
     const documentCount = employees.reduce(

@@ -7,9 +7,13 @@ import { errorHandler } from "./middleware/error-handler";
 import { notFoundHandler } from "./middleware/not-found";
 import { authRouter } from "./modules/auth/auth.routes";
 import { attendanceRouter } from "./modules/attendance/attendance.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { employeeCoreRouter } from "./modules/employees/employees.routes";
 import { healthRouter } from "./modules/health/health.routes";
 import { leaveRouter } from "./modules/leaves/leaves.routes";
+import { notificationsRouter } from "./modules/notifications/notifications.routes";
+import { payrollRouter } from "./modules/payroll/payroll.routes";
+import { reportsRouter } from "./modules/reports/reports.routes";
 
 export function createApp() {
   const app = express();
@@ -29,6 +33,10 @@ export function createApp() {
   app.use("/api", employeeCoreRouter);
   app.use("/api", attendanceRouter);
   app.use("/api", leaveRouter);
+  app.use("/api", payrollRouter);
+  app.use("/api", dashboardRouter);
+  app.use("/api", reportsRouter);
+  app.use("/api", notificationsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

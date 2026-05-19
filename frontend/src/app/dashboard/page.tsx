@@ -1,94 +1,61 @@
 "use client";
 
 import {
-  Activity,
   AlertCircle,
+  Bell,
   CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Database,
-  ShieldCheck,
+  DollarSign,
+  Megaphone,
+  TrendingDown,
+  UserPlus,
   Users
 } from "lucide-react";
-import { useMemo } from "react";
+import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
 import { StatusCard } from "@/components/status-card";
-import { getHealth, listEmployees } from "@/lib/api";
-import { hasEveryPermission, roleLabels } from "@/lib/permissions";
-import type { AuthUser } from "@/types";
+import { getDashboardSummary } from "@/lib/api";
+import { formatDate } from "@/lib/employee-format";
+import { formatMoney } from "@/lib/payroll-format";
+import { formatDateTime } from "@/lib/time-format";
+import type { AuthUser, DashboardCard } from "@/types";
 
 type DashboardContentProps = {
   user: AuthUser;
   token: string;
 };
 
+const cardIcons: Record<string, LucideIcon> = {
+  employees: Users,
+  present_today: Users,
+  on_leave: CalendarDays,
+  pending_leaves: AlertCircle,
+  monthly_payroll: DollarSign,
+  new_hires: UserPlus,
+  attrition_rate: TrendingDown,
+  unread_notifications: Bell
+};
+
+function getCardValue(card: DashboardCard): string {
+  if (card.key === "monthly_payroll" && card.value !== "-") {
+    return formatMoney(Number(card.value));
+  }
+
+  return card.value;
+}
+
 function DashboardContent({ user, token }: DashboardContentProps) {
-  const health = useQuery({
-    queryKey: ["health"],
-    queryFn: getHealth,
+  const summaryQuery = useQuery({
+    queryKey: ["dashboard-summary", token],
+    queryFn: () => getDashboardSummary(token),
     retry: false
   });
-  const canManageEmployees = hasEveryPermission(user, ["employees:manage"]);
-  const employeesQuery = useQuery({
-    queryKey: ["dashboard-employees", token],
-    queryFn: () => listEmployees(token, {}),
-    retry: false,
-    enabled: canManageEmployees
-  });
-  const employeeCount = employeesQuery.data?.success
-    ? employeesQuery.data.data.employees.length
-    : 0;
-  const activeEmployeeCount = employeesQuery.data?.success
-    ? employeesQuery.data.data.employees.filter((employee) => employee.status === "ACTIVE").length
-    : 0;
-  const metrics = [
-    {
-      label: "Employees",
-      value: canManageEmployees ? String(employeeCount) : "-",
-      detail: "Managed records",
-      icon: Users,
-      tone: "brand" as const
-    },
-    {
-      label: "Active Staff",
-      value: canManageEmployees ? String(activeEmployeeCount) : "-",
-      detail: "Employee records",
-      icon: Clock3,
-      tone: "blue" as const
-    },
-    {
-      label: "Leave Requests",
-      value: "0",
-      detail: "Phase 5 enabled",
-      icon: CalendarDays,
-      tone: "amber" as const
-    },
-    {
-      label: "Payroll Runs",
-      value: "0",
-      detail: "Ready for Phase 6",
-      icon: Activity,
-      tone: "slate" as const
-    }
-  ];
-
-  const databaseStatus = useMemo(() => {
-    if (health.isLoading) {
-      return "Checking";
-    }
-
-    if (!health.data?.success) {
-      return "Unavailable";
-    }
-
-    return health.data.data.database === "connected"
-      ? "Connected"
-      : "Unavailable";
-  }, [health.data, health.isLoading]);
-
-  const primaryRole = user.roles[0];
+  const summary = summaryQuery.data?.success ? summaryQuery.data.data : null;
+  const cards = summary?.cards ?? [];
+  const notifications = summary?.notifications ?? [];
+  const announcements = summary?.announcements ?? [];
 
   return (
     <AppShell user={user} token={token}>
@@ -101,83 +68,90 @@ function DashboardContent({ user, token }: DashboardContentProps) {
             </h1>
           </div>
           <div className="inline-flex h-10 items-center gap-2 self-start rounded-md border border-line bg-white px-3 text-sm text-slate-600 md:self-auto">
-            {databaseStatus === "Connected" ? (
-              <CheckCircle2 className="text-brand-600" size={17} aria-hidden="true" />
-            ) : (
-              <AlertCircle className="text-amber-600" size={17} aria-hidden="true" />
-            )}
-            Database: {databaseStatus}
+            {summary?.scope === "organization" ? "Organization view" : "Self-service view"}
           </div>
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((metric) => (
-            <StatusCard key={metric.label} {...metric} />
-          ))}
+          {cards.map((card) => {
+            const Icon = cardIcons[card.key] ?? Users;
+
+            return (
+              <StatusCard
+                key={card.key}
+                label={card.label}
+                value={getCardValue(card)}
+                detail={card.detail}
+                icon={Icon}
+                tone={card.tone}
+              />
+            );
+          })}
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-                <Database size={20} aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+                  <Bell size={20} aria-hidden="true" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-normal">Notifications</h2>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold tracking-normal">
-                  Backend Status
-                </h2>
-                <p className="text-sm text-slate-500">GET /api/health</p>
-              </div>
+              <Link className="text-sm font-medium text-brand-700" href="/notifications">
+                View all
+              </Link>
             </div>
-
-            <div className="mt-5 overflow-hidden rounded-md border border-line">
-              <div className="grid grid-cols-[140px_1fr] border-b border-line bg-surface px-4 py-3 text-sm">
-                <span className="font-medium text-slate-600">API</span>
-                <span>{health.data?.success ? "Running" : "Not reachable"}</span>
-              </div>
-              <div className="grid grid-cols-[140px_1fr] border-b border-line px-4 py-3 text-sm">
-                <span className="font-medium text-slate-600">Database</span>
-                <span>{databaseStatus}</span>
-              </div>
-              <div className="grid grid-cols-[140px_1fr] px-4 py-3 text-sm">
-                <span className="font-medium text-slate-600">Response</span>
-                <span>
-                  {health.data?.success
-                    ? `${health.data.data.responseTimeMs} ms`
-                    : "Waiting for backend"}
-                </span>
-              </div>
+            <div className="mt-5 divide-y divide-line">
+              {notifications.map((notification) => (
+                <div key={notification.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-ink">{notification.title}</p>
+                    <span className="text-xs text-slate-500">
+                      {formatDateTime(notification.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
+                </div>
+              ))}
             </div>
+            {!summaryQuery.isLoading && notifications.length === 0 ? (
+              <div className="mt-5 rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+                No notifications found.
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-                <ShieldCheck size={20} aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+                  <Megaphone size={20} aria-hidden="true" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-normal">Announcements</h2>
               </div>
-              <div>
-                <h2 className="text-lg font-semibold tracking-normal">
-                  Authenticated Session
-                </h2>
-                <p className="text-sm text-slate-500">GET /api/auth/me</p>
-              </div>
+              <Link className="text-sm font-medium text-brand-700" href="/announcements">
+                View all
+              </Link>
             </div>
-            <div className="mt-5 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-4 rounded-md bg-surface px-4 py-3">
-                <span className="text-slate-500">User</span>
-                <span className="font-medium text-ink">{user.name}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-md bg-surface px-4 py-3">
-                <span className="text-slate-500">Role</span>
-                <span className="font-medium text-ink">
-                  {primaryRole ? roleLabels[primaryRole] : "User"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-md bg-surface px-4 py-3">
-                <span className="text-slate-500">Status</span>
-                <span className="font-medium text-ink">{user.status}</span>
-              </div>
+            <div className="mt-5 divide-y divide-line">
+              {announcements.map((announcement) => (
+                <div key={announcement.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-ink">{announcement.title}</p>
+                    <span className="text-xs text-slate-500">
+                      {formatDate(announcement.publishedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600">{announcement.message}</p>
+                </div>
+              ))}
             </div>
+            {!summaryQuery.isLoading && announcements.length === 0 ? (
+              <div className="mt-5 rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+                No announcements found.
+              </div>
+            ) : null}
           </div>
         </section>
       </div>

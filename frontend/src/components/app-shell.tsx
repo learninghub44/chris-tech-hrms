@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   Bell,
   BriefcaseBusiness,
   Building2,
@@ -8,8 +9,10 @@ import {
   CalendarDays,
   ClipboardList,
   Clock3,
+  DollarSign,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   ReceiptText,
   Settings,
@@ -44,6 +47,24 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
     href: "/dashboard",
     permissions: ["dashboard:read"]
+  },
+  {
+    label: "Reports",
+    icon: BarChart3,
+    href: "/reports",
+    permissions: ["reports:read"]
+  },
+  {
+    label: "Notifications",
+    icon: Bell,
+    href: "/notifications",
+    permissions: ["notifications:read"]
+  },
+  {
+    label: "Announcements",
+    icon: Megaphone,
+    href: "/announcements",
+    permissions: ["announcements:read"]
   },
   {
     label: "Profile",
@@ -124,9 +145,22 @@ const navItems: NavItem[] = [
     permissions: ["leave:manage"]
   },
   {
-    label: "Payroll",
-    icon: ReceiptText,
+    label: "Salary Setup",
+    icon: DollarSign,
+    href: "/salaries",
     permissions: ["payroll:manage"]
+  },
+  {
+    label: "Payroll Runs",
+    icon: ReceiptText,
+    href: "/payroll",
+    permissions: ["payroll:manage"]
+  },
+  {
+    label: "My Payslips",
+    icon: ReceiptText,
+    href: "/payroll/me",
+    permissions: ["payroll:read"]
   }
 ];
 
@@ -157,7 +191,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">HRMS</p>
-            <p className="text-xs text-slate-500">Phase 5</p>
+            <p className="text-xs text-slate-500">Phase 7</p>
           </div>
         </div>
 
@@ -211,13 +245,13 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Link
+              href="/notifications"
               className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface"
-              type="button"
               aria-label="Notifications"
             >
               <Bell size={17} aria-hidden="true" />
-            </button>
+            </Link>
             <button
               className="inline-flex h-9 items-center gap-2 rounded-md border border-line px-3 text-sm font-medium text-slate-700 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
               type="button"

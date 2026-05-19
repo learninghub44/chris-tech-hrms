@@ -2,19 +2,30 @@ import type {
   AttendanceRecord,
   AttendanceStatus,
   AttendanceWorkMode,
+  Announcement,
+  AnnouncementAudience,
   AuthUser,
   Department,
+  DashboardSummary,
   Designation,
   Employee,
   EmployeeDocument,
+  EmployeeReport,
   EmploymentStatus,
   Holiday,
   HolidayType,
+  AttendanceReport,
   LeaveBalance,
   LeaveDayType,
+  LeaveReport,
   LeaveRequest,
   LeaveRequestStatus,
   LeaveType,
+  NotificationRecord,
+  Payroll,
+  PayrollReport,
+  Payslip,
+  Salary,
   Shift
 } from "@/types";
 
@@ -160,6 +171,30 @@ export type LeaveTypeInput = {
   isActive: boolean;
 };
 
+export type SalaryInput = {
+  employeeId: string;
+  baseSalary: number;
+  allowances: number;
+  deductions: number;
+  effectiveFrom: string;
+  isActive: boolean;
+};
+
+export type SalaryUpdateInput = {
+  baseSalary: number;
+  allowances: number;
+  deductions: number;
+  effectiveFrom: string;
+  isActive: boolean;
+};
+
+export type AnnouncementInput = {
+  title: string;
+  message: string;
+  audience: AnnouncementAudience;
+  isPublished: boolean;
+};
+
 async function request<T>(
   path: string,
   options: RequestOptions
@@ -201,6 +236,13 @@ export function getApiErrorMessage(response: ApiResponse<unknown>): string {
 export function getHealth() {
   return request<HealthResponse>("/health", {
     method: "GET"
+  });
+}
+
+export function getDashboardSummary(token: string) {
+  return request<DashboardSummary>("/dashboard/summary", {
+    method: "GET",
+    token
   });
 }
 
@@ -581,4 +623,235 @@ export function listLeaveBalances(
       token
     }
   );
+}
+
+export function listSalaries(token: string) {
+  return request<{ salaries: Salary[] }>("/salaries", {
+    method: "GET",
+    token
+  });
+}
+
+export function createSalary(token: string, input: SalaryInput) {
+  return request<{ salary: Salary }>("/salaries", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updateSalary(token: string, id: string, input: SalaryUpdateInput) {
+  return request<{ salary: Salary }>(`/salaries/${id}`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function generatePayroll(
+  token: string,
+  input: { month: number; year: number }
+) {
+  return request<{ payroll: Payroll }>("/payroll/generate", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function listPayrolls(token: string, input: { year?: number }) {
+  const params = new URLSearchParams();
+
+  if (input.year) {
+    params.set("year", String(input.year));
+  }
+
+  const query = params.toString();
+
+  return request<{ payrolls: Payroll[] }>(`/payroll${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getPayroll(token: string, id: string) {
+  return request<{ payroll: Payroll }>(`/payroll/${id}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function listMyPayslips(token: string) {
+  return request<{ payslips: Payslip[] }>("/payroll/me", {
+    method: "GET",
+    token
+  });
+}
+
+export function getPayslipDownload(
+  token: string,
+  payrollId: string,
+  employeeId?: string
+) {
+  const params = new URLSearchParams();
+
+  if (employeeId) {
+    params.set("employeeId", employeeId);
+  }
+
+  const query = params.toString();
+
+  return request<{
+    payslip: Payslip;
+    fileName: string;
+    contentType: string;
+    content: string;
+  }>(`/payroll/${payrollId}/payslip${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getEmployeeReport(
+  token: string,
+  filters: {
+    status?: EmploymentStatus | "";
+    departmentId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }
+) {
+  const params = new URLSearchParams();
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  if (filters.dateFrom) {
+    params.set("dateFrom", filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    params.set("dateTo", filters.dateTo);
+  }
+
+  const query = params.toString();
+
+  return request<EmployeeReport>(`/reports/employees${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getAttendanceReportData(token: string, filters: AttendanceFilters) {
+  const params = new URLSearchParams();
+
+  if (filters.dateFrom) {
+    params.set("dateFrom", filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    params.set("dateTo", filters.dateTo);
+  }
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  const query = params.toString();
+
+  return request<AttendanceReport>(`/reports/attendance${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getLeaveReportData(token: string, filters: LeaveFilters) {
+  const params = new URLSearchParams();
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  if (filters.dateFrom) {
+    params.set("dateFrom", filters.dateFrom);
+  }
+
+  if (filters.dateTo) {
+    params.set("dateTo", filters.dateTo);
+  }
+
+  const query = params.toString();
+
+  return request<LeaveReport>(`/reports/leaves${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function getPayrollReportData(token: string, input: { year?: number }) {
+  const params = new URLSearchParams();
+
+  if (input.year) {
+    params.set("year", String(input.year));
+  }
+
+  const query = params.toString();
+
+  return request<PayrollReport>(`/reports/payroll${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function listNotifications(token: string) {
+  return request<{ notifications: NotificationRecord[]; unreadCount: number }>(
+    "/notifications",
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function markNotificationRead(token: string, id: string) {
+  return request<{ notification: NotificationRecord }>(`/notifications/${id}/read`, {
+    method: "PUT",
+    token
+  });
+}
+
+export function listAnnouncements(token: string) {
+  return request<{ announcements: Announcement[] }>("/announcements", {
+    method: "GET",
+    token
+  });
+}
+
+export function createAnnouncement(token: string, input: AnnouncementInput) {
+  return request<{ announcement: Announcement }>("/announcements", {
+    method: "POST",
+    body: input,
+    token
+  });
 }

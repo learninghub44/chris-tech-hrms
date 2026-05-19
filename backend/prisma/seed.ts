@@ -22,7 +22,12 @@ const permissions = [
   { key: "leave:request", description: "Request leave" },
   { key: "leave:approve", description: "Approve leave requests" },
   { key: "leave:manage", description: "Manage leave settings" },
-  { key: "payroll:manage", description: "Manage payroll" }
+  { key: "payroll:read", description: "View own payslips" },
+  { key: "payroll:manage", description: "Manage payroll" },
+  { key: "reports:read", description: "View HR reports" },
+  { key: "notifications:read", description: "View own notifications" },
+  { key: "announcements:read", description: "View announcements" },
+  { key: "announcements:manage", description: "Manage announcements" }
 ];
 
 const rolePermissions: Record<string, string[]> = {
@@ -37,7 +42,12 @@ const rolePermissions: Record<string, string[]> = {
     "leave:request",
     "leave:approve",
     "leave:manage",
-    "payroll:manage"
+    "payroll:read",
+    "payroll:manage",
+    "reports:read",
+    "notifications:read",
+    "announcements:read",
+    "announcements:manage"
   ],
   MANAGER: [
     "dashboard:read",
@@ -45,9 +55,20 @@ const rolePermissions: Record<string, string[]> = {
     "attendance:read",
     "attendance:write",
     "leave:request",
-    "leave:approve"
+    "leave:approve",
+    "payroll:read",
+    "notifications:read",
+    "announcements:read"
   ],
-  EMPLOYEE: ["dashboard:read", "profile:read", "attendance:write", "leave:request"]
+  EMPLOYEE: [
+    "dashboard:read",
+    "profile:read",
+    "attendance:write",
+    "leave:request",
+    "payroll:read",
+    "notifications:read",
+    "announcements:read"
+  ]
 };
 
 const departments = [
@@ -301,6 +322,27 @@ async function main() {
     }
   });
 
+  await prisma.salary.upsert({
+    where: {
+      employeeId: employee.id
+    },
+    update: {
+      baseSalary: 120000,
+      allowances: 15000,
+      deductions: 5000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    },
+    create: {
+      employeeId: employee.id,
+      baseSalary: 120000,
+      allowances: 15000,
+      deductions: 5000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    }
+  });
+
   await prisma.shift.upsert({
     where: {
       name: "General Shift"
@@ -373,6 +415,27 @@ async function main() {
       })
     )
   );
+
+  await prisma.announcement.upsert({
+    where: {
+      id: "phase-7-welcome-announcement"
+    },
+    update: {
+      title: "Phase 7 dashboard and reports are available",
+      message: "Dashboard metrics, reports, notifications, and announcements are now enabled.",
+      audience: "ALL",
+      isPublished: true,
+      createdById: user.id
+    },
+    create: {
+      id: "phase-7-welcome-announcement",
+      title: "Phase 7 dashboard and reports are available",
+      message: "Dashboard metrics, reports, notifications, and announcements are now enabled.",
+      audience: "ALL",
+      isPublished: true,
+      createdById: user.id
+    }
+  });
 }
 
 main()

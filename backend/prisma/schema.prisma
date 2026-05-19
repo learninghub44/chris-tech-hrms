@@ -52,6 +52,20 @@ enum LeaveDayType {
   HALF_DAY
 }
 
+enum PayrollStatus {
+  GENERATED
+  REVIEWED
+  PAID
+}
+
+enum AnnouncementAudience {
+  ALL
+  SUPER_ADMIN
+  HR_ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -65,6 +79,8 @@ model User {
   employee            Employee?
   uploadedDocuments   EmployeeDocument[]   @relation("UploadedEmployeeDocuments")
   notifications       Notification[]
+  generatedPayrolls   Payroll[]            @relation("GeneratedPayrolls")
+  announcements       Announcement[]       @relation("CreatedAnnouncements")
 
   @@map("users")
 }
@@ -180,6 +196,9 @@ model Employee {
   leaveRequests     LeaveRequest[]     @relation("EmployeeLeaveRequests")
   reviewedLeaves    LeaveRequest[]     @relation("ReviewedLeaveRequests")
   leaveBalances     LeaveBalance[]
+  salaries          Salary[]
+  payrollItems      PayrollItem[]
+  payslips          Payslip[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -352,4 +371,108 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+model Salary {
+  id            String        @id @default(uuid())
+  employeeId    String        @unique
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  baseSalary    Float
+  allowances    Float         @default(0)
+  deductions    Float         @default(0)
+  effectiveFrom DateTime      @db.Date
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  payrollItems  PayrollItem[]
+
+  @@index([employeeId])
+  @@map("salaries")
+}
+
+model Payroll {
+  id              String        @id @default(uuid())
+  month           Int
+  year            Int
+  status          PayrollStatus @default(GENERATED)
+  generatedById   String?
+  generatedBy     User?         @relation("GeneratedPayrolls", fields: [generatedById], references: [id], onDelete: SetNull)
+  itemCount       Int           @default(0)
+  totalGross      Float         @default(0)
+  totalDeductions Float         @default(0)
+  totalNet        Float         @default(0)
+  generatedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  items           PayrollItem[]
+  payslips        Payslip[]
+
+  @@unique([month, year])
+  @@index([generatedById])
+  @@index([year, month])
+  @@map("payrolls")
+}
+
+model PayrollItem {
+  id              String   @id @default(uuid())
+  payrollId       String
+  payroll         Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryId        String?
+  salary          Salary?  @relation(fields: [salaryId], references: [id], onDelete: SetNull)
+  baseSalary      Float
+  allowances      Float    @default(0)
+  deductions      Float    @default(0)
+  grossPay        Float
+  totalDeductions Float
+  netPay          Float
+  notes           String?
+  createdAt       DateTime @default(now())
+  payslip         Payslip?
+
+  @@unique([payrollId, employeeId])
+  @@index([payrollId])
+  @@index([employeeId])
+  @@index([salaryId])
+  @@map("payroll_items")
+}
+
+model Payslip {
+  id              String      @id @default(uuid())
+  payrollId       String
+  payroll         Payroll     @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  payrollItemId   String      @unique
+  payrollItem     PayrollItem @relation(fields: [payrollItemId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payslipNumber   String      @unique
+  grossPay        Float
+  totalDeductions Float
+  netPay          Float
+  issuedAt        DateTime    @default(now())
+  createdAt       DateTime    @default(now())
+
+  @@unique([payrollId, employeeId])
+  @@index([payrollId])
+  @@index([employeeId])
+  @@map("payslips")
+}
+
+model Announcement {
+  id          String               @id @default(uuid())
+  title       String
+  message     String               @db.Text
+  audience    AnnouncementAudience @default(ALL)
+  isPublished Boolean              @default(true)
+  publishedAt DateTime             @default(now())
+  createdById String?
+  createdBy   User?                @relation("CreatedAnnouncements", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([audience])
+  @@index([isPublished])
+  @@index([createdById])
+  @@map("announcements")
 }
