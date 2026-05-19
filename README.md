@@ -2,9 +2,6 @@
 
 A full-stack HR Management System for managing employees, attendance, leave, payroll, recruitment, performance, notifications, and reports from one web application.
 
-## Project Status
-
-Phase 10 testing, polish, and deployment prep is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, role-based pages, employee CRUD, document uploads, attendance clock in/out, shifts, holidays, attendance reports, leave requests, approvals, leave balances, leave types, salary setup, monthly payroll generation, payroll review, payslip records, payslip download payloads, dashboard summaries, HR reports, in-app notifications, announcements, jobs, candidates, applications, interviews, offers, goals, performance reviews, feedback, appraisal history, mobile navigation polish, shared loading/error/empty UI states, production environment validation, and a repeatable backend smoke test from [plan.md](./plan.md).
 
 ## Table Of Contents
 
