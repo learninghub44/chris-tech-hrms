@@ -10,14 +10,20 @@ import {
   ClipboardList,
   Clock3,
   DollarSign,
+  History,
   LayoutDashboard,
   LogOut,
   Megaphone,
   Menu,
+  MessageSquare,
+  Send,
   ReceiptText,
   Settings,
+  Star,
+  Target,
   UserCircle,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -65,6 +71,54 @@ const navItems: NavItem[] = [
     icon: Megaphone,
     href: "/announcements",
     permissions: ["announcements:read"]
+  },
+  {
+    label: "Jobs",
+    icon: BriefcaseBusiness,
+    href: "/jobs",
+    permissions: ["recruitment:read"]
+  },
+  {
+    label: "Candidates",
+    icon: Users,
+    href: "/candidates",
+    permissions: ["recruitment:read"]
+  },
+  {
+    label: "Interviews",
+    icon: CalendarDays,
+    href: "/interviews",
+    permissions: ["recruitment:read"]
+  },
+  {
+    label: "Offers",
+    icon: Send,
+    href: "/offers",
+    permissions: ["recruitment:read"]
+  },
+  {
+    label: "Goals",
+    icon: Target,
+    href: "/goals",
+    permissions: ["performance:read"]
+  },
+  {
+    label: "Performance Reviews",
+    icon: Star,
+    href: "/performance-reviews",
+    permissions: ["performance:read"]
+  },
+  {
+    label: "Feedback",
+    icon: MessageSquare,
+    href: "/feedback",
+    permissions: ["performance:read"]
+  },
+  {
+    label: "Appraisal History",
+    icon: History,
+    href: "/appraisals",
+    permissions: ["performance:read"]
   },
   {
     label: "Profile",
@@ -168,6 +222,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const primaryRole = user.roles[0];
   const visibleNavItems = navItems.filter((item) =>
     hasEveryPermission(user, item.permissions)
@@ -182,6 +237,41 @@ export function AppShell({ user, token, children }: AppShellProps) {
     router.push("/login");
   }
 
+  function renderNavItems() {
+    return visibleNavItems.map((item) => {
+      const Icon = item.icon;
+      const active = item.href
+        ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+        : false;
+      const className = `flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition ${
+        active
+          ? "bg-brand-50 font-semibold text-brand-700"
+          : "text-slate-600 hover:bg-surface"
+      }`;
+
+      if (item.href) {
+        return (
+          <Link
+            key={item.label}
+            className={className}
+            href={item.href}
+            onClick={() => setIsMobileNavOpen(false)}
+          >
+            <Icon size={18} aria-hidden="true" />
+            {item.label}
+          </Link>
+        );
+      }
+
+      return (
+        <button key={item.label} className={className} type="button" disabled>
+          <Icon size={18} aria-hidden="true" />
+          {item.label}
+        </button>
+      );
+    });
+  }
+
   return (
     <main className="min-h-screen bg-surface text-ink">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-line bg-white lg:block">
@@ -191,40 +281,45 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">HRMS</p>
-            <p className="text-xs text-slate-500">Phase 7</p>
+            <p className="text-xs text-slate-500">Phase 10</p>
           </div>
         </div>
 
-        <nav className="space-y-1 p-3">
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = item.href
-              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-              : false;
-            const className = `flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition ${
-              active
-                ? "bg-brand-50 font-semibold text-brand-700"
-                : "text-slate-600 hover:bg-surface"
-            }`;
-
-            if (item.href) {
-              return (
-                <Link key={item.label} className={className} href={item.href}>
-                  <Icon size={18} aria-hidden="true" />
-                  {item.label}
-                </Link>
-              );
-            }
-
-            return (
-              <button key={item.label} className={className} type="button" disabled>
-                <Icon size={18} aria-hidden="true" />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+        <nav className="space-y-1 overflow-y-auto p-3">{renderNavItems()}</nav>
       </aside>
+
+      {isMobileNavOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            className="absolute inset-0 bg-ink/30"
+            type="button"
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close navigation"
+          />
+          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-line bg-white shadow-soft">
+            <div className="flex h-16 items-center justify-between gap-3 border-b border-line px-5">
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-md bg-brand-600 text-white">
+                  <LayoutDashboard size={19} aria-hidden="true" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">HRMS</p>
+                  <p className="text-xs text-slate-500">Phase 10</p>
+                </div>
+              </div>
+              <button
+                className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600"
+                type="button"
+                onClick={() => setIsMobileNavOpen(false)}
+                aria-label="Close navigation"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
+            <nav className="space-y-1 overflow-y-auto p-3">{renderNavItems()}</nav>
+          </aside>
+        </div>
+      ) : null}
 
       <section className="lg:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-white/94 px-4 backdrop-blur sm:px-6">
@@ -232,6 +327,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
             <button
               className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 lg:hidden"
               type="button"
+              onClick={() => setIsMobileNavOpen(true)}
               aria-label="Open navigation"
             >
               <Menu size={18} aria-hidden="true" />

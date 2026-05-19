@@ -1,10 +1,11 @@
 "use client";
 
-import { BriefcaseBusiness, LogIn, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, LogIn, Mail, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { AuthShell } from "@/components/auth-shell";
 import { getApiErrorMessage, login } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
@@ -13,9 +14,13 @@ type LoginFormValues = {
   password: string;
 };
 
+const inputClassName =
+  "h-12 w-full rounded-2xl border border-white/80 bg-white px-12 text-sm text-slate-800 shadow-[0_14px_35px_rgba(20,48,39,0.06)] outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-4 focus:ring-brand-100";
+
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const {
     formState: { isSubmitting },
     handleSubmit,
@@ -46,100 +51,94 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen grid-cols-1 bg-surface lg:grid-cols-[minmax(0,0.85fr)_minmax(420px,0.55fr)]">
-      <section className="flex min-h-[44vh] flex-col justify-between bg-ink px-6 py-7 text-white sm:px-10 lg:min-h-screen lg:px-12">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-600">
-            <BriefcaseBusiness size={22} aria-hidden="true" />
+    <AuthShell
+      title="Welcome Back!"
+      subtitle="Please enter your login details below."
+    >
+      <form className="mt-9" onSubmit={handleSubmit(onSubmit)}>
+        {error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
           </div>
-          <div>
-            <p className="text-sm text-white/60">HR Management System</p>
-            <h1 className="text-xl font-semibold tracking-normal">Workspace</h1>
-          </div>
-        </div>
+        ) : null}
 
-        <div className="max-w-2xl py-10">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-brand-100">
-            Phase 5
-          </p>
-          <h2 className="mt-4 max-w-xl text-4xl font-semibold leading-tight tracking-normal sm:text-5xl">
-            Attendance and leave workspace
-          </h2>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            {["JWT", "Roles", "Permissions"].map((item) => (
-              <div
-                key={item}
-                className="rounded-md border border-white/10 bg-white/10 px-4 py-3"
-              >
-                <p className="text-sm text-white/72">{item}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <p className="text-sm text-white/60">localhost:3000</p>
-      </section>
-
-      <section className="flex items-center justify-center px-5 py-10 sm:px-8">
-        <form
-          className="w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-soft"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-              <ShieldCheck size={21} aria-hidden="true" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-normal">Sign in</h2>
-              <p className="text-sm text-slate-500">Use your HRMS account</p>
-            </div>
-          </div>
-
-          {error ? (
-            <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <label className="mt-7 block text-sm font-medium text-slate-700">
-            Email
+        <label className="mt-5 block">
+          <span className="sr-only">Email</span>
+          <span className="relative block">
+            <Mail
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={inputClassName}
               type="email"
               autoComplete="email"
+              placeholder="Email"
               {...register("email", { required: true })}
             />
-          </label>
+          </span>
+        </label>
 
-          <label className="mt-5 block text-sm font-medium text-slate-700">
-            Password
+        <label className="mt-4 block">
+          <span className="sr-only">Password</span>
+          <span className="relative block">
+            <LockKeyhole
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              type="password"
+              className={inputClassName}
+              type={isPasswordVisible ? "text" : "password"}
               autoComplete="current-password"
+              placeholder="Password"
               {...register("password", { required: true })}
             />
-          </label>
+            <button
+              className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-slate-500 transition hover:bg-surface hover:text-slate-700"
+              type="button"
+              onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+            >
+              {isPasswordVisible ? (
+                <EyeOff size={17} aria-hidden="true" />
+              ) : (
+                <Eye size={17} aria-hidden="true" />
+              )}
+            </button>
+          </span>
+        </label>
 
-          <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-            <Link className="font-medium text-brand-700" href="/register">
-              Create account
-            </Link>
-            <Link className="font-medium text-brand-700" href="/forgot-password">
-              Forgot password
-            </Link>
-          </div>
+        <div className="mt-4 flex justify-end text-sm">
+          <Link className="font-medium text-slate-600 hover:text-brand-700" href="/forgot-password">
+            Forgot password?
+          </Link>
+        </div>
 
-          <button
-            className="mt-7 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            <LogIn size={18} aria-hidden="true" />
-            Sign in
-          </button>
-        </form>
-      </section>
-    </main>
+        <button
+          className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#111111] px-4 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(17,17,17,0.18)] transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+          type="submit"
+          disabled={isSubmitting}
+        >
+          <LogIn size={18} aria-hidden="true" />
+          Sign in
+        </button>
+
+        <div className="mt-7 flex items-center gap-4 text-xs text-slate-500">
+          <span className="h-px flex-1 bg-line" />
+          <span>or continue</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <Link
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-line bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-surface"
+          href="/register"
+        >
+          <UserPlus size={18} aria-hidden="true" />
+          Create account
+        </Link>
+      </form>
+    </AuthShell>
   );
 }

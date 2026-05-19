@@ -13,6 +13,8 @@ import { healthRouter } from "./modules/health/health.routes";
 import { leaveRouter } from "./modules/leaves/leaves.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { payrollRouter } from "./modules/payroll/payroll.routes";
+import { performanceRouter } from "./modules/performance/performance.routes";
+import { recruitmentRouter } from "./modules/recruitment/recruitment.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 
 export function createApp() {
@@ -37,6 +39,8 @@ export function createApp() {
   app.use("/api", dashboardRouter);
   app.use("/api", reportsRouter);
   app.use("/api", notificationsRouter);
+  app.use("/api", recruitmentRouter);
+  app.use("/api", performanceRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

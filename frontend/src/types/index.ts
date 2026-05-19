@@ -33,6 +33,28 @@ export type AnnouncementAudience =
   | "MANAGER"
   | "EMPLOYEE";
 
+export type JobStatus = "DRAFT" | "OPEN" | "CLOSED";
+
+export type ApplicationStatus =
+  | "APPLIED"
+  | "SCREENING"
+  | "INTERVIEW"
+  | "OFFERED"
+  | "HIRED"
+  | "REJECTED";
+
+export type InterviewMode = "PHONE" | "VIDEO" | "IN_PERSON";
+
+export type InterviewStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED";
+
+export type OfferStatus = "DRAFT" | "SENT" | "ACCEPTED" | "DECLINED";
+
+export type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED";
+
+export type PerformanceReviewStatus = "DRAFT" | "SUBMITTED" | "ACKNOWLEDGED";
+
+export type FeedbackCategory = "GENERAL" | "PRAISE" | "IMPROVEMENT";
+
 export type AuthUser = {
   id: string;
   name: string;
@@ -426,4 +448,169 @@ export type PayrollReport = {
     totalDeductions: number;
     totalNet: number;
   };
+};
+
+export type RecruitmentUser = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type Job = {
+  id: string;
+  title: string;
+  description: string;
+  departmentId: string | null;
+  department: Department | null;
+  designationId: string | null;
+  designation: Designation | null;
+  location: string | null;
+  employmentType: string | null;
+  status: JobStatus;
+  createdById: string | null;
+  createdBy: RecruitmentUser | null;
+  applications: JobApplication[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Candidate = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  source: string | null;
+  resumeUrl: string | null;
+  currentCompany: string | null;
+  currentTitle: string | null;
+  applications: JobApplication[];
+  interviews: Interview[];
+  offers: Offer[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type JobApplication = {
+  id: string;
+  jobId: string;
+  job: Job;
+  candidateId: string;
+  candidate: Candidate;
+  status: ApplicationStatus;
+  appliedAt: string;
+  notes: string | null;
+  interviews: Interview[];
+  offers: Offer[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Interviewer = {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  department: Department | null;
+  designation: Designation | null;
+};
+
+export type Interview = {
+  id: string;
+  applicationId: string;
+  application: JobApplication;
+  candidateId: string;
+  candidate: Candidate;
+  interviewerId: string | null;
+  interviewer: Interviewer | null;
+  scheduledAt: string;
+  mode: InterviewMode;
+  location: string | null;
+  status: InterviewStatus;
+  feedback: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Offer = {
+  id: string;
+  applicationId: string;
+  application: JobApplication;
+  candidateId: string;
+  candidate: Candidate;
+  jobId: string;
+  job: Job;
+  offeredSalary: number | null;
+  startDate: string | null;
+  status: OfferStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PerformanceEmployee = {
+  id: string;
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  workEmail: string;
+  userId: string | null;
+  managerId: string | null;
+  department: Department | null;
+  designation: Designation | null;
+};
+
+export type PerformanceCreatedBy = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type Goal = {
+  id: string;
+  employeeId: string;
+  employee: PerformanceEmployee;
+  title: string;
+  description: string | null;
+  status: GoalStatus;
+  progress: number;
+  startDate: string | null;
+  dueDate: string | null;
+  createdById: string | null;
+  createdBy: PerformanceCreatedBy | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PerformanceReview = {
+  id: string;
+  employeeId: string;
+  employee: PerformanceEmployee;
+  reviewerId: string | null;
+  reviewer: PerformanceEmployee | null;
+  cycle: string;
+  reviewPeriodStart: string;
+  reviewPeriodEnd: string;
+  rating: number;
+  summary: string;
+  strengths: string | null;
+  improvements: string | null;
+  status: PerformanceReviewStatus;
+  submittedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FeedbackRecord = {
+  id: string;
+  employeeId: string;
+  employee: PerformanceEmployee;
+  authorId: string | null;
+  author: PerformanceEmployee | null;
+  category: FeedbackCategory;
+  message: string;
+  isPrivate: boolean;
+  createdAt: string;
+  updatedAt: string;
 };

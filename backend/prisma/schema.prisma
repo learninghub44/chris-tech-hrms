@@ -66,6 +66,59 @@ enum AnnouncementAudience {
   EMPLOYEE
 }
 
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFERED
+  HIRED
+  REJECTED
+}
+
+enum InterviewMode {
+  PHONE
+  VIDEO
+  IN_PERSON
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+enum PerformanceReviewStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+}
+
+enum FeedbackCategory {
+  GENERAL
+  PRAISE
+  IMPROVEMENT
+}
+
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
@@ -81,6 +134,8 @@ model User {
   notifications       Notification[]
   generatedPayrolls   Payroll[]            @relation("GeneratedPayrolls")
   announcements       Announcement[]       @relation("CreatedAnnouncements")
+  createdJobs         Job[]                @relation("CreatedJobs")
+  createdGoals        Goal[]               @relation("CreatedGoals")
 
   @@map("users")
 }
@@ -149,6 +204,7 @@ model Department {
   updatedAt    DateTime      @updatedAt
   employees    Employee[]
   designations Designation[]
+  jobs         Job[]
 
   @@map("departments")
 }
@@ -160,6 +216,7 @@ model Designation {
   departmentId String?
   department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   employees    Employee[]
+  jobs         Job[]
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -169,38 +226,44 @@ model Designation {
 }
 
 model Employee {
-  id                String             @id @default(uuid())
-  employeeCode      String             @unique
-  userId            String?            @unique
-  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  firstName         String
-  lastName          String
-  workEmail         String             @unique
-  personalEmail     String?
-  phone             String?
-  dateOfBirth       DateTime?
-  dateOfJoining     DateTime
-  dateOfExit        DateTime?
-  status            EmploymentStatus   @default(ACTIVE)
-  location          String?
-  departmentId      String?
-  department        Department?        @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  designationId     String?
-  designation       Designation?       @relation(fields: [designationId], references: [id], onDelete: SetNull)
-  managerId         String?
-  manager           Employee?          @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
-  reports           Employee[]         @relation("EmployeeManager")
-  emergencyContacts EmergencyContact[]
-  documents         EmployeeDocument[]
-  attendanceRecords Attendance[]
-  leaveRequests     LeaveRequest[]     @relation("EmployeeLeaveRequests")
-  reviewedLeaves    LeaveRequest[]     @relation("ReviewedLeaveRequests")
-  leaveBalances     LeaveBalance[]
-  salaries          Salary[]
-  payrollItems      PayrollItem[]
-  payslips          Payslip[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                 String              @id @default(uuid())
+  employeeCode       String              @unique
+  userId             String?             @unique
+  user               User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName          String
+  lastName           String
+  workEmail          String              @unique
+  personalEmail      String?
+  phone              String?
+  dateOfBirth        DateTime?
+  dateOfJoining      DateTime
+  dateOfExit         DateTime?
+  status             EmploymentStatus    @default(ACTIVE)
+  location           String?
+  departmentId       String?
+  department         Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designationId      String?
+  designation        Designation?        @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  managerId          String?
+  manager            Employee?           @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports            Employee[]          @relation("EmployeeManager")
+  emergencyContacts  EmergencyContact[]
+  documents          EmployeeDocument[]
+  attendanceRecords  Attendance[]
+  leaveRequests      LeaveRequest[]      @relation("EmployeeLeaveRequests")
+  reviewedLeaves     LeaveRequest[]      @relation("ReviewedLeaveRequests")
+  leaveBalances      LeaveBalance[]
+  salaries           Salary[]
+  payrollItems       PayrollItem[]
+  payslips           Payslip[]
+  interviews         Interview[]         @relation("InterviewInterviewer")
+  goals              Goal[]              @relation("EmployeeGoals")
+  performanceReviews PerformanceReview[] @relation("EmployeePerformanceReviews")
+  reviewsGiven       PerformanceReview[] @relation("ReviewerPerformanceReviews")
+  feedbackReceived   Feedback[]          @relation("EmployeeFeedbackReceived")
+  feedbackAuthored   Feedback[]          @relation("EmployeeFeedbackAuthored")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([departmentId])
   @@index([designationId])
@@ -475,4 +538,180 @@ model Announcement {
   @@index([isPublished])
   @@index([createdById])
   @@map("announcements")
+}
+
+model Job {
+  id             String           @id @default(uuid())
+  title          String
+  description    String           @db.Text
+  departmentId   String?
+  department     Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  designationId  String?
+  designation    Designation?     @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  location       String?
+  employmentType String?
+  status         JobStatus        @default(OPEN)
+  createdById    String?
+  createdBy      User?            @relation("CreatedJobs", fields: [createdById], references: [id], onDelete: SetNull)
+  applications   JobApplication[]
+  offers         Offer[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([createdById])
+  @@index([status])
+  @@map("jobs")
+}
+
+model Candidate {
+  id             String           @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String           @unique
+  phone          String?
+  source         String?
+  resumeUrl      String?          @db.Text
+  currentCompany String?
+  currentTitle   String?
+  applications   JobApplication[]
+  interviews     Interview[]
+  offers         Offer[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([email])
+  @@map("candidates")
+}
+
+model JobApplication {
+  id          String            @id @default(uuid())
+  jobId       String
+  job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status      ApplicationStatus @default(APPLIED)
+  appliedAt   DateTime          @default(now())
+  notes       String?
+  interviews  Interview[]
+  offers      Offer[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([jobId, candidateId])
+  @@index([jobId])
+  @@index([candidateId])
+  @@index([status])
+  @@map("applications")
+}
+
+model Interview {
+  id            String          @id @default(uuid())
+  applicationId String
+  application   JobApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId   String
+  candidate     Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewerId String?
+  interviewer   Employee?       @relation("InterviewInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  scheduledAt   DateTime
+  mode          InterviewMode
+  location      String?
+  status        InterviewStatus @default(SCHEDULED)
+  feedback      String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([applicationId])
+  @@index([candidateId])
+  @@index([interviewerId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("interviews")
+}
+
+model Offer {
+  id            String         @id @default(uuid())
+  applicationId String         @unique
+  application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId   String
+  candidate     Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId         String
+  job           Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  offeredSalary Float?
+  startDate     DateTime?      @db.Date
+  status        OfferStatus    @default(DRAFT)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([status])
+  @@map("offers")
+}
+
+model Goal {
+  id          String     @id @default(uuid())
+  employeeId  String
+  employee    Employee   @relation("EmployeeGoals", fields: [employeeId], references: [id], onDelete: Cascade)
+  title       String
+  description String?    @db.Text
+  status      GoalStatus @default(NOT_STARTED)
+  progress    Int        @default(0)
+  startDate   DateTime?  @db.Date
+  dueDate     DateTime?  @db.Date
+  createdById String?
+  createdBy   User?      @relation("CreatedGoals", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([employeeId])
+  @@index([createdById])
+  @@index([status])
+  @@index([dueDate])
+  @@map("goals")
+}
+
+model PerformanceReview {
+  id                String                  @id @default(uuid())
+  employeeId        String
+  employee          Employee                @relation("EmployeePerformanceReviews", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewerId        String?
+  reviewer          Employee?               @relation("ReviewerPerformanceReviews", fields: [reviewerId], references: [id], onDelete: SetNull)
+  cycle             String
+  reviewPeriodStart DateTime                @db.Date
+  reviewPeriodEnd   DateTime                @db.Date
+  rating            Int
+  summary           String                  @db.Text
+  strengths         String?                 @db.Text
+  improvements      String?                 @db.Text
+  status            PerformanceReviewStatus @default(DRAFT)
+  submittedAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@index([employeeId])
+  @@index([reviewerId])
+  @@index([status])
+  @@index([cycle])
+  @@map("performance_reviews")
+}
+
+model Feedback {
+  id         String           @id @default(uuid())
+  employeeId String
+  employee   Employee         @relation("EmployeeFeedbackReceived", fields: [employeeId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     Employee?        @relation("EmployeeFeedbackAuthored", fields: [authorId], references: [id], onDelete: SetNull)
+  category   FeedbackCategory @default(GENERAL)
+  message    String           @db.Text
+  isPrivate  Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@index([employeeId])
+  @@index([authorId])
+  @@index([category])
+  @@map("feedback")
 }

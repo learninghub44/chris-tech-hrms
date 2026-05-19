@@ -12,6 +12,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src", "prisma"],
+  "include": ["src", "prisma", "scripts"],
   "exclude": ["node_modules", "dist"]
 }

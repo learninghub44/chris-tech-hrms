@@ -1,10 +1,11 @@
 "use client";
 
-import { BriefcaseBusiness, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, LogIn, Mail, UserCircle, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { AuthShell } from "@/components/auth-shell";
 import { getApiErrorMessage, register as registerAccount } from "@/lib/api";
 import { setAuthSession } from "@/lib/auth";
 
@@ -14,9 +15,13 @@ type RegisterFormValues = {
   password: string;
 };
 
+const inputClassName =
+  "h-12 w-full rounded-2xl border border-white/80 bg-white px-12 text-sm text-slate-800 shadow-[0_14px_35px_rgba(20,48,39,0.06)] outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-4 focus:ring-brand-100";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const {
     formState: { isSubmitting },
     handleSubmit,
@@ -48,72 +53,106 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-surface px-5 py-10">
-      <section className="w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-soft">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-600 text-white">
-            <BriefcaseBusiness size={21} aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-normal">Create account</h1>
-            <p className="text-sm text-slate-500">Employee self-service access</p>
-          </div>
-        </div>
-
+    <AuthShell
+      title="Create Account"
+      subtitle="Start with your employee self-service access."
+    >
+      <form className="mt-9" onSubmit={handleSubmit(onSubmit)}>
         {error ? (
-          <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         ) : null}
 
-        <form className="mt-7 space-y-5" onSubmit={handleSubmit(onSubmit)}>
-          <label className="block text-sm font-medium text-slate-700">
-            Name
+        <label className="mt-5 block">
+          <span className="sr-only">Name</span>
+          <span className="relative block">
+            <UserCircle
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={inputClassName}
               type="text"
               autoComplete="name"
+              placeholder="Name"
               {...register("name", { required: true })}
             />
-          </label>
+          </span>
+        </label>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Email
+        <label className="mt-4 block">
+          <span className="sr-only">Email</span>
+          <span className="relative block">
+            <Mail
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={inputClassName}
               type="email"
               autoComplete="email"
+              placeholder="Email"
               {...register("email", { required: true })}
             />
-          </label>
+          </span>
+        </label>
 
-          <label className="block text-sm font-medium text-slate-700">
-            Password
+        <label className="mt-4 block">
+          <span className="sr-only">Password</span>
+          <span className="relative block">
+            <LockKeyhole
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={18}
+              aria-hidden="true"
+            />
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              type="password"
+              className={inputClassName}
+              type={isPasswordVisible ? "text" : "password"}
               autoComplete="new-password"
+              placeholder="Password"
               {...register("password", { required: true })}
             />
-          </label>
+            <button
+              className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-slate-500 transition hover:bg-surface hover:text-slate-700"
+              type="button"
+              onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+            >
+              {isPasswordVisible ? (
+                <EyeOff size={17} aria-hidden="true" />
+              ) : (
+                <Eye size={17} aria-hidden="true" />
+              )}
+            </button>
+          </span>
+        </label>
 
-          <button
-            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            <UserPlus size={18} aria-hidden="true" />
-            Create account
-          </button>
-        </form>
+        <button
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#111111] px-4 text-sm font-semibold text-white shadow-[0_18px_35px_rgba(17,17,17,0.18)] transition hover:bg-ink disabled:cursor-not-allowed disabled:opacity-60"
+          type="submit"
+          disabled={isSubmitting}
+        >
+          <UserPlus size={18} aria-hidden="true" />
+          Create account
+        </button>
 
-        <p className="mt-5 text-center text-sm text-slate-500">
-          Already registered?{" "}
-          <Link className="font-medium text-brand-700" href="/login">
-            Sign in
-          </Link>
-        </p>
-      </section>
-    </main>
+        <div className="mt-7 flex items-center gap-4 text-xs text-slate-500">
+          <span className="h-px flex-1 bg-line" />
+          <span>or continue</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+
+        <Link
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-line bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-surface"
+          href="/login"
+        >
+          <LogIn size={18} aria-hidden="true" />
+          Sign in instead
+        </Link>
+      </form>
+    </AuthShell>
   );
 }

@@ -4,7 +4,7 @@ A full-stack HR Management System for managing employees, attendance, leave, pay
 
 ## Project Status
 
-Phase 7 dashboard, reports, and notifications code is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, role-based pages, employee CRUD, document uploads, attendance clock in/out, shifts, holidays, attendance reports, leave requests, approvals, leave balances, leave types, salary setup, monthly payroll generation, payroll review, payslip records, payslip download payloads, dashboard summaries, HR reports, in-app notifications, and announcements from [plan.md](./plan.md).
+Phase 10 testing, polish, and deployment prep is implemented. The repository contains a Next.js frontend, an Express backend, Prisma setup, JWT authentication, role-based pages, employee CRUD, document uploads, attendance clock in/out, shifts, holidays, attendance reports, leave requests, approvals, leave balances, leave types, salary setup, monthly payroll generation, payroll review, payslip records, payslip download payloads, dashboard summaries, HR reports, in-app notifications, announcements, jobs, candidates, applications, interviews, offers, goals, performance reviews, feedback, appraisal history, mobile navigation polish, shared loading/error/empty UI states, production environment validation, and a repeatable backend smoke test from [plan.md](./plan.md).
 
 ## Table Of Contents
 
@@ -157,6 +157,7 @@ JWT_SECRET="replace-with-a-random-secret-at-least-32-characters"
 JWT_EXPIRES_IN_SECONDS="86400"
 PASSWORD_RESET_EXPIRES_IN_MINUTES="30"
 SEED_ADMIN_PASSWORD="Admin@12345"
+PRISMA_QUERY_LOGS="false"
 REDIS_URL="redis://localhost:6379"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
@@ -243,6 +244,9 @@ npm run db:down
 npm run setup:db
 npm run build
 npm run typecheck
+npm run lint
+npm run test:smoke
+npm run verify
 npm run prisma:generate
 npm run prisma:migrate
 npm run db:seed
@@ -262,6 +266,7 @@ Backend workspace:
 npm run dev
 npm run build
 npm run typecheck
+npm run test:smoke
 npx prisma migrate dev
 npx prisma studio
 ```
@@ -285,7 +290,12 @@ Main API groups:
 /api/notifications
 /api/jobs
 /api/candidates
+/api/applications
+/api/interviews
+/api/offers
+/api/goals
 /api/performance-reviews
+/api/feedback
 ```
 
 Example routes:
@@ -321,6 +331,29 @@ GET  /api/leave-types
 POST /api/leave-types
 POST /api/payroll/generate
 GET  /api/reports/attendance
+GET  /api/jobs
+POST /api/jobs
+GET  /api/jobs/:id
+GET  /api/candidates
+POST /api/candidates
+GET  /api/candidates/:id
+GET  /api/applications
+PUT  /api/applications/:id/status
+GET  /api/interviews
+POST /api/interviews
+PUT  /api/interviews/:id/status
+GET  /api/offers
+POST /api/offers
+PUT  /api/offers/:id/status
+GET  /api/performance/employees
+GET  /api/goals
+POST /api/goals
+PUT  /api/goals/:id
+GET  /api/performance-reviews
+POST /api/performance-reviews
+PUT  /api/performance-reviews/:id/status
+GET  /api/feedback
+POST /api/feedback
 ```
 
 ## Database Entities
@@ -387,11 +420,21 @@ The first usable version should include:
 - Basic reports
 - Notifications
 
-Recruitment, performance management, advanced reports, mobile app support, and advanced automation can be added after the MVP.
+Recruitment and performance management are implemented as post-MVP modules. Advanced reports, mobile app support, and advanced automation can be added after the MVP.
 
 ## Testing Plan
 
-Recommended tests:
+Implemented validation:
+
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+- `npm run test:smoke`
+- `npm run verify`
+
+The backend smoke test starts the API on a temporary local port and verifies health, login, current user, unauthenticated rejection, employee RBAC, employee detail, document upload, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
+
+Recommended future tests:
 
 - Authentication tests
 - Role permission tests
@@ -412,10 +455,12 @@ Recommended deployment setup:
 - Files on Cloudinary or S3
 - Redis on Upstash, Railway, or a managed Redis provider
 
+Production startup requires an explicit `DATABASE_URL` and a non-default `JWT_SECRET`.
+
 ## Security Notes
 
 - Hash passwords before storing them.
-- Use JWT secrets from environment variables.
+- Use a strong `JWT_SECRET` from environment variables.
 - Validate every API request.
 - Check role permissions on the backend.
 - Do not trust frontend-only authorization.
@@ -432,4 +477,4 @@ Before adding features, check [plan.md](./plan.md) and follow the phase order. K
 Add a license before publishing this project publicly.
 
 ## Authon
-- Ankit Kumar Singh
+- Ankit Kumar

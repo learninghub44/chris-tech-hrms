@@ -6,8 +6,10 @@ dotenv.config();
 const defaultDatabaseUrl =
   "postgresql://postgres:postgres@localhost:5432/hrms?schema=public";
 const defaultJwtSecret = "local-development-jwt-secret-change-me-32";
+const exampleJwtSecret = "replace-with-a-random-secret-at-least-32-characters";
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 
-if (!process.env.DATABASE_URL) {
+if (!hasDatabaseUrl) {
   process.env.DATABASE_URL = defaultDatabaseUrl;
 }
 
@@ -24,3 +26,13 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+if (env.NODE_ENV === "production") {
+  if (!hasDatabaseUrl) {
+    throw new Error("DATABASE_URL must be set explicitly in production");
+  }
+
+  if (env.JWT_SECRET === defaultJwtSecret || env.JWT_SECRET === exampleJwtSecret) {
+    throw new Error("JWT_SECRET must be changed from the development/example value in production");
+  }
+}

@@ -4,7 +4,9 @@ import type {
   AttendanceWorkMode,
   Announcement,
   AnnouncementAudience,
+  ApplicationStatus,
   AuthUser,
+  Candidate,
   Department,
   DashboardSummary,
   Designation,
@@ -12,9 +14,19 @@ import type {
   EmployeeDocument,
   EmployeeReport,
   EmploymentStatus,
+  FeedbackCategory,
+  FeedbackRecord,
+  Goal,
+  GoalStatus,
   Holiday,
   HolidayType,
   AttendanceReport,
+  Interview,
+  InterviewMode,
+  InterviewStatus,
+  Job,
+  JobApplication,
+  JobStatus,
   LeaveBalance,
   LeaveDayType,
   LeaveReport,
@@ -22,14 +34,22 @@ import type {
   LeaveRequestStatus,
   LeaveType,
   NotificationRecord,
+  Offer,
+  OfferStatus,
   Payroll,
   PayrollReport,
+  PerformanceEmployee,
+  PerformanceReview,
+  PerformanceReviewStatus,
   Payslip,
   Salary,
   Shift
 } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(
+  /\/+$/,
+  ""
+);
 
 type ApiSuccess<T> = {
   success: true;
@@ -53,6 +73,89 @@ type RequestOptions = {
 };
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+function failResponse(
+  code: string,
+  message: string,
+  details: unknown
+): ApiFailure {
+  return {
+    success: false,
+    error: {
+      code,
+      message,
+      ...(details ? { details } : {})
+    }
+  };
+}
+
+function isApiResponse<T>(payload: unknown): payload is ApiResponse<T> {
+  if (!payload || typeof payload !== "object" || !("success" in payload)) {
+    return false;
+  }
+
+  const response = payload as { success: unknown; data?: unknown; error?: unknown };
+
+  if (response.success === true) {
+    return "data" in response;
+  }
+
+  if (response.success !== false || !response.error || typeof response.error !== "object") {
+    return false;
+  }
+
+  const error = response.error as { code?: unknown; message?: unknown };
+
+  return typeof error.code === "string" && typeof error.message === "string";
+}
+
+async function readApiResponse<T>(
+  response: Response,
+  path: string
+): Promise<ApiResponse<T>> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("application/json")) {
+    return failResponse(
+      "UNEXPECTED_API_RESPONSE",
+      "The frontend did not receive JSON from the API. Check NEXT_PUBLIC_API_URL and backend routing.",
+      {
+        apiUrl: API_URL,
+        path,
+        status: response.status,
+        statusText: response.statusText,
+        contentType
+      }
+    );
+  }
+
+  const payload = (await response.json()) as unknown;
+
+  if (!isApiResponse<T>(payload)) {
+    return failResponse(
+      "UNEXPECTED_API_RESPONSE",
+      "The API returned an unexpected response shape.",
+      {
+        apiUrl: API_URL,
+        path,
+        status: response.status,
+        statusText: response.statusText
+      }
+    );
+  }
+
+  return payload;
+}
+
+function getApiErrorHint(details: unknown): string | null {
+  if (!details || typeof details !== "object" || !("hint" in details)) {
+    return null;
+  }
+
+  const hint = (details as { hint?: unknown }).hint;
+
+  return typeof hint === "string" ? hint : null;
+}
 
 export type HealthResponse = {
   service: string;
@@ -195,6 +298,93 @@ export type AnnouncementInput = {
   isPublished: boolean;
 };
 
+export type JobInput = {
+  title: string;
+  description: string;
+  departmentId: string | null;
+  designationId: string | null;
+  location: string | null;
+  employmentType: string | null;
+  status: JobStatus;
+};
+
+export type CandidateInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  source: string | null;
+  resumeUrl: string | null;
+  currentCompany: string | null;
+  currentTitle: string | null;
+  jobId: string | null;
+  notes: string | null;
+};
+
+export type ApplicationInput = {
+  jobId: string;
+  candidateId: string;
+  status: ApplicationStatus;
+  notes: string | null;
+};
+
+export type InterviewInput = {
+  applicationId: string;
+  interviewerId: string | null;
+  scheduledAt: string;
+  mode: InterviewMode;
+  location: string | null;
+  status: InterviewStatus;
+  feedback: string | null;
+};
+
+export type OfferInput = {
+  applicationId: string;
+  offeredSalary: number | null;
+  startDate: string | null;
+  status: OfferStatus;
+  notes: string | null;
+};
+
+export type GoalInput = {
+  employeeId: string;
+  title: string;
+  description: string | null;
+  status: GoalStatus;
+  progress: number;
+  startDate: string | null;
+  dueDate: string | null;
+};
+
+export type GoalUpdateInput = {
+  title?: string;
+  description?: string | null;
+  status?: GoalStatus;
+  progress?: number;
+  startDate?: string | null;
+  dueDate?: string | null;
+};
+
+export type PerformanceReviewInput = {
+  employeeId: string;
+  reviewerId: string | null;
+  cycle: string;
+  reviewPeriodStart: string;
+  reviewPeriodEnd: string;
+  rating: number;
+  summary: string;
+  strengths: string | null;
+  improvements: string | null;
+  status: PerformanceReviewStatus;
+};
+
+export type FeedbackInput = {
+  employeeId: string;
+  category: FeedbackCategory;
+  message: string;
+  isPrivate: boolean;
+};
+
 async function request<T>(
   path: string,
   options: RequestOptions
@@ -216,7 +406,7 @@ async function request<T>(
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined
   });
-  const payload = (await response.json()) as ApiResponse<T>;
+  const payload = await readApiResponse<T>(response, path);
 
   if (!response.ok && payload.success) {
     throw new Error("Unexpected API response");
@@ -230,7 +420,9 @@ export function getApiErrorMessage(response: ApiResponse<unknown>): string {
     return "Request completed";
   }
 
-  return response.error.message;
+  const hint = getApiErrorHint(response.error.details);
+
+  return hint ? `${response.error.message}. ${hint}` : response.error.message;
 }
 
 export function getHealth() {
@@ -850,6 +1042,293 @@ export function listAnnouncements(token: string) {
 
 export function createAnnouncement(token: string, input: AnnouncementInput) {
   return request<{ announcement: Announcement }>("/announcements", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function listJobs(token: string, filters: { status?: JobStatus | ""; departmentId?: string }) {
+  const params = new URLSearchParams();
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.departmentId) {
+    params.set("departmentId", filters.departmentId);
+  }
+
+  const query = params.toString();
+
+  return request<{ jobs: Job[] }>(`/jobs${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function createJob(token: string, input: JobInput) {
+  return request<{ job: Job }>("/jobs", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function getJob(token: string, id: string) {
+  return request<{ job: Job }>(`/jobs/${id}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function listCandidates(token: string, input: { search?: string }) {
+  const params = new URLSearchParams();
+
+  if (input.search) {
+    params.set("search", input.search);
+  }
+
+  const query = params.toString();
+
+  return request<{ candidates: Candidate[] }>(`/candidates${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function createCandidate(token: string, input: CandidateInput) {
+  return request<{ candidate: Candidate }>("/candidates", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function getCandidate(token: string, id: string) {
+  return request<{ candidate: Candidate }>(`/candidates/${id}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function listApplications(token: string) {
+  return request<{ applications: JobApplication[] }>("/applications", {
+    method: "GET",
+    token
+  });
+}
+
+export function createApplication(token: string, input: ApplicationInput) {
+  return request<{ application: JobApplication }>("/applications", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updateApplicationStatus(
+  token: string,
+  id: string,
+  input: { status: ApplicationStatus; notes: string | null }
+) {
+  return request<{ application: JobApplication }>(`/applications/${id}/status`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listInterviews(token: string) {
+  return request<{ interviews: Interview[] }>("/interviews", {
+    method: "GET",
+    token
+  });
+}
+
+export function createInterview(token: string, input: InterviewInput) {
+  return request<{ interview: Interview }>("/interviews", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updateInterviewStatus(
+  token: string,
+  id: string,
+  input: { status: InterviewStatus; feedback: string | null }
+) {
+  return request<{ interview: Interview }>(`/interviews/${id}/status`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listOffers(token: string) {
+  return request<{ offers: Offer[] }>("/offers", {
+    method: "GET",
+    token
+  });
+}
+
+export function createOffer(token: string, input: OfferInput) {
+  return request<{ offer: Offer }>("/offers", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updateOfferStatus(
+  token: string,
+  id: string,
+  input: { status: OfferStatus; notes: string | null }
+) {
+  return request<{ offer: Offer }>(`/offers/${id}/status`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listPerformanceEmployees(token: string, input: { search?: string }) {
+  const params = new URLSearchParams();
+
+  if (input.search) {
+    params.set("search", input.search);
+  }
+
+  const query = params.toString();
+
+  return request<{ employees: PerformanceEmployee[] }>(
+    `/performance/employees${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function listGoals(
+  token: string,
+  filters: { employeeId?: string; status?: GoalStatus | "" }
+) {
+  const params = new URLSearchParams();
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  const query = params.toString();
+
+  return request<{ goals: Goal[] }>(`/goals${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token
+  });
+}
+
+export function createGoal(token: string, input: GoalInput) {
+  return request<{ goal: Goal }>("/goals", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updateGoal(token: string, id: string, input: GoalUpdateInput) {
+  return request<{ goal: Goal }>(`/goals/${id}`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listPerformanceReviews(
+  token: string,
+  filters: {
+    employeeId?: string;
+    status?: PerformanceReviewStatus | "";
+    cycle?: string;
+  }
+) {
+  const params = new URLSearchParams();
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.cycle) {
+    params.set("cycle", filters.cycle);
+  }
+
+  const query = params.toString();
+
+  return request<{ reviews: PerformanceReview[] }>(
+    `/performance-reviews${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function createPerformanceReview(token: string, input: PerformanceReviewInput) {
+  return request<{ review: PerformanceReview }>("/performance-reviews", {
+    method: "POST",
+    body: input,
+    token
+  });
+}
+
+export function updatePerformanceReviewStatus(
+  token: string,
+  id: string,
+  input: { status: PerformanceReviewStatus }
+) {
+  return request<{ review: PerformanceReview }>(`/performance-reviews/${id}/status`, {
+    method: "PUT",
+    body: input,
+    token
+  });
+}
+
+export function listFeedbackRecords(
+  token: string,
+  filters: { employeeId?: string; category?: FeedbackCategory | "" }
+) {
+  const params = new URLSearchParams();
+
+  if (filters.employeeId) {
+    params.set("employeeId", filters.employeeId);
+  }
+
+  if (filters.category) {
+    params.set("category", filters.category);
+  }
+
+  const query = params.toString();
+
+  return request<{ feedback: FeedbackRecord[] }>(
+    `/feedback${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      token
+    }
+  );
+}
+
+export function createFeedbackRecord(token: string, input: FeedbackInput) {
+  return request<{ feedback: FeedbackRecord }>("/feedback", {
     method: "POST",
     body: input,
     token

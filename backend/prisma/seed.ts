@@ -27,7 +27,11 @@ const permissions = [
   { key: "reports:read", description: "View HR reports" },
   { key: "notifications:read", description: "View own notifications" },
   { key: "announcements:read", description: "View announcements" },
-  { key: "announcements:manage", description: "Manage announcements" }
+  { key: "announcements:manage", description: "Manage announcements" },
+  { key: "recruitment:read", description: "View recruitment records" },
+  { key: "recruitment:manage", description: "Manage recruitment records" },
+  { key: "performance:read", description: "View performance records" },
+  { key: "performance:manage", description: "Manage goals, reviews, and feedback" }
 ];
 
 const rolePermissions: Record<string, string[]> = {
@@ -47,7 +51,11 @@ const rolePermissions: Record<string, string[]> = {
     "reports:read",
     "notifications:read",
     "announcements:read",
-    "announcements:manage"
+    "announcements:manage",
+    "recruitment:read",
+    "recruitment:manage",
+    "performance:read",
+    "performance:manage"
   ],
   MANAGER: [
     "dashboard:read",
@@ -58,7 +66,9 @@ const rolePermissions: Record<string, string[]> = {
     "leave:approve",
     "payroll:read",
     "notifications:read",
-    "announcements:read"
+    "announcements:read",
+    "performance:read",
+    "performance:manage"
   ],
   EMPLOYEE: [
     "dashboard:read",
@@ -67,7 +77,8 @@ const rolePermissions: Record<string, string[]> = {
     "leave:request",
     "payroll:read",
     "notifications:read",
-    "announcements:read"
+    "announcements:read",
+    "performance:read"
   ]
 };
 
@@ -434,6 +445,178 @@ async function main() {
       audience: "ALL",
       isPublished: true,
       createdById: user.id
+    }
+  });
+
+  const engineering = createdDepartments.find((department) => department.name === "Engineering");
+  const softwareEngineer = createdDesignations.find(
+    (designation) => designation.title === "Software Engineer"
+  );
+  const job = await prisma.job.upsert({
+    where: {
+      id: "phase-8-software-engineer-job"
+    },
+    update: {
+      title: "Software Engineer",
+      description: "Builds and maintains HRMS product systems.",
+      departmentId: engineering?.id ?? null,
+      designationId: softwareEngineer?.id ?? null,
+      location: "Remote",
+      employmentType: "Full-time",
+      status: "OPEN",
+      createdById: user.id
+    },
+    create: {
+      id: "phase-8-software-engineer-job",
+      title: "Software Engineer",
+      description: "Builds and maintains HRMS product systems.",
+      departmentId: engineering?.id ?? null,
+      designationId: softwareEngineer?.id ?? null,
+      location: "Remote",
+      employmentType: "Full-time",
+      status: "OPEN",
+      createdById: user.id
+    }
+  });
+  const candidate = await prisma.candidate.upsert({
+    where: {
+      email: "candidate.phase8@example.com"
+    },
+    update: {
+      firstName: "Phase",
+      lastName: "Candidate",
+      phone: "+1-555-0110",
+      source: "Seed",
+      currentCompany: "Example Labs",
+      currentTitle: "Frontend Engineer"
+    },
+    create: {
+      firstName: "Phase",
+      lastName: "Candidate",
+      email: "candidate.phase8@example.com",
+      phone: "+1-555-0110",
+      source: "Seed",
+      currentCompany: "Example Labs",
+      currentTitle: "Frontend Engineer"
+    }
+  });
+  const application = await prisma.jobApplication.upsert({
+    where: {
+      jobId_candidateId: {
+        jobId: job.id,
+        candidateId: candidate.id
+      }
+    },
+    update: {
+      status: "SCREENING",
+      notes: "Seeded Phase 8 application"
+    },
+    create: {
+      jobId: job.id,
+      candidateId: candidate.id,
+      status: "SCREENING",
+      notes: "Seeded Phase 8 application"
+    }
+  });
+
+  const existingInterview = await prisma.interview.findFirst({
+    where: {
+      applicationId: application.id
+    }
+  });
+
+  if (!existingInterview) {
+    await prisma.interview.create({
+      data: {
+        applicationId: application.id,
+        candidateId: candidate.id,
+        interviewerId: employee.id,
+        scheduledAt: new Date("2026-05-22T10:00:00.000Z"),
+        mode: "VIDEO",
+        location: "Google Meet",
+        status: "SCHEDULED"
+      }
+    });
+  }
+
+  await prisma.goal.upsert({
+    where: {
+      id: "phase-9-admin-goal"
+    },
+    update: {
+      employeeId: employee.id,
+      title: "Improve HR service delivery",
+      description: "Reduce manual follow-up by keeping employee lifecycle records current.",
+      status: "IN_PROGRESS",
+      progress: 40,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+      dueDate: new Date("2026-06-30T00:00:00.000Z"),
+      createdById: user.id
+    },
+    create: {
+      id: "phase-9-admin-goal",
+      employeeId: employee.id,
+      title: "Improve HR service delivery",
+      description: "Reduce manual follow-up by keeping employee lifecycle records current.",
+      status: "IN_PROGRESS",
+      progress: 40,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+      dueDate: new Date("2026-06-30T00:00:00.000Z"),
+      createdById: user.id
+    }
+  });
+
+  await prisma.performanceReview.upsert({
+    where: {
+      id: "phase-9-admin-review"
+    },
+    update: {
+      employeeId: employee.id,
+      reviewerId: employee.id,
+      cycle: "2026 H1",
+      reviewPeriodStart: new Date("2026-01-01T00:00:00.000Z"),
+      reviewPeriodEnd: new Date("2026-06-30T00:00:00.000Z"),
+      rating: 4,
+      summary: "Strong ownership of HRMS setup and employee operations.",
+      strengths: "Clear process ownership and consistent follow-through.",
+      improvements: "Continue building repeatable reporting routines.",
+      status: "SUBMITTED",
+      submittedAt: new Date("2026-05-19T00:00:00.000Z")
+    },
+    create: {
+      id: "phase-9-admin-review",
+      employeeId: employee.id,
+      reviewerId: employee.id,
+      cycle: "2026 H1",
+      reviewPeriodStart: new Date("2026-01-01T00:00:00.000Z"),
+      reviewPeriodEnd: new Date("2026-06-30T00:00:00.000Z"),
+      rating: 4,
+      summary: "Strong ownership of HRMS setup and employee operations.",
+      strengths: "Clear process ownership and consistent follow-through.",
+      improvements: "Continue building repeatable reporting routines.",
+      status: "SUBMITTED",
+      submittedAt: new Date("2026-05-19T00:00:00.000Z")
+    }
+  });
+
+  await prisma.feedback.upsert({
+    where: {
+      id: "phase-9-admin-feedback"
+    },
+    update: {
+      employeeId: employee.id,
+      authorId: employee.id,
+      category: "PRAISE",
+      message: "Phase 9 performance records are ready for appraisal tracking.",
+      isPrivate: false
+    },
+    create: {
+      id: "phase-9-admin-feedback",
+      employeeId: employee.id,
+      authorId: employee.id,
+      category: "PRAISE",
+      message: "Phase 9 performance records are ready for appraisal tracking.",
+      isPrivate: false
     }
   });
 }
