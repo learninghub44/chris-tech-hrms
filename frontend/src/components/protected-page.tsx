@@ -36,6 +36,9 @@ export function ProtectedPage({
   const me = useQuery({
     queryKey: ["me", session?.token],
     queryFn: () => getMe(session!.token),
+    gcTime: 30 * 60_000,
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
     retry: false,
     enabled: Boolean(session?.token)
   });
@@ -65,6 +68,7 @@ export function ProtectedPage({
   }, [me.data, me.isError, router]);
 
   const user = me.data?.success ? me.data.data.user : session?.user;
+  const validationFailed = me.isError || me.data?.success === false;
   const isAuthorized = useMemo(() => {
     if (!user) {
       return false;
@@ -72,19 +76,20 @@ export function ProtectedPage({
 
     return hasEveryPermission(user, requiredPermissions);
   }, [requiredPermissions, user]);
+  const isCheckingUpdatedPermissions = Boolean(user && !isAuthorized && me.isLoading);
 
   useEffect(() => {
-    if (sessionChecked && user && !isAuthorized) {
+    if (sessionChecked && user && !isAuthorized && !me.isLoading) {
       router.replace("/not-authorized");
     }
-  }, [isAuthorized, router, sessionChecked, user]);
+  }, [isAuthorized, me.isLoading, router, sessionChecked, user]);
 
   if (
     !sessionChecked ||
     !session ||
     !user ||
-    me.isLoading ||
-    me.isError ||
+    validationFailed ||
+    isCheckingUpdatedPermissions ||
     !isAuthorized
   ) {
     return (

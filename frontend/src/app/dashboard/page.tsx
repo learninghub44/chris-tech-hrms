@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   DollarSign,
+  RefreshCw,
   Megaphone,
   TrendingDown,
   UserPlus,
@@ -15,7 +16,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
-import { StatusCard } from "@/components/status-card";
 import { getDashboardSummary } from "@/lib/api";
 import { formatDate } from "@/lib/employee-format";
 import { formatMoney } from "@/lib/payroll-format";
@@ -38,12 +38,38 @@ const cardIcons: Record<string, LucideIcon> = {
   unread_notifications: Bell
 };
 
+const metricToneClasses: Record<DashboardCard["tone"], string> = {
+  brand: "text-emerald-600",
+  blue: "text-sky-600",
+  amber: "text-amber-600",
+  slate: "text-slate-500"
+};
+
+const metricIconClasses: Record<DashboardCard["tone"], string> = {
+  brand: "bg-emerald-50 text-emerald-700",
+  blue: "bg-sky-50 text-sky-700",
+  amber: "bg-amber-50 text-amber-700",
+  slate: "bg-slate-100 text-slate-700"
+};
+
 function getCardValue(card: DashboardCard): string {
   if (card.key === "monthly_payroll" && card.value !== "-") {
     return formatMoney(Number(card.value));
   }
 
   return card.value;
+}
+
+function getCurrentDateLabel(): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "short"
+  }).format(new Date());
+}
+
+function getUserFirstName(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
 }
 
 function DashboardContent({ user, token }: DashboardContentProps) {
@@ -56,99 +82,169 @@ function DashboardContent({ user, token }: DashboardContentProps) {
   const cards = summary?.cards ?? [];
   const notifications = summary?.notifications ?? [];
   const announcements = summary?.announcements ?? [];
+  const scopeLabel =
+    summary?.scope === "organization" ? "Organization" : "Self-service";
 
   return (
     <AppShell user={user} token={token}>
-      <div className="space-y-6">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <p className="text-sm font-medium text-brand-700">Dashboard</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal text-ink">
-              HRMS Operations
-            </h1>
+      <div className="space-y-4">
+        <section className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col justify-between gap-4 border-b border-slate-200 px-5 py-5 md:flex-row md:items-start">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+                Hey, {getUserFirstName(user.name)}
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Quickly access all information about you, your team, and your members
+              </p>
+            </div>
+            <div className="inline-flex h-9 items-center gap-2 self-start rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)] md:self-auto">
+              <CalendarDays size={16} aria-hidden="true" />
+              {getCurrentDateLabel()}
+            </div>
           </div>
-          <div className="inline-flex h-10 items-center gap-2 self-start rounded-md border border-line bg-white px-3 text-sm text-slate-600 md:self-auto">
-            {summary?.scope === "organization" ? "Organization view" : "Self-service view"}
+
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3 text-xs font-semibold uppercase text-slate-400">
+            <span className="rounded-md px-2 py-1">Personal</span>
+            <span className="rounded-md bg-slate-950 px-2 py-1 text-white">
+              {scopeLabel}
+            </span>
+            <span className="rounded-md px-2 py-1">Managed by me</span>
+            <button
+              className="ml-auto grid h-8 w-8 place-items-center rounded-md text-slate-500 transition hover:bg-slate-50"
+              type="button"
+              onClick={() => summaryQuery.refetch()}
+              aria-label="Refresh dashboard"
+            >
+              <RefreshCw size={16} aria-hidden="true" />
+            </button>
           </div>
-        </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {cards.map((card) => {
-            const Icon = cardIcons[card.key] ?? Users;
+          <section className="grid sm:grid-cols-2 xl:grid-cols-4">
+            {cards.map((card) => {
+              const Icon = cardIcons[card.key] ?? Users;
 
-            return (
-              <StatusCard
-                key={card.key}
-                label={card.label}
-                value={getCardValue(card)}
-                detail={card.detail}
-                icon={Icon}
-                tone={card.tone}
-              />
-            );
-          })}
+              return (
+                <article
+                  className="border-b border-slate-200 px-5 py-5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
+                  key={card.key}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-slate-500">
+                        {card.label}
+                      </p>
+                      <p className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">
+                        {getCardValue(card)}
+                      </p>
+                    </div>
+                    <div
+                      className={`grid h-9 w-9 place-items-center rounded-md ${metricIconClasses[card.tone]}`}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                    </div>
+                  </div>
+                  <p className={`mt-2 text-xs font-medium ${metricToneClasses[card.tone]}`}>
+                    {card.detail}
+                  </p>
+                </article>
+              );
+            })}
+
+            {summaryQuery.isLoading && cards.length === 0 ? (
+              <div className="col-span-full px-5 py-12 text-center text-sm text-slate-500">
+                Loading dashboard summary...
+              </div>
+            ) : null}
+          </section>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-                  <Bell size={20} aria-hidden="true" />
-                </div>
-                <h2 className="text-lg font-semibold tracking-normal">Notifications</h2>
+          <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold tracking-normal text-slate-950">
+                  Notifications
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Recent alerts and workflow updates
+                </p>
               </div>
-              <Link className="text-sm font-medium text-brand-700" href="/notifications">
+              <Link
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                href="/notifications"
+              >
                 View all
               </Link>
             </div>
-            <div className="mt-5 divide-y divide-line">
+
+            <div className="divide-y divide-slate-100 px-5">
               {notifications.map((notification) => (
-                <div key={notification.id} className="py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-ink">{notification.title}</p>
-                    <span className="text-xs text-slate-500">
-                      {formatDateTime(notification.createdAt)}
-                    </span>
+                <div key={notification.id} className="flex gap-3 py-4">
+                  <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
+                    <Bell size={17} aria-hidden="true" />
                   </div>
-                  <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-slate-950">{notification.title}</p>
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {formatDateTime(notification.createdAt)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      {notification.message}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
             {!summaryQuery.isLoading && notifications.length === 0 ? (
-              <div className="mt-5 rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+              <div className="m-5 rounded-md border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
                 No notifications found.
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-                  <Megaphone size={20} aria-hidden="true" />
-                </div>
-                <h2 className="text-lg font-semibold tracking-normal">Announcements</h2>
+          <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold tracking-normal text-slate-950">
+                  Announcements
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Published updates for the workspace
+                </p>
               </div>
-              <Link className="text-sm font-medium text-brand-700" href="/announcements">
+              <Link
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                href="/announcements"
+              >
                 View all
               </Link>
             </div>
-            <div className="mt-5 divide-y divide-line">
+
+            <div className="divide-y divide-slate-100 px-5">
               {announcements.map((announcement) => (
-                <div key={announcement.id} className="py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-medium text-ink">{announcement.title}</p>
-                    <span className="text-xs text-slate-500">
-                      {formatDate(announcement.publishedAt)}
-                    </span>
+                <div key={announcement.id} className="flex gap-3 py-4">
+                  <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
+                    <Megaphone size={17} aria-hidden="true" />
                   </div>
-                  <p className="mt-1 text-sm text-slate-600">{announcement.message}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-slate-950">{announcement.title}</p>
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {formatDate(announcement.publishedAt)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      {announcement.message}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
             {!summaryQuery.isLoading && announcements.length === 0 ? (
-              <div className="mt-5 rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+              <div className="m-5 rounded-md border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
                 No announcements found.
               </div>
             ) : null}
