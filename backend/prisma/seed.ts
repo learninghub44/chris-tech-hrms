@@ -1,8 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, type Role, type User } from "@prisma/client";
 import { hashPassword } from "../src/modules/auth/password";
 
 const prisma = new PrismaClient();
 const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin@12345";
+const seedHrPassword = process.env.SEED_HR_PASSWORD ?? "Hr@12345";
+const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD ?? "Employee@12345";
 
 const roles = [
   { name: "SUPER_ADMIN", description: "Full system access" },
@@ -100,6 +102,11 @@ const designations = [
     departmentName: "People Operations"
   },
   {
+    title: "HR Manager",
+    description: "Runs employee operations and policy workflows",
+    departmentName: "People Operations"
+  },
+  {
     title: "Software Engineer",
     description: "Builds and maintains product systems",
     departmentName: "Engineering"
@@ -144,6 +151,79 @@ const holidays = [
     description: "Company holiday"
   }
 ];
+
+function getRequiredRole(createdRoles: Role[], roleName: string): Role {
+  const role = createdRoles.find((createdRole) => createdRole.name === roleName);
+
+  if (!role) {
+    throw new Error(`Missing seed role: ${roleName}`);
+  }
+
+  return role;
+}
+
+async function assignExclusiveRole(
+  userId: string,
+  role: Role,
+  createdRoles: Role[]
+): Promise<void> {
+  await Promise.all(
+    createdRoles
+      .filter((createdRole) => createdRole.id !== role.id)
+      .map((createdRole) =>
+        prisma.userRole.deleteMany({
+          where: {
+            userId,
+            roleId: createdRole.id
+          }
+        })
+      )
+  );
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId,
+        roleId: role.id
+      }
+    },
+    update: {},
+    create: {
+      userId,
+      roleId: role.id
+    }
+  });
+}
+
+async function upsertSeedUser(input: {
+  email: string;
+  name: string;
+  password: string;
+  role: Role;
+  createdRoles: Role[];
+}): Promise<User> {
+  const passwordHash = await hashPassword(input.password);
+  const user = await prisma.user.upsert({
+    where: {
+      email: input.email
+    },
+    update: {
+      name: input.name,
+      passwordHash,
+      status: "ACTIVE"
+    },
+    create: {
+      email: input.email,
+      name: input.name,
+      passwordHash,
+      status: "ACTIVE"
+    }
+  });
+
+  await assignExclusiveRole(user.id, input.role, input.createdRoles);
+
+  return user;
+}
 
 async function main() {
   const createdPermissions = await Promise.all(
@@ -191,52 +271,30 @@ async function main() {
     })
   );
 
-  const superAdmin = createdRoles.find((role) => role.name === "SUPER_ADMIN");
-  const passwordHash = await hashPassword(seedAdminPassword);
-
-  const user = await prisma.user.upsert({
-    where: { email: "admin@hrms.local" },
-    update: {
-      name: "Phase 3 Admin",
-      passwordHash,
-      status: "ACTIVE"
-    },
-    create: {
-      email: "admin@hrms.local",
-      name: "Phase 3 Admin",
-      passwordHash,
-      status: "ACTIVE"
-    }
+  const superAdmin = getRequiredRole(createdRoles, "SUPER_ADMIN");
+  const hrAdminRole = getRequiredRole(createdRoles, "HR_ADMIN");
+  const employeeRole = getRequiredRole(createdRoles, "EMPLOYEE");
+  const user = await upsertSeedUser({
+    email: "admin@hrms.local",
+    name: "Phase 3 Admin",
+    password: seedAdminPassword,
+    role: superAdmin,
+    createdRoles
   });
-
-  if (superAdmin) {
-    await Promise.all(
-      createdRoles
-        .filter((role) => role.id !== superAdmin.id)
-        .map((role) =>
-          prisma.userRole.deleteMany({
-            where: {
-              userId: user.id,
-              roleId: role.id
-            }
-          })
-        )
-    );
-
-    await prisma.userRole.upsert({
-      where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: superAdmin.id
-        }
-      },
-      update: {},
-      create: {
-        userId: user.id,
-        roleId: superAdmin.id
-      }
-    });
-  }
+  const hrUser = await upsertSeedUser({
+    email: "hr@hrms.local",
+    name: "Avery Stone",
+    password: seedHrPassword,
+    role: hrAdminRole,
+    createdRoles
+  });
+  const selfServiceUser = await upsertSeedUser({
+    email: "employee@hrms.local",
+    name: "Maya Rao",
+    password: seedEmployeePassword,
+    role: employeeRole,
+    createdRoles
+  });
 
   const createdDepartments = await Promise.all(
     departments.map((department) =>
@@ -288,6 +346,13 @@ async function main() {
   const hrDirector = createdDesignations.find(
     (designation) => designation.title === "HR Director"
   );
+  const hrManager = createdDesignations.find(
+    (designation) => designation.title === "HR Manager"
+  );
+  const engineering = createdDepartments.find((department) => department.name === "Engineering");
+  const softwareEngineer = createdDesignations.find(
+    (designation) => designation.title === "Software Engineer"
+  );
 
   const employee = await prisma.employee.upsert({
     where: {
@@ -314,6 +379,66 @@ async function main() {
       designationId: hrDirector?.id ?? null,
       status: "ACTIVE",
       location: "Head Office"
+    }
+  });
+
+  const hrEmployee = await prisma.employee.upsert({
+    where: {
+      employeeCode: "EMP-0002"
+    },
+    update: {
+      userId: hrUser.id,
+      firstName: "Avery",
+      lastName: "Stone",
+      workEmail: hrUser.email,
+      departmentId: peopleOperations?.id ?? null,
+      designationId: hrManager?.id ?? null,
+      managerId: employee.id,
+      status: "ACTIVE",
+      location: "Head Office"
+    },
+    create: {
+      employeeCode: "EMP-0002",
+      userId: hrUser.id,
+      firstName: "Avery",
+      lastName: "Stone",
+      workEmail: hrUser.email,
+      dateOfJoining: new Date("2026-05-19T00:00:00.000Z"),
+      departmentId: peopleOperations?.id ?? null,
+      designationId: hrManager?.id ?? null,
+      managerId: employee.id,
+      status: "ACTIVE",
+      location: "Head Office"
+    }
+  });
+
+  const selfServiceEmployee = await prisma.employee.upsert({
+    where: {
+      employeeCode: "EMP-0003"
+    },
+    update: {
+      userId: selfServiceUser.id,
+      firstName: "Maya",
+      lastName: "Rao",
+      workEmail: selfServiceUser.email,
+      departmentId: engineering?.id ?? null,
+      designationId: softwareEngineer?.id ?? null,
+      managerId: hrEmployee.id,
+      status: "ACTIVE",
+      location: "Remote"
+    },
+    create: {
+      employeeCode: "EMP-0003",
+      userId: selfServiceUser.id,
+      firstName: "Maya",
+      lastName: "Rao",
+      workEmail: selfServiceUser.email,
+      dateOfJoining: new Date("2026-05-20T00:00:00.000Z"),
+      departmentId: engineering?.id ?? null,
+      designationId: softwareEngineer?.id ?? null,
+      managerId: hrEmployee.id,
+      status: "ACTIVE",
+      location: "Remote"
     }
   });
 
@@ -349,6 +474,48 @@ async function main() {
       baseSalary: 120000,
       allowances: 15000,
       deductions: 5000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    }
+  });
+
+  await prisma.salary.upsert({
+    where: {
+      employeeId: hrEmployee.id
+    },
+    update: {
+      baseSalary: 90000,
+      allowances: 10000,
+      deductions: 3500,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    },
+    create: {
+      employeeId: hrEmployee.id,
+      baseSalary: 90000,
+      allowances: 10000,
+      deductions: 3500,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    }
+  });
+
+  await prisma.salary.upsert({
+    where: {
+      employeeId: selfServiceEmployee.id
+    },
+    update: {
+      baseSalary: 70000,
+      allowances: 8000,
+      deductions: 2500,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    },
+    create: {
+      employeeId: selfServiceEmployee.id,
+      baseSalary: 70000,
+      allowances: 8000,
+      deductions: 2500,
       effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
       isActive: true
     }
@@ -406,24 +573,26 @@ async function main() {
   );
 
   await Promise.all(
-    createdLeaveTypes.map((leaveType) =>
-      prisma.leaveBalance.upsert({
-        where: {
-          employeeId_leaveTypeId_year: {
-            employeeId: employee.id,
+    [employee, hrEmployee, selfServiceEmployee].flatMap((seedEmployee) =>
+      createdLeaveTypes.map((leaveType) =>
+        prisma.leaveBalance.upsert({
+          where: {
+            employeeId_leaveTypeId_year: {
+              employeeId: seedEmployee.id,
+              leaveTypeId: leaveType.id,
+              year: 2026
+            }
+          },
+          update: {},
+          create: {
+            employeeId: seedEmployee.id,
             leaveTypeId: leaveType.id,
-            year: 2026
+            year: 2026,
+            openingBalance: leaveType.defaultAnnualAllowance,
+            available: leaveType.defaultAnnualAllowance
           }
-        },
-        update: {},
-        create: {
-          employeeId: employee.id,
-          leaveTypeId: leaveType.id,
-          year: 2026,
-          openingBalance: leaveType.defaultAnnualAllowance,
-          available: leaveType.defaultAnnualAllowance
-        }
-      })
+        })
+      )
     )
   );
 
@@ -448,10 +617,48 @@ async function main() {
     }
   });
 
-  const engineering = createdDepartments.find((department) => department.name === "Engineering");
-  const softwareEngineer = createdDesignations.find(
-    (designation) => designation.title === "Software Engineer"
-  );
+  await prisma.notification.upsert({
+    where: {
+      id: "seed-hr-workspace-ready"
+    },
+    update: {
+      userId: hrUser.id,
+      title: "HR workspace ready",
+      message: "Employee management, leave approvals, payroll, recruitment, and performance tools are enabled.",
+      category: "SYSTEM",
+      isRead: false
+    },
+    create: {
+      id: "seed-hr-workspace-ready",
+      userId: hrUser.id,
+      title: "HR workspace ready",
+      message: "Employee management, leave approvals, payroll, recruitment, and performance tools are enabled.",
+      category: "SYSTEM",
+      isRead: false
+    }
+  });
+
+  await prisma.notification.upsert({
+    where: {
+      id: "seed-employee-self-service-ready"
+    },
+    update: {
+      userId: selfServiceUser.id,
+      title: "Employee self-service ready",
+      message: "Attendance, leave requests, payslips, announcements, and performance pages are enabled.",
+      category: "SYSTEM",
+      isRead: false
+    },
+    create: {
+      id: "seed-employee-self-service-ready",
+      userId: selfServiceUser.id,
+      title: "Employee self-service ready",
+      message: "Attendance, leave requests, payslips, announcements, and performance pages are enabled.",
+      category: "SYSTEM",
+      isRead: false
+    }
+  });
+
   const job = await prisma.job.upsert({
     where: {
       id: "phase-8-software-engineer-job"

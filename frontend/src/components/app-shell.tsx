@@ -26,6 +26,7 @@ import {
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -267,6 +268,7 @@ const navSectionOrder = [
 export function AppShell({ user, token, children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const shouldReduceMotion = useReducedMotion();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const primaryRole = user.roles[0];
@@ -373,15 +375,32 @@ export function AppShell({ user, token, children }: AppShellProps) {
         </div>
       </aside>
 
-      {isMobileNavOpen ? (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button
+      <AnimatePresence>
+        {isMobileNavOpen ? (
+          <motion.div
+            className="fixed inset-0 z-40 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+          <motion.button
             className="absolute inset-0 bg-ink/30"
             type="button"
             onClick={() => setIsMobileNavOpen(false)}
             aria-label="Close navigation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
           />
-          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
+          <motion.aside
+            className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft"
+            initial={{ x: shouldReduceMotion ? 0 : -320 }}
+            animate={{ x: 0 }}
+            exit={{ x: shouldReduceMotion ? 0 : -320 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div className="flex h-16 items-center justify-between gap-3 border-b border-slate-200 px-5">
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-white">
@@ -402,9 +421,10 @@ export function AppShell({ user, token, children }: AppShellProps) {
               </button>
             </div>
             <nav className="space-y-5 overflow-y-auto p-3">{renderNavSections()}</nav>
-          </aside>
-        </div>
-      ) : null}
+          </motion.aside>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <section className="lg:pl-[252px]">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f4f6f8]/92 px-3 py-3 backdrop-blur sm:px-5">
@@ -447,7 +467,15 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl px-3 pb-6 pt-3 sm:px-5">{children}</div>
+        <motion.div
+          key={pathname}
+          className="mx-auto max-w-7xl px-3 pb-6 pt-3 sm:px-5"
+          initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          {children}
+        </motion.div>
       </section>
     </main>
   );

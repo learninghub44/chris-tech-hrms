@@ -155,14 +155,25 @@ HRMS/
 `-- README.md
 ```
 
-## Local Demo Account
+## Local Demo Accounts
 
-After running the seed command, the local demo account is:
+After running the seed command, the local demo accounts are:
 
 ```text
+Super Admin
 Email: admin@hrms.local
 Password: Admin@12345
+
+HR Admin
+Email: hr@hrms.local
+Password: Hr@12345
+
+Employee
+Email: employee@hrms.local
+Password: Employee@12345
 ```
+
+The HR account can access employee management, attendance management, leave approvals, payroll, reports, recruitment, announcements, and performance management. The employee account is limited to self-service features such as dashboard, profile, attendance, leave requests, payslips, announcements, notifications, and performance views.
 
 This is for local development only. Change seeded credentials and secrets before any production deployment.
 
