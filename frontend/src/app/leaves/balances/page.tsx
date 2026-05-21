@@ -1,11 +1,12 @@
 "use client";
 
 import { ClipboardList } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
-import { listLeaveBalances } from "@/lib/api";
+import { getPaginationMeta, listLeaveBalances } from "@/lib/api";
 import { getEmployeeName } from "@/lib/employee-format";
 import type { AuthUser } from "@/types";
 
@@ -14,16 +15,28 @@ type LeaveBalancesContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function LeaveBalancesContent({ user, token }: LeaveBalancesContentProps) {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [year]);
+
   const balancesQuery = useQuery({
-    queryKey: ["leave-balances", token, year],
-    queryFn: () => listLeaveBalances(token, { year }),
+    queryKey: ["leave-balances", token, year, page],
+    queryFn: () => listLeaveBalances(token, { year, page, pageSize }),
     retry: false
   });
   const leaveBalances = balancesQuery.data?.success
     ? balancesQuery.data.data.leaveBalances
     : [];
+  const pagination = useMemo(
+    () => (balancesQuery.data ? getPaginationMeta(balancesQuery.data) : null),
+    [balancesQuery.data]
+  );
 
   return (
     <AppShell user={user} token={token}>
@@ -84,6 +97,11 @@ function LeaveBalancesContent({ user, token }: LeaveBalancesContentProps) {
               </tbody>
             </table>
           </div>
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={balancesQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

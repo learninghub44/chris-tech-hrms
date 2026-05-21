@@ -1,12 +1,14 @@
 "use client";
 
 import { ClipboardList } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   getAttendanceReport,
+  getPaginationMeta,
   listDepartments,
   listEmployees
 } from "@/lib/api";
@@ -24,28 +26,47 @@ type AttendanceReportContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function AttendanceReportContent({ user, token }: AttendanceReportContentProps) {
   const [dateFrom, setDateFrom] = useState(getMonthStartInputValue());
   const [dateTo, setDateTo] = useState(getTodayInputValue());
   const [employeeId, setEmployeeId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [status, setStatus] = useState<AttendanceStatus | "">("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateFrom, dateTo, employeeId, departmentId, status]);
+
   const reportQuery = useQuery({
-    queryKey: ["attendance-report", token, dateFrom, dateTo, employeeId, departmentId, status],
+    queryKey: [
+      "attendance-report",
+      token,
+      dateFrom,
+      dateTo,
+      employeeId,
+      departmentId,
+      status,
+      page
+    ],
     queryFn: () =>
       getAttendanceReport(token, {
         dateFrom,
         dateTo,
         employeeId,
         departmentId,
-        status
+        status,
+        page,
+        pageSize
       }),
     retry: false
   });
   const canManageEmployees = user.permissions.includes("employees:manage");
   const employeesQuery = useQuery({
     queryKey: ["employees", token, "attendance-report"],
-    queryFn: () => listEmployees(token, {}),
+    queryFn: () => listEmployees(token, { pageSize: 100 }),
     retry: false,
     enabled: canManageEmployees
   });
@@ -63,6 +84,10 @@ function AttendanceReportContent({ user, token }: AttendanceReportContentProps) 
   const departments = departmentsQuery.data?.success
     ? departmentsQuery.data.data.departments
     : [];
+  const pagination = useMemo(
+    () => (reportQuery.data ? getPaginationMeta(reportQuery.data) : null),
+    [reportQuery.data]
+  );
 
   return (
     <AppShell user={user} token={token}>
@@ -178,6 +203,11 @@ function AttendanceReportContent({ user, token }: AttendanceReportContentProps) 
               No attendance records found for the selected filters.
             </p>
           ) : null}
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={reportQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

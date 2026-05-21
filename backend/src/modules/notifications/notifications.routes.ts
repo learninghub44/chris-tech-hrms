@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const notificationsRouter = Router();
 
@@ -93,17 +98,32 @@ notificationsRouter.get(
   requirePermissions(["notifications:read"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId: auth.id
-      },
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
-    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
+    const where: Prisma.NotificationWhereInput = {
+      userId: auth.id
+    };
+    const [total, unreadCount, notifications] = await prisma.$transaction([
+      prisma.notification.count({
+        where
+      }),
+      prisma.notification.count({
+        where: {
+          ...where,
+          isRead: false
+        }
+      }),
+      prisma.notification.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ notifications, unreadCount }, { total: notifications.length }));
+    res.status(200).json(ok({ notifications, unreadCount }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -143,31 +163,41 @@ notificationsRouter.get(
   requirePermissions(["announcements:read"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
     const canManage = auth.permissions.includes("announcements:manage");
-    const announcements = await prisma.announcement.findMany({
-      where: canManage
-        ? {}
-        : {
-            isPublished: true,
-            audience: {
-              in: getAudienceValues(auth.roles)
-            }
-          },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
+    const where: Prisma.AnnouncementWhereInput = canManage
+      ? {}
+      : {
+          isPublished: true,
+          audience: {
+            in: getAudienceValues(auth.roles)
           }
-        }
-      },
-      orderBy: {
-        publishedAt: "desc"
-      }
-    });
+        };
+    const [total, announcements] = await prisma.$transaction([
+      prisma.announcement.count({
+        where
+      }),
+      prisma.announcement.findMany({
+        where,
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        },
+        orderBy: {
+          publishedAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ announcements }, { total: announcements.length }));
+    res.status(200).json(ok({ announcements }, getPaginationMeta({ total, pagination })));
   })
 );
 

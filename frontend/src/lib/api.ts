@@ -54,7 +54,7 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api")
 type ApiSuccess<T> = {
   success: true;
   data: T;
-  meta?: Record<string, unknown>;
+  meta?: PaginationMeta & Record<string, unknown>;
 };
 
 type ApiFailure = {
@@ -72,7 +72,47 @@ type RequestOptions = {
   token?: string;
 };
 
+export type PaginationInput = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type PaginationMeta = {
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+};
+
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+function appendPagination(params: URLSearchParams, input: PaginationInput | undefined): void {
+  if (!input) {
+    return;
+  }
+
+  if (input.page) {
+    params.set("page", String(input.page));
+  }
+
+  if (input.pageSize) {
+    params.set("pageSize", String(input.pageSize));
+  }
+}
+
+export function getPaginationMeta(response: ApiResponse<unknown>): PaginationMeta | null {
+  if (!response.success) {
+    return null;
+  }
+
+  return response.meta ?? null;
+}
 
 function failResponse(
   code: string,
@@ -213,7 +253,7 @@ export type EmployeeFilters = {
   status?: EmploymentStatus | "";
   departmentId?: string;
   designationId?: string;
-};
+} & PaginationInput;
 
 export type EmployeeDocumentInput = {
   documentType: string;
@@ -230,7 +270,7 @@ export type AttendanceFilters = {
   employeeId?: string;
   departmentId?: string;
   status?: AttendanceStatus | "";
-};
+} & PaginationInput;
 
 export type ShiftInput = {
   name: string;
@@ -263,7 +303,7 @@ export type LeaveFilters = {
   departmentId?: string;
   dateFrom?: string;
   dateTo?: string;
-};
+} & PaginationInput;
 
 export type LeaveTypeInput = {
   name: string;
@@ -503,6 +543,7 @@ export function listEmployees(token: string, filters: EmployeeFilters) {
     params.set("designationId", filters.designationId);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ employees: Employee[] }>(`/employees${query ? `?${query}` : ""}`, {
@@ -617,7 +658,7 @@ export function clockOut(token: string, input: { notes: string | null }) {
 
 export function getMyAttendance(
   token: string,
-  input: { dateFrom?: string; dateTo?: string }
+  input: { dateFrom?: string; dateTo?: string } & PaginationInput
 ) {
   const params = new URLSearchParams();
 
@@ -629,6 +670,7 @@ export function getMyAttendance(
     params.set("dateTo", input.dateTo);
   }
 
+  appendPagination(params, input);
   const query = params.toString();
 
   return request<{
@@ -663,6 +705,7 @@ export function getAttendanceReport(token: string, filters: AttendanceFilters) {
     params.set("status", filters.status);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ attendance: AttendanceRecord[] }>(
@@ -727,8 +770,13 @@ export function applyLeave(token: string, input: LeaveInput) {
   });
 }
 
-export function listMyLeaves(token: string) {
-  return request<{ leaveRequests: LeaveRequest[] }>("/leaves/me", {
+export function listMyLeaves(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ leaveRequests: LeaveRequest[] }>(`/leaves/me${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -757,6 +805,7 @@ export function listLeaveRequests(token: string, filters: LeaveFilters) {
     params.set("dateTo", filters.dateTo);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ leaveRequests: LeaveRequest[] }>(
@@ -794,7 +843,7 @@ export function rejectLeave(
 
 export function listLeaveBalances(
   token: string,
-  input: { year?: number; employeeId?: string }
+  input: { year?: number; employeeId?: string } & PaginationInput
 ) {
   const params = new URLSearchParams();
 
@@ -806,6 +855,7 @@ export function listLeaveBalances(
     params.set("employeeId", input.employeeId);
   }
 
+  appendPagination(params, input);
   const query = params.toString();
 
   return request<{ leaveBalances: LeaveBalance[] }>(
@@ -817,8 +867,13 @@ export function listLeaveBalances(
   );
 }
 
-export function listSalaries(token: string) {
-  return request<{ salaries: Salary[] }>("/salaries", {
+export function listSalaries(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ salaries: Salary[] }>(`/salaries${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -851,13 +906,14 @@ export function generatePayroll(
   });
 }
 
-export function listPayrolls(token: string, input: { year?: number }) {
+export function listPayrolls(token: string, input: { year?: number } & PaginationInput) {
   const params = new URLSearchParams();
 
   if (input.year) {
     params.set("year", String(input.year));
   }
 
+  appendPagination(params, input);
   const query = params.toString();
 
   return request<{ payrolls: Payroll[] }>(`/payroll${query ? `?${query}` : ""}`, {
@@ -873,8 +929,13 @@ export function getPayroll(token: string, id: string) {
   });
 }
 
-export function listMyPayslips(token: string) {
-  return request<{ payslips: Payslip[] }>("/payroll/me", {
+export function listMyPayslips(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ payslips: Payslip[] }>(`/payroll/me${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -1016,9 +1077,14 @@ export function getPayrollReportData(token: string, input: { year?: number }) {
   });
 }
 
-export function listNotifications(token: string) {
+export function listNotifications(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
   return request<{ notifications: NotificationRecord[]; unreadCount: number }>(
-    "/notifications",
+    `/notifications${query ? `?${query}` : ""}`,
     {
       method: "GET",
       token
@@ -1033,8 +1099,13 @@ export function markNotificationRead(token: string, id: string) {
   });
 }
 
-export function listAnnouncements(token: string) {
-  return request<{ announcements: Announcement[] }>("/announcements", {
+export function listAnnouncements(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ announcements: Announcement[] }>(`/announcements${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -1048,7 +1119,10 @@ export function createAnnouncement(token: string, input: AnnouncementInput) {
   });
 }
 
-export function listJobs(token: string, filters: { status?: JobStatus | ""; departmentId?: string }) {
+export function listJobs(
+  token: string,
+  filters: { status?: JobStatus | ""; departmentId?: string } & PaginationInput
+) {
   const params = new URLSearchParams();
 
   if (filters.status) {
@@ -1059,6 +1133,7 @@ export function listJobs(token: string, filters: { status?: JobStatus | ""; depa
     params.set("departmentId", filters.departmentId);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ jobs: Job[] }>(`/jobs${query ? `?${query}` : ""}`, {
@@ -1082,13 +1157,14 @@ export function getJob(token: string, id: string) {
   });
 }
 
-export function listCandidates(token: string, input: { search?: string }) {
+export function listCandidates(token: string, input: { search?: string } & PaginationInput) {
   const params = new URLSearchParams();
 
   if (input.search) {
     params.set("search", input.search);
   }
 
+  appendPagination(params, input);
   const query = params.toString();
 
   return request<{ candidates: Candidate[] }>(`/candidates${query ? `?${query}` : ""}`, {
@@ -1112,8 +1188,13 @@ export function getCandidate(token: string, id: string) {
   });
 }
 
-export function listApplications(token: string) {
-  return request<{ applications: JobApplication[] }>("/applications", {
+export function listApplications(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ applications: JobApplication[] }>(`/applications${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -1139,8 +1220,13 @@ export function updateApplicationStatus(
   });
 }
 
-export function listInterviews(token: string) {
-  return request<{ interviews: Interview[] }>("/interviews", {
+export function listInterviews(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ interviews: Interview[] }>(`/interviews${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -1166,8 +1252,13 @@ export function updateInterviewStatus(
   });
 }
 
-export function listOffers(token: string) {
-  return request<{ offers: Offer[] }>("/offers", {
+export function listOffers(token: string, pagination?: PaginationInput) {
+  const params = new URLSearchParams();
+
+  appendPagination(params, pagination);
+  const query = params.toString();
+
+  return request<{ offers: Offer[] }>(`/offers${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });
@@ -1193,13 +1284,17 @@ export function updateOfferStatus(
   });
 }
 
-export function listPerformanceEmployees(token: string, input: { search?: string }) {
+export function listPerformanceEmployees(
+  token: string,
+  input: { search?: string } & PaginationInput
+) {
   const params = new URLSearchParams();
 
   if (input.search) {
     params.set("search", input.search);
   }
 
+  appendPagination(params, input);
   const query = params.toString();
 
   return request<{ employees: PerformanceEmployee[] }>(
@@ -1213,7 +1308,7 @@ export function listPerformanceEmployees(token: string, input: { search?: string
 
 export function listGoals(
   token: string,
-  filters: { employeeId?: string; status?: GoalStatus | "" }
+  filters: { employeeId?: string; status?: GoalStatus | "" } & PaginationInput
 ) {
   const params = new URLSearchParams();
 
@@ -1225,6 +1320,7 @@ export function listGoals(
     params.set("status", filters.status);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ goals: Goal[] }>(`/goals${query ? `?${query}` : ""}`, {
@@ -1255,7 +1351,7 @@ export function listPerformanceReviews(
     employeeId?: string;
     status?: PerformanceReviewStatus | "";
     cycle?: string;
-  }
+  } & PaginationInput
 ) {
   const params = new URLSearchParams();
 
@@ -1271,6 +1367,7 @@ export function listPerformanceReviews(
     params.set("cycle", filters.cycle);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ reviews: PerformanceReview[] }>(
@@ -1304,7 +1401,7 @@ export function updatePerformanceReviewStatus(
 
 export function listFeedbackRecords(
   token: string,
-  filters: { employeeId?: string; category?: FeedbackCategory | "" }
+  filters: { employeeId?: string; category?: FeedbackCategory | "" } & PaginationInput
 ) {
   const params = new URLSearchParams();
 
@@ -1316,6 +1413,7 @@ export function listFeedbackRecords(
     params.set("category", filters.category);
   }
 
+  appendPagination(params, filters);
   const query = params.toString();
 
   return request<{ feedback: FeedbackRecord[] }>(

@@ -1,10 +1,12 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
-import { listMyLeaves } from "@/lib/api";
+import { getPaginationMeta, listMyLeaves } from "@/lib/api";
 import { formatDate } from "@/lib/employee-format";
 import { leaveDayTypeLabels, leaveStatusLabels } from "@/lib/time-format";
 import type { AuthUser } from "@/types";
@@ -14,15 +16,22 @@ type MyLeavesContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function MyLeavesContent({ user, token }: MyLeavesContentProps) {
+  const [page, setPage] = useState(1);
   const leavesQuery = useQuery({
-    queryKey: ["my-leaves", token],
-    queryFn: () => listMyLeaves(token),
+    queryKey: ["my-leaves", token, page],
+    queryFn: () => listMyLeaves(token, { page, pageSize }),
     retry: false
   });
   const leaveRequests = leavesQuery.data?.success
     ? leavesQuery.data.data.leaveRequests
     : [];
+  const pagination = useMemo(
+    () => (leavesQuery.data ? getPaginationMeta(leavesQuery.data) : null),
+    [leavesQuery.data]
+  );
 
   return (
     <AppShell user={user} token={token}>
@@ -80,6 +89,11 @@ function MyLeavesContent({ user, token }: MyLeavesContentProps) {
               No leave requests found.
             </p>
           ) : null}
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={leavesQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

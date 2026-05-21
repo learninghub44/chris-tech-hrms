@@ -268,6 +268,9 @@ model Employee {
   @@index([departmentId])
   @@index([designationId])
   @@index([managerId])
+  @@index([status, createdAt])
+  @@index([departmentId, status])
+  @@index([dateOfJoining])
   @@map("employees")
 }
 
@@ -353,6 +356,7 @@ model Attendance {
   @@index([employeeId])
   @@index([shiftId])
   @@index([date])
+  @@index([date, status])
   @@map("attendance")
 }
 
@@ -396,6 +400,9 @@ model LeaveRequest {
   @@index([reviewerId])
   @@index([startDate])
   @@index([status])
+  @@index([employeeId, createdAt])
+  @@index([status, createdAt])
+  @@index([startDate, endDate])
   @@map("leave_requests")
 }
 
@@ -417,6 +424,8 @@ model LeaveBalance {
   @@unique([employeeId, leaveTypeId, year])
   @@index([employeeId])
   @@index([leaveTypeId])
+  @@index([year])
+  @@index([employeeId, year])
   @@map("leave_balances")
 }
 
@@ -433,6 +442,8 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+  @@index([userId, createdAt])
+  @@index([userId, isRead])
   @@map("notifications")
 }
 
@@ -450,6 +461,7 @@ model Salary {
   payrollItems  PayrollItem[]
 
   @@index([employeeId])
+  @@index([isActive])
   @@map("salaries")
 }
 
@@ -537,6 +549,7 @@ model Announcement {
   @@index([audience])
   @@index([isPublished])
   @@index([createdById])
+  @@index([isPublished, audience, publishedAt])
   @@map("announcements")
 }
 
@@ -562,6 +575,7 @@ model Job {
   @@index([designationId])
   @@index([createdById])
   @@index([status])
+  @@index([status, createdAt])
   @@map("jobs")
 }
 
@@ -582,6 +596,7 @@ model Candidate {
   updatedAt      DateTime         @updatedAt
 
   @@index([email])
+  @@index([createdAt])
   @@map("candidates")
 }
 
@@ -603,6 +618,8 @@ model JobApplication {
   @@index([jobId])
   @@index([candidateId])
   @@index([status])
+  @@index([appliedAt])
+  @@index([status, appliedAt])
   @@map("applications")
 }
 
@@ -627,6 +644,7 @@ model Interview {
   @@index([interviewerId])
   @@index([scheduledAt])
   @@index([status])
+  @@index([status, scheduledAt])
   @@map("interviews")
 }
 
@@ -648,6 +666,7 @@ model Offer {
   @@index([candidateId])
   @@index([jobId])
   @@index([status])
+  @@index([status, createdAt])
   @@map("offers")
 }
 
@@ -670,6 +689,7 @@ model Goal {
   @@index([createdById])
   @@index([status])
   @@index([dueDate])
+  @@index([employeeId, status])
   @@map("goals")
 }
 
@@ -695,6 +715,8 @@ model PerformanceReview {
   @@index([reviewerId])
   @@index([status])
   @@index([cycle])
+  @@index([employeeId, cycle])
+  @@index([status, createdAt])
   @@map("performance_reviews")
 }
 
@@ -713,5 +735,7 @@ model Feedback {
   @@index([employeeId])
   @@index([authorId])
   @@index([category])
+  @@index([employeeId, createdAt])
+  @@index([category, createdAt])
   @@map("feedback")
 }

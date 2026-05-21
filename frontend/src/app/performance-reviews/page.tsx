@@ -1,15 +1,18 @@
 "use client";
 
 import { Plus, Star } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   createPerformanceReview,
   getApiErrorMessage,
+  getPaginationMeta,
   listPerformanceEmployees,
   listPerformanceReviews,
   updatePerformanceReviewStatus
@@ -44,6 +47,7 @@ const reviewStatuses: PerformanceReviewStatus[] = [
   "SUBMITTED",
   "ACKNOWLEDGED"
 ];
+const pageSize = 25;
 
 function emptyToNull(value: string): string | null {
   const trimmedValue = value.trim();
@@ -56,19 +60,28 @@ function ReviewsContent({ user, token }: ReviewsContentProps) {
   const [employeeId, setEmployeeId] = useState("");
   const [status, setStatus] = useState<PerformanceReviewStatus | "">("");
   const [cycle, setCycle] = useState("");
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+  const debouncedCycle = useDebouncedValue(cycle.trim(), 300);
+
+  useEffect(() => {
+    setPage(1);
+  }, [employeeId, status, debouncedCycle]);
+
   const employeesQuery = useQuery({
     queryKey: ["performance-employees", token, "reviews"],
-    queryFn: () => listPerformanceEmployees(token, {}),
+    queryFn: () => listPerformanceEmployees(token, { pageSize: 100 }),
     retry: false
   });
   const reviewsQuery = useQuery({
-    queryKey: ["performance-reviews", token, employeeId, status, cycle],
+    queryKey: ["performance-reviews", token, employeeId, status, debouncedCycle, page],
     queryFn: () =>
       listPerformanceReviews(token, {
         employeeId,
         status,
-        cycle: cycle.trim()
+        cycle: debouncedCycle,
+        page,
+        pageSize
       }),
     retry: false
   });
@@ -78,6 +91,10 @@ function ReviewsContent({ user, token }: ReviewsContentProps) {
   );
   const reviews = useMemo(
     () => (reviewsQuery.data?.success ? reviewsQuery.data.data.reviews : []),
+    [reviewsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (reviewsQuery.data ? getPaginationMeta(reviewsQuery.data) : null),
     [reviewsQuery.data]
   );
   const {
@@ -376,6 +393,11 @@ function ReviewsContent({ user, token }: ReviewsContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={reviewsQuery.isFetching}
+                />
               </div>
             )}
           </div>

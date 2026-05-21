@@ -6,11 +6,13 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
 import {
   createInterview,
   getApiErrorMessage,
+  getPaginationMeta,
   listApplications,
   listEmployees,
   listInterviews,
@@ -44,6 +46,7 @@ type InterviewFormValues = {
 
 const interviewModes: InterviewMode[] = ["PHONE", "VIDEO", "IN_PERSON"];
 const interviewStatuses: InterviewStatus[] = ["SCHEDULED", "COMPLETED", "CANCELLED"];
+const pageSize = 25;
 
 function emptyToNull(value: string): string | null {
   const trimmedValue = value.trim();
@@ -64,19 +67,20 @@ function getDefaultScheduledAt(): string {
 function InterviewsContent({ user, token }: InterviewsContentProps) {
   const canManageRecruitment = hasEveryPermission(user, ["recruitment:manage"]);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const interviewsQuery = useQuery({
-    queryKey: ["interviews", token],
-    queryFn: () => listInterviews(token),
+    queryKey: ["interviews", token, page],
+    queryFn: () => listInterviews(token, { page, pageSize }),
     retry: false
   });
   const applicationsQuery = useQuery({
     queryKey: ["applications", token, "interview-form"],
-    queryFn: () => listApplications(token),
+    queryFn: () => listApplications(token, { pageSize: 100 }),
     retry: false
   });
   const employeesQuery = useQuery({
     queryKey: ["employees", token, "interviewers"],
-    queryFn: () => listEmployees(token, { status: "ACTIVE" }),
+    queryFn: () => listEmployees(token, { status: "ACTIVE", pageSize: 100 }),
     retry: false
   });
   const interviews = useMemo(
@@ -97,6 +101,10 @@ function InterviewsContent({ user, token }: InterviewsContentProps) {
   const employees = useMemo(
     () => (employeesQuery.data?.success ? employeesQuery.data.data.employees : []),
     [employeesQuery.data]
+  );
+  const pagination = useMemo(
+    () => (interviewsQuery.data ? getPaginationMeta(interviewsQuery.data) : null),
+    [interviewsQuery.data]
   );
   const {
     formState: { isSubmitting },
@@ -372,6 +380,11 @@ function InterviewsContent({ user, token }: InterviewsContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={interviewsQuery.isFetching}
+                />
               </div>
             )}
           </div>

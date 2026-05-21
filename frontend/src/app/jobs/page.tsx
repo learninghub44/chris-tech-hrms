@@ -2,15 +2,17 @@
 
 import { BriefcaseBusiness, Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
 import {
   createJob,
   getApiErrorMessage,
+  getPaginationMeta,
   listDepartments,
   listDesignations,
   listJobs
@@ -23,6 +25,8 @@ type JobsContentProps = {
   user: AuthUser;
   token: string;
 };
+
+const pageSize = 25;
 
 type JobFormValues = {
   title: string;
@@ -43,10 +47,16 @@ function emptyToNull(value: string): string | null {
 function JobsContent({ user, token }: JobsContentProps) {
   const canManageRecruitment = hasEveryPermission(user, ["recruitment:manage"]);
   const [status, setStatus] = useState<JobStatus | "">("");
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [status]);
+
   const jobsQuery = useQuery({
-    queryKey: ["jobs", token, status],
-    queryFn: () => listJobs(token, { status }),
+    queryKey: ["jobs", token, status, page],
+    queryFn: () => listJobs(token, { status, page, pageSize }),
     retry: false
   });
   const departmentsQuery = useQuery({
@@ -61,6 +71,10 @@ function JobsContent({ user, token }: JobsContentProps) {
   });
   const jobs = useMemo(
     () => (jobsQuery.data?.success ? jobsQuery.data.data.jobs : []),
+    [jobsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (jobsQuery.data ? getPaginationMeta(jobsQuery.data) : null),
     [jobsQuery.data]
   );
   const departments = useMemo(
@@ -289,6 +303,11 @@ function JobsContent({ user, token }: JobsContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={jobsQuery.isFetching}
+                />
               </div>
             )}
           </div>

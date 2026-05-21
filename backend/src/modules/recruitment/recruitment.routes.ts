@@ -14,6 +14,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const recruitmentRouter = Router();
 
@@ -72,6 +77,23 @@ const jobInclude = {
   }
 } satisfies Prisma.JobInclude;
 
+const jobListInclude = {
+  department: true,
+  designation: true,
+  createdBy: {
+    select: {
+      id: true,
+      name: true,
+      email: true
+    }
+  },
+  applications: {
+    select: {
+      id: true
+    }
+  }
+} satisfies Prisma.JobInclude;
+
 const candidateInclude = {
   applications: {
     include: {
@@ -123,6 +145,14 @@ const candidateInclude = {
     },
     orderBy: {
       createdAt: "desc" as const
+    }
+  }
+} satisfies Prisma.CandidateInclude;
+
+const candidateListInclude = {
+  applications: {
+    select: {
+      id: true
     }
   }
 } satisfies Prisma.CandidateInclude;
@@ -190,7 +220,7 @@ const jobBodySchema = z.object({
 const jobQuerySchema = z.object({
   status: z.nativeEnum(JobStatus).optional(),
   departmentId: uuidSchema.optional()
-});
+}).merge(paginationQuerySchema);
 
 const candidateBodySchema = z.object({
   firstName: z.string().trim().min(2).max(80),
@@ -207,7 +237,7 @@ const candidateBodySchema = z.object({
 
 const candidateQuerySchema = z.object({
   search: z.string().trim().max(120).optional()
-});
+}).merge(paginationQuerySchema);
 
 const applicationBodySchema = z.object({
   jobId: uuidSchema,
@@ -310,18 +340,27 @@ recruitmentRouter.get(
   requireAnyPermission(["recruitment:read", "recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(jobQuerySchema, req.query);
-    const jobs = await prisma.job.findMany({
-      where: {
-        ...(query.status ? { status: query.status } : {}),
-        ...(query.departmentId ? { departmentId: query.departmentId } : {})
-      },
-      include: jobInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+    const pagination = getPagination(query);
+    const where: Prisma.JobWhereInput = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.departmentId ? { departmentId: query.departmentId } : {})
+    };
+    const [total, jobs] = await prisma.$transaction([
+      prisma.job.count({
+        where
+      }),
+      prisma.job.findMany({
+        where,
+        include: jobListInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ jobs }, { total: jobs.length }));
+    res.status(200).json(ok({ jobs }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -378,38 +417,47 @@ recruitmentRouter.get(
   requireAnyPermission(["recruitment:read", "recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(candidateQuerySchema, req.query);
-    const candidates = await prisma.candidate.findMany({
-      where: query.search
-        ? {
-            OR: [
-              {
-                firstName: {
-                  contains: query.search,
-                  mode: "insensitive"
-                }
-              },
-              {
-                lastName: {
-                  contains: query.search,
-                  mode: "insensitive"
-                }
-              },
-              {
-                email: {
-                  contains: query.search,
-                  mode: "insensitive"
-                }
+    const pagination = getPagination(query);
+    const where: Prisma.CandidateWhereInput = query.search
+      ? {
+          OR: [
+            {
+              firstName: {
+                contains: query.search,
+                mode: "insensitive"
               }
-            ]
-          }
-        : {},
-      include: candidateInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+            },
+            {
+              lastName: {
+                contains: query.search,
+                mode: "insensitive"
+              }
+            },
+            {
+              email: {
+                contains: query.search,
+                mode: "insensitive"
+              }
+            }
+          ]
+        }
+      : {};
+    const [total, candidates] = await prisma.$transaction([
+      prisma.candidate.count({
+        where
+      }),
+      prisma.candidate.findMany({
+        where,
+        include: candidateListInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ candidates }, { total: candidates.length }));
+    res.status(200).json(ok({ candidates }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -483,15 +531,22 @@ recruitmentRouter.get(
 recruitmentRouter.get(
   "/applications",
   requireAnyPermission(["recruitment:read", "recruitment:manage"]),
-  asyncHandler(async (_req, res) => {
-    const applications = await prisma.jobApplication.findMany({
-      include: applicationInclude,
-      orderBy: {
-        appliedAt: "desc"
-      }
-    });
+  asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
+    const [total, applications] = await prisma.$transaction([
+      prisma.jobApplication.count(),
+      prisma.jobApplication.findMany({
+        include: applicationInclude,
+        orderBy: {
+          appliedAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ applications }, { total: applications.length }));
+    res.status(200).json(ok({ applications }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -543,15 +598,22 @@ recruitmentRouter.put(
 recruitmentRouter.get(
   "/interviews",
   requireAnyPermission(["recruitment:read", "recruitment:manage"]),
-  asyncHandler(async (_req, res) => {
-    const interviews = await prisma.interview.findMany({
-      include: interviewInclude,
-      orderBy: {
-        scheduledAt: "asc"
-      }
-    });
+  asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
+    const [total, interviews] = await prisma.$transaction([
+      prisma.interview.count(),
+      prisma.interview.findMany({
+        include: interviewInclude,
+        orderBy: {
+          scheduledAt: "asc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ interviews }, { total: interviews.length }));
+    res.status(200).json(ok({ interviews }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -639,15 +701,22 @@ recruitmentRouter.put(
 recruitmentRouter.get(
   "/offers",
   requireAnyPermission(["recruitment:read", "recruitment:manage"]),
-  asyncHandler(async (_req, res) => {
-    const offers = await prisma.offer.findMany({
-      include: offerInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+  asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
+    const [total, offers] = await prisma.$transaction([
+      prisma.offer.count(),
+      prisma.offer.findMany({
+        include: offerInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ offers }, { total: offers.length }));
+    res.status(200).json(ok({ offers }, getPaginationMeta({ total, pagination })));
   })
 );
 

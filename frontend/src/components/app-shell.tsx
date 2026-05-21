@@ -26,13 +26,17 @@ import {
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import darkModeIcon from "@/assets/dark-mode.png";
 import { logout } from "@/lib/api";
 import { clearAuthSession } from "@/lib/auth";
+import { prefetchNavData } from "@/lib/nav-prefetch";
 import { hasEveryPermission, roleLabels } from "@/lib/permissions";
+import { applyTheme, getPreferredTheme, persistTheme, type ThemeMode } from "@/lib/theme";
 import type { AuthUser } from "@/types";
 
 type AppShellProps = {
@@ -265,12 +269,35 @@ const navSectionOrder = [
   "Manage"
 ];
 
+const navDataPrefetchKeys = new Set<string>();
+
+function getNavDataPrefetchKey(token: string, href: string): string {
+  return `${token}:${href}`;
+}
+
+function prefetchNavTargetData(
+  queryClient: QueryClient,
+  token: string,
+  href: string
+): void {
+  const key = getNavDataPrefetchKey(token, href);
+
+  if (navDataPrefetchKeys.has(key)) {
+    return;
+  }
+
+  navDataPrefetchKeys.add(key);
+  prefetchNavData(queryClient, token, href);
+}
+
 export function AppShell({ user, token, children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const shouldReduceMotion = useReducedMotion();
+  const queryClient = useQueryClient();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ThemeMode>("light");
   const primaryRole = user.roles[0];
   const visibleNavItems = useMemo(
     () => navItems.filter((item) => hasEveryPermission(user, item.permissions)),
@@ -286,6 +313,103 @@ export function AppShell({ user, token, children }: AppShellProps) {
         .filter((section) => section.items.length > 0),
     [visibleNavItems]
   );
+  const visibleNavHrefs = useMemo(
+    () =>
+      visibleNavItems
+        .map((item) => item.href)
+        .filter((href): href is string => Boolean(href)),
+    [visibleNavItems]
+  );
+
+  useEffect(() => {
+    const preferredTheme = getPreferredTheme();
+
+    setTheme(preferredTheme);
+    applyTheme(preferredTheme);
+  }, []);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    function prefetchVisibleRoutes() {
+      visibleNavHrefs.forEach((href) => {
+        router.prefetch(href);
+      });
+    }
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleCallbackId = window.requestIdleCallback(prefetchVisibleRoutes, {
+        timeout: 1500
+      });
+
+      return () => window.cancelIdleCallback(idleCallbackId);
+    }
+
+    const timeoutId = globalThis.setTimeout(prefetchVisibleRoutes, 250);
+
+    return () => globalThis.clearTimeout(timeoutId);
+  }, [router, visibleNavHrefs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const idleCallbackIds: number[] = [];
+    const timeoutIds: number[] = [];
+
+    function prefetchData(href: string) {
+      if (cancelled) {
+        return;
+      }
+
+      prefetchNavTargetData(queryClient, token, href);
+    }
+
+    visibleNavHrefs.forEach((href, index) => {
+      const timeoutId = window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+
+        if (typeof window.requestIdleCallback === "function") {
+          const idleCallbackId = window.requestIdleCallback(
+            () => prefetchData(href),
+            { timeout: 1200 }
+          );
+
+          idleCallbackIds.push(idleCallbackId);
+          return;
+        }
+
+        prefetchData(href);
+      }, 350 + index * 140);
+
+      timeoutIds.push(timeoutId);
+    });
+
+    return () => {
+      cancelled = true;
+      idleCallbackIds.forEach((idleCallbackId) => {
+        window.cancelIdleCallback(idleCallbackId);
+      });
+      timeoutIds.forEach((timeoutId) => {
+        window.clearTimeout(timeoutId);
+      });
+    };
+  }, [queryClient, token, visibleNavHrefs]);
+
+  function toggleTheme() {
+    const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
+
+    setTheme(nextTheme);
+    persistTheme(nextTheme);
+    applyTheme(nextTheme);
+  }
+
+  function prefetchRoute(href: string) {
+    router.prefetch(href);
+    prefetchNavTargetData(queryClient, token, href);
+  }
 
   async function signOut() {
     setIsSigningOut(true);
@@ -293,14 +417,17 @@ export function AppShell({ user, token, children }: AppShellProps) {
       console.error(error);
     });
     clearAuthSession();
+    queryClient.clear();
     router.push("/login");
   }
 
   function renderNavItems(items: NavItem[]) {
+    const activePathname = pendingHref ?? pathname;
+
     return items.map((item) => {
       const Icon = item.icon;
       const active = item.href
-        ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+        ? activePathname === item.href || activePathname.startsWith(`${item.href}/`)
         : false;
       const className = `flex h-9 w-full items-center gap-3 rounded-md border px-3 text-sm transition ${
         active
@@ -308,13 +435,24 @@ export function AppShell({ user, token, children }: AppShellProps) {
           : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white"
       }`;
 
-      if (item.href) {
+      const href = item.href;
+
+      if (href) {
         return (
           <Link
             key={item.label}
             className={className}
-            href={item.href}
-            onClick={() => setIsMobileNavOpen(false)}
+            href={href}
+            prefetch={true}
+            aria-current={active ? "page" : undefined}
+            onFocus={() => prefetchRoute(href)}
+            onPointerDown={() => prefetchRoute(href)}
+            onPointerEnter={() => prefetchRoute(href)}
+            onClick={() => {
+              setPendingHref(href);
+              prefetchRoute(href);
+              setIsMobileNavOpen(false);
+            }}
           >
             <Icon size={18} aria-hidden="true" />
             {item.label}
@@ -363,6 +501,13 @@ export function AppShell({ user, token, children }: AppShellProps) {
           <Link
             href="/profile"
             className="flex items-center gap-3 rounded-md px-2 py-2 transition hover:bg-white"
+            prefetch={true}
+            onFocus={() => prefetchRoute("/profile")}
+            onPointerDown={() => prefetchRoute("/profile")}
+            onPointerEnter={() => prefetchRoute("/profile")}
+            onClick={() => {
+              setPendingHref("/profile");
+            }}
           >
             <div className="grid h-9 w-9 place-items-center rounded-md bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
               <UserCircle size={20} aria-hidden="true" />
@@ -375,32 +520,15 @@ export function AppShell({ user, token, children }: AppShellProps) {
         </div>
       </aside>
 
-      <AnimatePresence>
-        {isMobileNavOpen ? (
-          <motion.div
-            className="fixed inset-0 z-40 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-          >
-          <motion.button
+      {isMobileNavOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
             className="absolute inset-0 bg-ink/30"
             type="button"
             onClick={() => setIsMobileNavOpen(false)}
             aria-label="Close navigation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
           />
-          <motion.aside
-            className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft"
-            initial={{ x: shouldReduceMotion ? 0 : -320 }}
-            animate={{ x: 0 }}
-            exit={{ x: shouldReduceMotion ? 0 : -320 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
             <div className="flex h-16 items-center justify-between gap-3 border-b border-slate-200 px-5">
               <div className="flex items-center gap-3">
                 <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-white">
@@ -421,10 +549,9 @@ export function AppShell({ user, token, children }: AppShellProps) {
               </button>
             </div>
             <nav className="space-y-5 overflow-y-auto p-3">{renderNavSections()}</nav>
-          </motion.aside>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          </aside>
+        </div>
+      ) : null}
 
       <section className="lg:pl-[252px]">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f4f6f8]/92 px-3 py-3 backdrop-blur sm:px-5">
@@ -447,10 +574,32 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-pressed={theme === "dark"}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              <Image
+                src={darkModeIcon}
+                alt=""
+                className="h-[18px] w-[18px] dark:invert"
+                aria-hidden="true"
+              />
+            </button>
             <Link
               href="/notifications"
               className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
               aria-label="Notifications"
+              prefetch={true}
+              onFocus={() => prefetchRoute("/notifications")}
+              onPointerDown={() => prefetchRoute("/notifications")}
+              onPointerEnter={() => prefetchRoute("/notifications")}
+              onClick={() => {
+                setPendingHref("/notifications");
+              }}
             >
               <Bell size={17} aria-hidden="true" />
             </Link>
@@ -467,15 +616,9 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
         </header>
 
-        <motion.div
-          key={pathname}
-          className="mx-auto max-w-7xl px-3 pb-6 pt-3 sm:px-5"
-          initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-        >
+        <div className="mx-auto max-w-7xl px-3 pb-6 pt-3 sm:px-5">
           {children}
-        </motion.div>
+        </div>
       </section>
     </main>
   );

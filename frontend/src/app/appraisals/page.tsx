@@ -1,13 +1,15 @@
 "use client";
 
 import { History, Star } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
 import { StatusCard } from "@/components/status-card";
 import {
+  getPaginationMeta,
   listPerformanceEmployees,
   listPerformanceReviews
 } from "@/lib/api";
@@ -23,20 +25,30 @@ type AppraisalsContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function AppraisalsContent({ user, token }: AppraisalsContentProps) {
   const [employeeId, setEmployeeId] = useState("");
   const [cycle, setCycle] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [employeeId, cycle]);
+
   const employeesQuery = useQuery({
     queryKey: ["performance-employees", token, "appraisals"],
-    queryFn: () => listPerformanceEmployees(token, {}),
+    queryFn: () => listPerformanceEmployees(token, { pageSize: 100 }),
     retry: false
   });
   const reviewsQuery = useQuery({
-    queryKey: ["appraisals", token, employeeId, cycle],
+    queryKey: ["appraisals", token, employeeId, cycle, page],
     queryFn: () =>
       listPerformanceReviews(token, {
         employeeId,
-        cycle: cycle.trim()
+        cycle: cycle.trim(),
+        page,
+        pageSize
       }),
     retry: false
   });
@@ -46,6 +58,10 @@ function AppraisalsContent({ user, token }: AppraisalsContentProps) {
   );
   const reviews = useMemo(
     () => (reviewsQuery.data?.success ? reviewsQuery.data.data.reviews : []),
+    [reviewsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (reviewsQuery.data ? getPaginationMeta(reviewsQuery.data) : null),
     [reviewsQuery.data]
   );
   const averageRating = useMemo(() => {
@@ -171,6 +187,11 @@ function AppraisalsContent({ user, token }: AppraisalsContentProps) {
                   ))}
                 </tbody>
               </table>
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={setPage}
+                isFetching={reviewsQuery.isFetching}
+              />
             </div>
           )}
         </section>

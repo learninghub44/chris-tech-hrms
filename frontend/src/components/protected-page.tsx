@@ -3,8 +3,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { QueryProvider } from "@/providers/query-provider";
 import { getMe } from "@/lib/api";
-import { clearAuthSession, getAuthSession, updateAuthUser } from "@/lib/auth";
+import {
+  clearAuthSession,
+  getAuthSession,
+  getCachedAuthSession,
+  updateAuthUser
+} from "@/lib/auth";
 import { hasEveryPermission } from "@/lib/permissions";
 import type { AuthSession, AuthUser } from "@/types";
 
@@ -17,9 +23,24 @@ export function ProtectedPage({
   requiredPermissions,
   children
 }: ProtectedPageProps) {
+  return (
+    <QueryProvider>
+      <ProtectedPageContent requiredPermissions={requiredPermissions}>
+        {children}
+      </ProtectedPageContent>
+    </QueryProvider>
+  );
+}
+
+function ProtectedPageContent({
+  requiredPermissions,
+  children
+}: ProtectedPageProps) {
   const router = useRouter();
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [sessionChecked, setSessionChecked] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(getCachedAuthSession);
+  const [sessionChecked, setSessionChecked] = useState(() =>
+    Boolean(getCachedAuthSession())
+  );
 
   useEffect(() => {
     const storedSession = getAuthSession();

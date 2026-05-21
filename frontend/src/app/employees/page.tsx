@@ -12,14 +12,17 @@ import {
   Files
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { StatusCard } from "@/components/status-card";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   deactivateEmployee,
   getApiErrorMessage,
+  getPaginationMeta,
   listDepartments,
   listEmployees
 } from "@/lib/api";
@@ -31,18 +34,29 @@ type EmployeesContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function EmployeesContent({ user, token }: EmployeesContentProps) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<EmploymentStatus | "">("");
   const [departmentId, setDepartmentId] = useState("");
+  const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, status, departmentId]);
+
   const employeesQuery = useQuery({
-    queryKey: ["employees", token, search, status, departmentId],
+    queryKey: ["employees", token, debouncedSearch, status, departmentId, page],
     queryFn: () =>
       listEmployees(token, {
-        search: search.trim(),
+        search: debouncedSearch,
         status,
-        departmentId
+        departmentId,
+        page,
+        pageSize
       }),
     retry: false
   });
@@ -58,6 +72,10 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
   const departments = useMemo(
     () => (departmentsQuery.data?.success ? departmentsQuery.data.data.departments : []),
     [departmentsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (employeesQuery.data ? getPaginationMeta(employeesQuery.data) : null),
+    [employeesQuery.data]
   );
   const metrics = useMemo(() => {
     const activeEmployees = employees.filter((employee) => employee.status === "ACTIVE");
@@ -273,6 +291,11 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
               No employee records found.
             </div>
           ) : null}
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={employeesQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

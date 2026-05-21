@@ -1,15 +1,17 @@
 "use client";
 
 import { Clock3, LogIn, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   clockIn,
   clockOut,
   getApiErrorMessage,
+  getPaginationMeta,
   getMyAttendance
 } from "@/lib/api";
 import { formatDate } from "@/lib/employee-format";
@@ -32,13 +34,21 @@ type AttendanceFormValues = {
   notes: string;
 };
 
+const pageSize = 25;
+
 function AttendanceContent({ user, token }: AttendanceContentProps) {
   const [error, setError] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState(getMonthStartInputValue());
   const [dateTo, setDateTo] = useState(getTodayInputValue());
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [dateFrom, dateTo]);
+
   const attendanceQuery = useQuery({
-    queryKey: ["my-attendance", token, dateFrom, dateTo],
-    queryFn: () => getMyAttendance(token, { dateFrom, dateTo }),
+    queryKey: ["my-attendance", token, dateFrom, dateTo, page],
+    queryFn: () => getMyAttendance(token, { dateFrom, dateTo, page, pageSize }),
     retry: false
   });
   const {
@@ -57,6 +67,10 @@ function AttendanceContent({ user, token }: AttendanceContentProps) {
   const todayAttendance = attendanceQuery.data?.success
     ? attendanceQuery.data.data.todayAttendance
     : null;
+  const pagination = useMemo(
+    () => (attendanceQuery.data ? getPaginationMeta(attendanceQuery.data) : null),
+    [attendanceQuery.data]
+  );
 
   async function submitClockIn(values: AttendanceFormValues) {
     setError(null);
@@ -233,6 +247,11 @@ function AttendanceContent({ user, token }: AttendanceContentProps) {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setPage}
+              isFetching={attendanceQuery.isFetching}
+            />
           </div>
         </section>
       </div>

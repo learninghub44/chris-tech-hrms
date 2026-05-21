@@ -2,12 +2,18 @@
 
 import { Plus, ReceiptText } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
-import { generatePayroll, getApiErrorMessage, listPayrolls } from "@/lib/api";
+import {
+  generatePayroll,
+  getApiErrorMessage,
+  getPaginationMeta,
+  listPayrolls
+} from "@/lib/api";
 import { formatDateTime } from "@/lib/time-format";
 import {
   formatMoney,
@@ -27,13 +33,20 @@ type PayrollFormValues = {
 };
 
 const months = Array.from({ length: 12 }, (_, index) => index + 1);
+const pageSize = 25;
 
 function PayrollContent({ user, token }: PayrollContentProps) {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [year]);
+
   const payrollsQuery = useQuery({
-    queryKey: ["payrolls", token, year],
-    queryFn: () => listPayrolls(token, { year }),
+    queryKey: ["payrolls", token, year, page],
+    queryFn: () => listPayrolls(token, { year, page, pageSize }),
     retry: false
   });
   const {
@@ -47,6 +60,10 @@ function PayrollContent({ user, token }: PayrollContentProps) {
     }
   });
   const payrolls = payrollsQuery.data?.success ? payrollsQuery.data.data.payrolls : [];
+  const pagination = useMemo(
+    () => (payrollsQuery.data ? getPaginationMeta(payrollsQuery.data) : null),
+    [payrollsQuery.data]
+  );
 
   async function submit(values: PayrollFormValues) {
     setMessage(null);
@@ -180,6 +197,11 @@ function PayrollContent({ user, token }: PayrollContentProps) {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setPage}
+              isFetching={payrollsQuery.isFetching}
+            />
           </div>
         </section>
       </div>

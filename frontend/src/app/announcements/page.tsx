@@ -1,14 +1,16 @@
 "use client";
 
 import { Megaphone, Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   createAnnouncement,
   getApiErrorMessage,
+  getPaginationMeta,
   listAnnouncements
 } from "@/lib/api";
 import { formatDateTime } from "@/lib/time-format";
@@ -34,13 +36,15 @@ const audienceLabels: Record<AnnouncementAudience, string> = {
   MANAGER: "Managers",
   EMPLOYEE: "Employees"
 };
+const pageSize = 25;
 
 function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
   const canManageAnnouncements = hasEveryPermission(user, ["announcements:manage"]);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const announcementsQuery = useQuery({
-    queryKey: ["announcements", token],
-    queryFn: () => listAnnouncements(token),
+    queryKey: ["announcements", token, page],
+    queryFn: () => listAnnouncements(token, { page, pageSize }),
     retry: false
   });
   const {
@@ -59,6 +63,10 @@ function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
   const announcements = announcementsQuery.data?.success
     ? announcementsQuery.data.data.announcements
     : [];
+  const pagination = useMemo(
+    () => (announcementsQuery.data ? getPaginationMeta(announcementsQuery.data) : null),
+    [announcementsQuery.data]
+  );
 
   async function submit(values: AnnouncementFormValues) {
     setMessage(null);
@@ -178,6 +186,11 @@ function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
                 No announcements found.
               </div>
             ) : null}
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setPage}
+              isFetching={announcementsQuery.isFetching}
+            />
           </div>
         </section>
       </div>

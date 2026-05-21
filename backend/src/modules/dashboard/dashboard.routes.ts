@@ -1,6 +1,8 @@
 import type { Request } from "express";
 import { Router } from "express";
 import { Prisma } from "@prisma/client";
+import { env } from "../../config/env";
+import { getCachedJson, setCachedJson } from "../../lib/cache";
 import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requirePermissions } from "../../middleware/authorize";
@@ -16,6 +18,13 @@ type DashboardCard = {
   value: string;
   detail: string;
   tone: "brand" | "blue" | "amber" | "slate";
+};
+
+type DashboardSummaryPayload = {
+  cards: DashboardCard[];
+  notifications: Prisma.NotificationGetPayload<Record<string, never>>[];
+  announcements: Prisma.AnnouncementGetPayload<Record<string, never>>[];
+  scope: "organization" | "self_or_team";
 };
 
 function assertAuthenticated(req: Request) {
@@ -50,6 +59,21 @@ function getYearRange(date: Date): { yearStart: Date; yearEnd: Date } {
 
 function getUserAudiences(roles: string[]): Array<"ALL" | "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE"> {
   return ["ALL", ...roles] as Array<"ALL" | "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE">;
+}
+
+function getDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function getDashboardCacheKey(input: {
+  userId: string;
+  roles: string[];
+  permissions: string[];
+  date: Date;
+}): string {
+  const accessKey = [...input.roles, ...input.permissions].sort().join(",");
+
+  return `dashboard:summary:${input.userId}:${getDateKey(input.date)}:${accessKey}`;
 }
 
 async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
@@ -93,104 +117,131 @@ dashboardRouter.get(
     const today = toDateOnlyFromDate(now);
     const { monthStart, monthEnd } = getMonthRange(now);
     const { yearStart, yearEnd } = getYearRange(now);
+    const cacheKey = getDashboardCacheKey({
+      userId: auth.id,
+      roles: auth.roles,
+      permissions: auth.permissions,
+      date: today
+    });
+    const cachedSummary = await getCachedJson<DashboardSummaryPayload>(cacheKey);
+
+    if (cachedSummary) {
+      res.status(200).json(ok(cachedSummary, { cache: "hit" }));
+      return;
+    }
+
     const employeeWhere = await getScopedEmployeeWhere(req);
     const canSeeOrgMetrics =
       hasPermission(req, "employees:manage") || hasPermission(req, "reports:read");
     const canSeePayroll =
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
-    const employeeCount = await prisma.employee.count({
-      where: employeeWhere
-    });
-    const activeEmployeeCount = await prisma.employee.count({
-      where: {
-        ...employeeWhere,
-        status: {
-          in: ["ONBOARDING", "ACTIVE", "PROBATION"]
-        }
-      }
-    });
-    const presentTodayCount = await prisma.attendance.count({
-      where: {
-        date: today,
-        status: {
-          in: ["PRESENT", "LATE", "HALF_DAY", "WORK_FROM_HOME"]
-        },
-        employee: employeeWhere
-      }
-    });
-    const employeesOnLeaveCount = await prisma.leaveRequest.count({
-      where: {
-        status: "APPROVED",
-        startDate: {
-          lte: today
-        },
-        endDate: {
-          gte: today
-        },
-        employee: employeeWhere
-      }
-    });
-    const pendingLeaveCount = await prisma.leaveRequest.count({
-      where: {
-        status: "PENDING",
-        employee: employeeWhere
-      }
-    });
-    const newHireCount = await prisma.employee.count({
-      where: {
-        ...employeeWhere,
-        dateOfJoining: {
-          gte: monthStart,
-          lte: monthEnd
-        }
-      }
-    });
-    const exitCount = await prisma.employee.count({
-      where: {
-        ...employeeWhere,
-        dateOfExit: {
-          gte: yearStart,
-          lte: yearEnd
-        }
-      }
-    });
-    const monthlyPayroll = canSeePayroll
-      ? await prisma.payroll.findUnique({
-          where: {
-            month_year: {
-              month: now.getMonth() + 1,
-              year: now.getFullYear()
-            }
+    const [
+      employeeCount,
+      activeEmployeeCount,
+      presentTodayCount,
+      employeesOnLeaveCount,
+      pendingLeaveCount,
+      newHireCount,
+      exitCount,
+      monthlyPayroll,
+      unreadNotifications,
+      notifications,
+      announcements
+    ] = await Promise.all([
+      prisma.employee.count({
+        where: employeeWhere
+      }),
+      prisma.employee.count({
+        where: {
+          ...employeeWhere,
+          status: {
+            in: ["ONBOARDING", "ACTIVE", "PROBATION"]
           }
-        })
-      : null;
-    const unreadNotifications = await prisma.notification.count({
-      where: {
-        userId: auth.id,
-        isRead: false
-      }
-    });
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId: auth.id
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 5
-    });
-    const announcements = await prisma.announcement.findMany({
-      where: {
-        isPublished: true,
-        audience: {
-          in: getUserAudiences(auth.roles)
         }
-      },
-      orderBy: {
-        publishedAt: "desc"
-      },
-      take: 5
-    });
+      }),
+      prisma.attendance.count({
+        where: {
+          date: today,
+          status: {
+            in: ["PRESENT", "LATE", "HALF_DAY", "WORK_FROM_HOME"]
+          },
+          employee: employeeWhere
+        }
+      }),
+      prisma.leaveRequest.count({
+        where: {
+          status: "APPROVED",
+          startDate: {
+            lte: today
+          },
+          endDate: {
+            gte: today
+          },
+          employee: employeeWhere
+        }
+      }),
+      prisma.leaveRequest.count({
+        where: {
+          status: "PENDING",
+          employee: employeeWhere
+        }
+      }),
+      prisma.employee.count({
+        where: {
+          ...employeeWhere,
+          dateOfJoining: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        }
+      }),
+      prisma.employee.count({
+        where: {
+          ...employeeWhere,
+          dateOfExit: {
+            gte: yearStart,
+            lte: yearEnd
+          }
+        }
+      }),
+      canSeePayroll
+        ? prisma.payroll.findUnique({
+            where: {
+              month_year: {
+                month: now.getMonth() + 1,
+                year: now.getFullYear()
+              }
+            }
+          })
+        : Promise.resolve(null),
+      prisma.notification.count({
+        where: {
+          userId: auth.id,
+          isRead: false
+        }
+      }),
+      prisma.notification.findMany({
+        where: {
+          userId: auth.id
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 5
+      }),
+      prisma.announcement.findMany({
+        where: {
+          isPublished: true,
+          audience: {
+            in: getUserAudiences(auth.roles)
+          }
+        },
+        orderBy: {
+          publishedAt: "desc"
+        },
+        take: 5
+      })
+    ]);
     const attritionRate =
       canSeeOrgMetrics && activeEmployeeCount + exitCount > 0
         ? `${((exitCount / (activeEmployeeCount + exitCount)) * 100).toFixed(1)}%`
@@ -254,13 +305,15 @@ dashboardRouter.get(
       }
     ];
 
-    res.status(200).json(
-      ok({
-        cards,
-        notifications,
-        announcements,
-        scope: canSeeOrgMetrics ? "organization" : "self_or_team"
-      })
-    );
+    const summary: DashboardSummaryPayload = {
+      cards,
+      notifications,
+      announcements,
+      scope: canSeeOrgMetrics ? "organization" : "self_or_team"
+    };
+
+    await setCachedJson(cacheKey, summary, env.DASHBOARD_CACHE_TTL_SECONDS);
+
+    res.status(200).json(ok(summary, { cache: "miss" }));
   })
 );

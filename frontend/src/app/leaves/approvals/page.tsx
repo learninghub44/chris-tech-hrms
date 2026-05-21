@@ -1,13 +1,15 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   approveLeave,
   getApiErrorMessage,
+  getPaginationMeta,
   listDepartments,
   listLeaveRequests,
   rejectLeave
@@ -21,16 +23,26 @@ type LeaveApprovalsContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function LeaveApprovalsContent({ user, token }: LeaveApprovalsContentProps) {
   const [status, setStatus] = useState<LeaveRequestStatus | "">("PENDING");
   const [departmentId, setDepartmentId] = useState("");
+  const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, departmentId]);
+
   const leaveRequestsQuery = useQuery({
-    queryKey: ["leave-approvals", token, status, departmentId],
+    queryKey: ["leave-approvals", token, status, departmentId, page],
     queryFn: () =>
       listLeaveRequests(token, {
         status,
-        departmentId
+        departmentId,
+        page,
+        pageSize
       }),
     retry: false
   });
@@ -45,6 +57,10 @@ function LeaveApprovalsContent({ user, token }: LeaveApprovalsContentProps) {
   const departments = departmentsQuery.data?.success
     ? departmentsQuery.data.data.departments
     : [];
+  const pagination = useMemo(
+    () => (leaveRequestsQuery.data ? getPaginationMeta(leaveRequestsQuery.data) : null),
+    [leaveRequestsQuery.data]
+  );
 
   async function reviewLeave(id: string, decision: "approve" | "reject") {
     setActionError(null);
@@ -167,6 +183,11 @@ function LeaveApprovalsContent({ user, token }: LeaveApprovalsContentProps) {
               </tbody>
             </table>
           </div>
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={leaveRequestsQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const payrollRouter = Router();
 
@@ -98,7 +103,7 @@ const generatePayrollSchema = z.object({
 
 const payrollListQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional()
-});
+}).merge(paginationQuerySchema);
 
 const payslipQuerySchema = z.object({
   employeeId: uuidSchema.optional()
@@ -231,17 +236,24 @@ payrollRouter.use(authenticate);
 payrollRouter.get(
   "/salaries",
   requirePermissions(["payroll:manage"]),
-  asyncHandler(async (_req, res) => {
-    const salaries = await prisma.salary.findMany({
-      include: salaryInclude,
-      orderBy: {
-        employee: {
-          employeeCode: "asc"
-        }
-      }
-    });
+  asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
+    const [total, salaries] = await prisma.$transaction([
+      prisma.salary.count(),
+      prisma.salary.findMany({
+        include: salaryInclude,
+        orderBy: {
+          employee: {
+            employeeCode: "asc"
+          }
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ salaries }, { total: salaries.length }));
+    res.status(200).json(ok({ salaries }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -462,27 +474,37 @@ payrollRouter.get(
   "/payroll/me",
   requirePermissions(["payroll:read"]),
   asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
     const employee = await getEmployeeForAuth(req);
-    const payslips = await prisma.payslip.findMany({
-      where: {
-        employeeId: employee.id
-      },
-      include: payslipInclude,
-      orderBy: [
-        {
-          payroll: {
-            year: "desc"
+    const where: Prisma.PayslipWhereInput = {
+      employeeId: employee.id
+    };
+    const [total, payslips] = await prisma.$transaction([
+      prisma.payslip.count({
+        where
+      }),
+      prisma.payslip.findMany({
+        where,
+        include: payslipInclude,
+        orderBy: [
+          {
+            payroll: {
+              year: "desc"
+            }
+          },
+          {
+            payroll: {
+              month: "desc"
+            }
           }
-        },
-        {
-          payroll: {
-            month: "desc"
-          }
-        }
-      ]
-    });
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ payslips }, { total: payslips.length }));
+    res.status(200).json(ok({ payslips }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -529,22 +551,31 @@ payrollRouter.get(
   requirePermissions(["payroll:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(payrollListQuerySchema, req.query);
-    const payrolls = await prisma.payroll.findMany({
-      where: {
-        ...(query.year ? { year: query.year } : {})
-      },
-      include: payrollListInclude,
-      orderBy: [
-        {
-          year: "desc"
-        },
-        {
-          month: "desc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const where: Prisma.PayrollWhereInput = {
+      ...(query.year ? { year: query.year } : {})
+    };
+    const [total, payrolls] = await prisma.$transaction([
+      prisma.payroll.count({
+        where
+      }),
+      prisma.payroll.findMany({
+        where,
+        include: payrollListInclude,
+        orderBy: [
+          {
+            year: "desc"
+          },
+          {
+            month: "desc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ payrolls }, { total: payrolls.length }));
+    res.status(200).json(ok({ payrolls }, getPaginationMeta({ total, pagination })));
   })
 );
 

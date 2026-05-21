@@ -8,6 +8,8 @@ const defaultDatabaseUrl =
 const defaultJwtSecret = "local-development-jwt-secret-change-me-32";
 const exampleJwtSecret = "replace-with-a-random-secret-at-least-32-characters";
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const emptyStringToUndefined = (value: unknown): unknown =>
+  typeof value === "string" && value.trim().length === 0 ? undefined : value;
 
 if (!hasDatabaseUrl) {
   process.env.DATABASE_URL = defaultDatabaseUrl;
@@ -22,7 +24,11 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1).default(defaultDatabaseUrl),
   JWT_SECRET: z.string().min(32).default(defaultJwtSecret),
   JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(86_400),
-  PASSWORD_RESET_EXPIRES_IN_MINUTES: z.coerce.number().int().positive().default(30)
+  PASSWORD_RESET_EXPIRES_IN_MINUTES: z.coerce.number().int().positive().default(30),
+  REDIS_URL: z.preprocess(emptyStringToUndefined, z.string().url().optional()),
+  DASHBOARD_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  PRISMA_CONNECTION_LIMIT: z.coerce.number().int().positive().default(10),
+  PRISMA_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(20)
 });
 
 export const env = envSchema.parse(process.env);

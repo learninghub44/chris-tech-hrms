@@ -1,15 +1,17 @@
 "use client";
 
 import { Plus, Target } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
 import {
   createGoal,
   getApiErrorMessage,
+  getPaginationMeta,
   listGoals,
   listPerformanceEmployees,
   updateGoal
@@ -40,6 +42,7 @@ const goalStatuses: GoalStatus[] = [
   "COMPLETED",
   "BLOCKED"
 ];
+const pageSize = 25;
 
 function emptyToNull(value: string): string | null {
   const trimmedValue = value.trim();
@@ -51,18 +54,26 @@ function GoalsContent({ user, token }: GoalsContentProps) {
   const canManagePerformance = hasEveryPermission(user, ["performance:manage"]);
   const [employeeId, setEmployeeId] = useState("");
   const [status, setStatus] = useState<GoalStatus | "">("");
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [employeeId, status]);
+
   const employeesQuery = useQuery({
     queryKey: ["performance-employees", token, "goals"],
-    queryFn: () => listPerformanceEmployees(token, {}),
+    queryFn: () => listPerformanceEmployees(token, { pageSize: 100 }),
     retry: false
   });
   const goalsQuery = useQuery({
-    queryKey: ["goals", token, employeeId, status],
+    queryKey: ["goals", token, employeeId, status, page],
     queryFn: () =>
       listGoals(token, {
         employeeId,
-        status
+        status,
+        page,
+        pageSize
       }),
     retry: false
   });
@@ -72,6 +83,10 @@ function GoalsContent({ user, token }: GoalsContentProps) {
   );
   const goals = useMemo(
     () => (goalsQuery.data?.success ? goalsQuery.data.data.goals : []),
+    [goalsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (goalsQuery.data ? getPaginationMeta(goalsQuery.data) : null),
     [goalsQuery.data]
   );
   const {
@@ -364,6 +379,11 @@ function GoalsContent({ user, token }: GoalsContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={goalsQuery.isFetching}
+                />
               </div>
             )}
           </div>

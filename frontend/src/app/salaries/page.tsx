@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   createSalary,
   getApiErrorMessage,
+  getPaginationMeta,
   listEmployees,
   listSalaries,
   updateSalary
@@ -31,16 +33,19 @@ type SalaryFormValues = {
   isActive: boolean;
 };
 
+const pageSize = 25;
+
 function SalariesContent({ user, token }: SalariesContentProps) {
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const salariesQuery = useQuery({
-    queryKey: ["salaries", token],
-    queryFn: () => listSalaries(token),
+    queryKey: ["salaries", token, page],
+    queryFn: () => listSalaries(token, { page, pageSize }),
     retry: false
   });
   const employeesQuery = useQuery({
     queryKey: ["employees", token, "salary-setup"],
-    queryFn: () => listEmployees(token, {}),
+    queryFn: () => listEmployees(token, { pageSize: 100 }),
     retry: false
   });
   const salaries = useMemo(
@@ -50,6 +55,10 @@ function SalariesContent({ user, token }: SalariesContentProps) {
   const employees = useMemo(
     () => (employeesQuery.data?.success ? employeesQuery.data.data.employees : []),
     [employeesQuery.data]
+  );
+  const pagination = useMemo(
+    () => (salariesQuery.data ? getPaginationMeta(salariesQuery.data) : null),
+    [salariesQuery.data]
   );
   const {
     formState: { isSubmitting },
@@ -298,6 +307,11 @@ function SalariesContent({ user, token }: SalariesContentProps) {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setPage}
+              isFetching={salariesQuery.isFetching}
+            />
           </div>
         </section>
       </div>

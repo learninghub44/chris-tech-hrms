@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const attendanceRouter = Router();
 
@@ -74,7 +79,7 @@ const clockOutSchema = z.object({
 const attendanceQuerySchema = z.object({
   dateFrom: dateInputSchema.optional(),
   dateTo: dateInputSchema.optional()
-});
+}).merge(paginationQuerySchema);
 
 const attendanceReportQuerySchema = z.object({
   dateFrom: dateInputSchema.optional(),
@@ -82,7 +87,7 @@ const attendanceReportQuerySchema = z.object({
   employeeId: uuidSchema.optional(),
   departmentId: uuidSchema.optional(),
   status: z.nativeEnum(AttendanceStatus).optional()
-});
+}).merge(paginationQuerySchema);
 
 const shiftBodySchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -353,24 +358,39 @@ attendanceRouter.get(
     const dateFrom = query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom;
     const dateTo = query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo;
     const today = toDateOnlyFromDate(new Date());
-    const attendance = await prisma.attendance.findMany({
-      where: {
-        employeeId: employee.id,
-        date: {
-          gte: dateFrom,
-          lte: dateTo
-        }
-      },
-      include: attendanceInclude,
-      orderBy: {
-        date: "desc"
+    const pagination = getPagination(query);
+    const where: Prisma.AttendanceWhereInput = {
+      employeeId: employee.id,
+      date: {
+        gte: dateFrom,
+        lte: dateTo
       }
-    });
-    const todayAttendance = attendance.find(
-      (record) => record.date.getTime() === today.getTime()
-    ) ?? null;
+    };
+    const [total, attendance, todayAttendance] = await prisma.$transaction([
+      prisma.attendance.count({
+        where
+      }),
+      prisma.attendance.findMany({
+        where,
+        include: attendanceInclude,
+        orderBy: {
+          date: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      }),
+      prisma.attendance.findUnique({
+        where: {
+          employeeId_date: {
+            employeeId: employee.id,
+            date: today
+          }
+        },
+        include: attendanceInclude
+      })
+    ]);
 
-    res.status(200).json(ok({ attendance, todayAttendance }));
+    res.status(200).json(ok({ attendance, todayAttendance }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -421,20 +441,28 @@ attendanceRouter.get(
       where.employee = employeeWhere;
     }
 
-    const attendance = await prisma.attendance.findMany({
-      where,
-      include: attendanceInclude,
-      orderBy: [
-        {
-          date: "desc"
-        },
-        {
-          createdAt: "desc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const [total, attendance] = await prisma.$transaction([
+      prisma.attendance.count({
+        where
+      }),
+      prisma.attendance.findMany({
+        where,
+        include: attendanceInclude,
+        orderBy: [
+          {
+            date: "desc"
+          },
+          {
+            createdAt: "desc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ attendance }, { total: attendance.length }));
+    res.status(200).json(ok({ attendance }, getPaginationMeta({ total, pagination })));
   })
 );
 

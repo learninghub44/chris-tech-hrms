@@ -2,15 +2,18 @@
 
 import { Plus, Search, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   createCandidate,
   getApiErrorMessage,
+  getPaginationMeta,
   listCandidates,
   listJobs
 } from "@/lib/api";
@@ -22,6 +25,8 @@ type CandidatesContentProps = {
   user: AuthUser;
   token: string;
 };
+
+const pageSize = 25;
 
 type CandidateFormValues = {
   firstName: string;
@@ -45,15 +50,22 @@ function emptyToNull(value: string): string | null {
 function CandidatesContent({ user, token }: CandidatesContentProps) {
   const canManageRecruitment = hasEveryPermission(user, ["recruitment:manage"]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   const candidatesQuery = useQuery({
-    queryKey: ["candidates", token, search],
-    queryFn: () => listCandidates(token, { search: search.trim() }),
+    queryKey: ["candidates", token, debouncedSearch, page],
+    queryFn: () => listCandidates(token, { search: debouncedSearch, page, pageSize }),
     retry: false
   });
   const jobsQuery = useQuery({
     queryKey: ["jobs", token, "candidate-form"],
-    queryFn: () => listJobs(token, { status: "OPEN" }),
+    queryFn: () => listJobs(token, { status: "OPEN", pageSize: 100 }),
     retry: false
   });
   const candidates = useMemo(
@@ -63,6 +75,10 @@ function CandidatesContent({ user, token }: CandidatesContentProps) {
   const jobs = useMemo(
     () => (jobsQuery.data?.success ? jobsQuery.data.data.jobs : []),
     [jobsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (candidatesQuery.data ? getPaginationMeta(candidatesQuery.data) : null),
+    [candidatesQuery.data]
   );
   const {
     formState: { isSubmitting },
@@ -291,6 +307,11 @@ function CandidatesContent({ user, token }: CandidatesContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={candidatesQuery.isFetching}
+                />
               </div>
             )}
           </div>

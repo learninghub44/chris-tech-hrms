@@ -1,12 +1,14 @@
 "use client";
 
 import { Bell, Check } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   getApiErrorMessage,
+  getPaginationMeta,
   listNotifications,
   markNotificationRead
 } from "@/lib/api";
@@ -18,11 +20,14 @@ type NotificationsContentProps = {
   token: string;
 };
 
+const pageSize = 25;
+
 function NotificationsContent({ user, token }: NotificationsContentProps) {
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const notificationsQuery = useQuery({
-    queryKey: ["notifications", token],
-    queryFn: () => listNotifications(token),
+    queryKey: ["notifications", token, page],
+    queryFn: () => listNotifications(token, { page, pageSize }),
     retry: false
   });
   const notifications = notificationsQuery.data?.success
@@ -31,6 +36,10 @@ function NotificationsContent({ user, token }: NotificationsContentProps) {
   const unreadCount = notificationsQuery.data?.success
     ? notificationsQuery.data.data.unreadCount
     : 0;
+  const pagination = useMemo(
+    () => (notificationsQuery.data ? getPaginationMeta(notificationsQuery.data) : null),
+    [notificationsQuery.data]
+  );
 
   async function markRead(id: string) {
     setError(null);
@@ -110,6 +119,11 @@ function NotificationsContent({ user, token }: NotificationsContentProps) {
               No notifications found.
             </div>
           ) : null}
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={notificationsQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

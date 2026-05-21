@@ -1,4 +1,5 @@
 import cors from "cors";
+import compression from "compression";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -17,13 +18,28 @@ import { performanceRouter } from "./modules/performance/performance.routes";
 import { recruitmentRouter } from "./modules/recruitment/recruitment.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 
+function getAllowedCorsOrigins(): string[] {
+  const origins = new Set([env.CORS_ORIGIN]);
+
+  if (env.CORS_ORIGIN === "http://localhost:3000") {
+    origins.add("http://127.0.0.1:3000");
+  }
+
+  if (env.CORS_ORIGIN === "http://127.0.0.1:3000") {
+    origins.add("http://localhost:3000");
+  }
+
+  return [...origins];
+}
+
 export function createApp() {
   const app = express();
 
   app.use(helmet());
+  app.use(compression());
   app.use(
     cors({
-      origin: env.CORS_ORIGIN,
+      origin: getAllowedCorsOrigins(),
       credentials: true
     })
   );

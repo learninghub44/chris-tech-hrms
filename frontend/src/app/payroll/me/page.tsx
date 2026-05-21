@@ -1,11 +1,17 @@
 "use client";
 
 import { Download, ReceiptText } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
-import { getApiErrorMessage, getPayslipDownload, listMyPayslips } from "@/lib/api";
+import {
+  getApiErrorMessage,
+  getPaginationMeta,
+  getPayslipDownload,
+  listMyPayslips
+} from "@/lib/api";
 import { formatDateTime } from "@/lib/time-format";
 import { formatMoney, formatPayrollMonth } from "@/lib/payroll-format";
 import type { AuthUser } from "@/types";
@@ -14,6 +20,8 @@ type MyPayslipsContentProps = {
   user: AuthUser;
   token: string;
 };
+
+const pageSize = 25;
 
 function downloadTextFile(fileName: string, contentType: string, content: string): void {
   const blob = new Blob([content], { type: contentType });
@@ -28,12 +36,17 @@ function downloadTextFile(fileName: string, contentType: string, content: string
 
 function MyPayslipsContent({ user, token }: MyPayslipsContentProps) {
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const payslipsQuery = useQuery({
-    queryKey: ["my-payslips", token],
-    queryFn: () => listMyPayslips(token),
+    queryKey: ["my-payslips", token, page],
+    queryFn: () => listMyPayslips(token, { page, pageSize }),
     retry: false
   });
   const payslips = payslipsQuery.data?.success ? payslipsQuery.data.data.payslips : [];
+  const pagination = useMemo(
+    () => (payslipsQuery.data ? getPaginationMeta(payslipsQuery.data) : null),
+    [payslipsQuery.data]
+  );
 
   async function downloadPayslip(payrollId: string) {
     setError(null);
@@ -127,6 +140,11 @@ function MyPayslipsContent({ user, token }: MyPayslipsContentProps) {
               No payslips found.
             </div>
           ) : null}
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isFetching={payslipsQuery.isFetching}
+          />
         </section>
       </div>
     </AppShell>

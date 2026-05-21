@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const employeeCoreRouter = Router();
 
@@ -53,6 +58,48 @@ const employeeInclude = {
     }
   }
 } satisfies Prisma.EmployeeInclude;
+
+const employeeListSelect = {
+  id: true,
+  employeeCode: true,
+  userId: true,
+  firstName: true,
+  lastName: true,
+  workEmail: true,
+  personalEmail: true,
+  phone: true,
+  dateOfBirth: true,
+  dateOfJoining: true,
+  dateOfExit: true,
+  status: true,
+  location: true,
+  departmentId: true,
+  designationId: true,
+  managerId: true,
+  createdAt: true,
+  updatedAt: true,
+  department: true,
+  designation: {
+    include: {
+      department: true
+    }
+  },
+  manager: {
+    select: {
+      id: true,
+      employeeCode: true,
+      firstName: true,
+      lastName: true,
+      workEmail: true,
+      status: true
+    }
+  },
+  documents: {
+    select: {
+      id: true
+    }
+  }
+} satisfies Prisma.EmployeeSelect;
 
 type EmployeeRecord = Prisma.EmployeeGetPayload<{
   include: typeof employeeInclude;
@@ -160,7 +207,7 @@ const listEmployeesQuerySchema = z.object({
   status: z.nativeEnum(EmploymentStatus).optional(),
   departmentId: uuidSchema.optional(),
   designationId: uuidSchema.optional()
-});
+}).merge(paginationQuerySchema);
 
 const emergencyContactSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -471,20 +518,28 @@ employeeCoreRouter.get(
       ];
     }
 
-    const employees = await prisma.employee.findMany({
-      where,
-      include: employeeInclude,
-      orderBy: [
-        {
-          createdAt: "desc"
-        },
-        {
-          employeeCode: "asc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const [total, employees] = await prisma.$transaction([
+      prisma.employee.count({
+        where
+      }),
+      prisma.employee.findMany({
+        where,
+        select: employeeListSelect,
+        orderBy: [
+          {
+            createdAt: "desc"
+          },
+          {
+            employeeCode: "asc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ employees }, { total: employees.length }));
+    res.status(200).json(ok({ employees }, getPaginationMeta({ total, pagination })));
   })
 );
 

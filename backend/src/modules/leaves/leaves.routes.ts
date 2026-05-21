@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const leaveRouter = Router();
 
@@ -85,12 +90,12 @@ const leaveListQuerySchema = z.object({
   departmentId: uuidSchema.optional(),
   dateFrom: dateInputSchema.optional(),
   dateTo: dateInputSchema.optional()
-});
+}).merge(paginationQuerySchema);
 
 const leaveBalanceQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional(),
   employeeId: uuidSchema.optional()
-});
+}).merge(paginationQuerySchema);
 
 const leaveTypeBodySchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -479,18 +484,28 @@ leaveRouter.get(
   "/leaves/me",
   requirePermissions(["leave:request"]),
   asyncHandler(async (req, res) => {
+    const query = parseInput(paginationQuerySchema, req.query);
+    const pagination = getPagination(query);
     const employee = await getEmployeeForAuth(req);
-    const leaveRequests = await prisma.leaveRequest.findMany({
-      where: {
-        employeeId: employee.id
-      },
-      include: leaveRequestInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+    const where: Prisma.LeaveRequestWhereInput = {
+      employeeId: employee.id
+    };
+    const [total, leaveRequests] = await prisma.$transaction([
+      prisma.leaveRequest.count({
+        where
+      }),
+      prisma.leaveRequest.findMany({
+        where,
+        include: leaveRequestInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ leaveRequests }, { total: leaveRequests.length }));
+    res.status(200).json(ok({ leaveRequests }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -512,27 +527,36 @@ leaveRouter.get(
     }
 
     const employeeId = canViewAll ? query.employeeId : ownEmployee?.id;
-    const leaveBalances = await prisma.leaveBalance.findMany({
-      where: {
-        year,
-        ...(employeeId ? { employeeId } : {})
-      },
-      include: balanceInclude,
-      orderBy: [
-        {
-          employee: {
-            employeeCode: "asc"
+    const pagination = getPagination(query);
+    const where: Prisma.LeaveBalanceWhereInput = {
+      year,
+      ...(employeeId ? { employeeId } : {})
+    };
+    const [total, leaveBalances] = await prisma.$transaction([
+      prisma.leaveBalance.count({
+        where
+      }),
+      prisma.leaveBalance.findMany({
+        where,
+        include: balanceInclude,
+        orderBy: [
+          {
+            employee: {
+              employeeCode: "asc"
+            }
+          },
+          {
+            leaveType: {
+              name: "asc"
+            }
           }
-        },
-        {
-          leaveType: {
-            name: "asc"
-          }
-        }
-      ]
-    });
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ leaveBalances }, { total: leaveBalances.length }));
+    res.status(200).json(ok({ leaveBalances }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -598,15 +622,23 @@ leaveRouter.get(
       ];
     }
 
-    const leaveRequests = await prisma.leaveRequest.findMany({
-      where,
-      include: leaveRequestInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+    const pagination = getPagination(query);
+    const [total, leaveRequests] = await prisma.$transaction([
+      prisma.leaveRequest.count({
+        where
+      }),
+      prisma.leaveRequest.findMany({
+        where,
+        include: leaveRequestInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ leaveRequests }, { total: leaveRequests.length }));
+    res.status(200).json(ok({ leaveRequests }, getPaginationMeta({ total, pagination })));
   })
 );
 

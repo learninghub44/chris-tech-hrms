@@ -13,6 +13,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getPagination,
+  getPaginationMeta,
+  paginationQuerySchema
+} from "../../utils/pagination";
 
 export const performanceRouter = Router();
 
@@ -114,12 +119,12 @@ const paramsSchema = z.object({
 
 const performanceEmployeeQuerySchema = z.object({
   search: z.string().trim().max(120).optional()
-});
+}).merge(paginationQuerySchema);
 
 const goalQuerySchema = z.object({
   employeeId: uuidSchema.optional(),
   status: z.nativeEnum(GoalStatus).optional()
-});
+}).merge(paginationQuerySchema);
 
 const goalBodySchema = z.object({
   employeeId: uuidSchema,
@@ -146,7 +151,7 @@ const reviewQuerySchema = z.object({
   employeeId: uuidSchema.optional(),
   status: z.nativeEnum(PerformanceReviewStatus).optional(),
   cycle: z.string().trim().max(80).optional()
-});
+}).merge(paginationQuerySchema);
 
 const reviewBodySchema = z.object({
   employeeId: uuidSchema,
@@ -168,7 +173,7 @@ const reviewStatusBodySchema = z.object({
 const feedbackQuerySchema = z.object({
   employeeId: uuidSchema.optional(),
   category: z.nativeEnum(FeedbackCategory).optional()
-});
+}).merge(paginationQuerySchema);
 
 const feedbackBodySchema = z.object({
   employeeId: uuidSchema,
@@ -387,20 +392,28 @@ performanceRouter.get(
     const where: Prisma.EmployeeWhereInput = {
       AND: searchWhere ? [scopedWhere, searchWhere] : [scopedWhere]
     };
-    const employees = await prisma.employee.findMany({
-      where,
-      select: employeeSelect,
-      orderBy: [
-        {
-          employeeCode: "asc"
-        },
-        {
-          firstName: "asc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const [total, employees] = await prisma.$transaction([
+      prisma.employee.count({
+        where
+      }),
+      prisma.employee.findMany({
+        where,
+        select: employeeSelect,
+        orderBy: [
+          {
+            employeeCode: "asc"
+          },
+          {
+            firstName: "asc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ employees }, { total: employees.length }));
+    res.status(200).json(ok({ employees }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -410,23 +423,32 @@ performanceRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(goalQuerySchema, req.query);
     const scopedWhere = await buildScopedPerformanceWhere(req, query.employeeId);
-    const goals = await prisma.goal.findMany({
-      where: {
-        ...scopedWhere,
-        ...(query.status ? { status: query.status } : {})
-      },
-      include: goalInclude,
-      orderBy: [
-        {
-          dueDate: "asc"
-        },
-        {
-          createdAt: "desc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const where: Prisma.GoalWhereInput = {
+      ...scopedWhere,
+      ...(query.status ? { status: query.status } : {})
+    };
+    const [total, goals] = await prisma.$transaction([
+      prisma.goal.count({
+        where
+      }),
+      prisma.goal.findMany({
+        where,
+        include: goalInclude,
+        orderBy: [
+          {
+            dueDate: "asc"
+          },
+          {
+            createdAt: "desc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ goals }, { total: goals.length }));
+    res.status(200).json(ok({ goals }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -529,24 +551,33 @@ performanceRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(reviewQuerySchema, req.query);
     const scopedWhere = await buildScopedPerformanceWhere(req, query.employeeId);
-    const reviews = await prisma.performanceReview.findMany({
-      where: {
-        ...scopedWhere,
-        ...(query.status ? { status: query.status } : {}),
-        ...(query.cycle ? { cycle: query.cycle } : {})
-      },
-      include: reviewInclude,
-      orderBy: [
-        {
-          reviewPeriodEnd: "desc"
-        },
-        {
-          createdAt: "desc"
-        }
-      ]
-    });
+    const pagination = getPagination(query);
+    const where: Prisma.PerformanceReviewWhereInput = {
+      ...scopedWhere,
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.cycle ? { cycle: query.cycle } : {})
+    };
+    const [total, reviews] = await prisma.$transaction([
+      prisma.performanceReview.count({
+        where
+      }),
+      prisma.performanceReview.findMany({
+        where,
+        include: reviewInclude,
+        orderBy: [
+          {
+            reviewPeriodEnd: "desc"
+          },
+          {
+            createdAt: "desc"
+          }
+        ],
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ reviews }, { total: reviews.length }));
+    res.status(200).json(ok({ reviews }, getPaginationMeta({ total, pagination })));
   })
 );
 
@@ -640,18 +671,27 @@ performanceRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(feedbackQuerySchema, req.query);
     const scopedWhere = await buildScopedPerformanceWhere(req, query.employeeId);
-    const feedback = await prisma.feedback.findMany({
-      where: {
-        ...scopedWhere,
-        ...(query.category ? { category: query.category } : {})
-      },
-      include: feedbackInclude,
-      orderBy: {
-        createdAt: "desc"
-      }
-    });
+    const pagination = getPagination(query);
+    const where: Prisma.FeedbackWhereInput = {
+      ...scopedWhere,
+      ...(query.category ? { category: query.category } : {})
+    };
+    const [total, feedback] = await prisma.$transaction([
+      prisma.feedback.count({
+        where
+      }),
+      prisma.feedback.findMany({
+        where,
+        include: feedbackInclude,
+        orderBy: {
+          createdAt: "desc"
+        },
+        skip: pagination.skip,
+        take: pagination.take
+      })
+    ]);
 
-    res.status(200).json(ok({ feedback }, { total: feedback.length }));
+    res.status(200).json(ok({ feedback }, getPaginationMeta({ total, pagination })));
   })
 );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   BriefcaseBusiness,
   CalendarDays,
@@ -12,6 +12,7 @@ import Image, { type StaticImageData } from "next/image";
 import hrHeroOne from "@/assets/hr1.jpg";
 import hrHeroTwo from "@/assets/hr2.jpg";
 import hrHeroThree from "@/assets/hr3.jpg";
+import { applyLightTheme } from "@/lib/theme";
 
 type AuthShellProps = {
   children: ReactNode;
@@ -66,6 +67,10 @@ const heroMetrics: HeroMetric[] = [
 ];
 
 export function AuthShell({ children, subtitle, title }: AuthShellProps) {
+  useLayoutEffect(() => {
+    applyLightTheme();
+  }, []);
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_12%_12%,rgba(216,247,232,0.95),transparent_32%),linear-gradient(135deg,#f7fbff_0%,#eff8f3_46%,#f7f7f4_100%)] px-3 py-3 text-ink sm:px-5 sm:py-5 lg:px-8">
       <section className="mx-auto grid min-h-[calc(100vh-1.5rem)] w-full max-w-6xl overflow-hidden rounded-lg border border-white/90 bg-white/78 shadow-[0_28px_80px_rgba(23,33,29,0.14)] lg:min-h-[calc(100vh-2.5rem)] lg:grid-cols-[minmax(360px,0.88fr)_minmax(460px,1fr)]">
@@ -118,19 +123,15 @@ function AuthHero() {
 
   return (
     <aside className="relative m-3 hidden overflow-hidden rounded-lg bg-[#101011] text-white lg:flex">
-      {heroImages.map((heroImage, index) => (
-        <Image
-          key={heroImage.alt}
-          src={heroImage.image}
-          alt={heroImage.alt}
-          fill
-          priority={index === 0}
-          sizes="(min-width: 1024px) 50vw, 0px"
-          className={`object-cover transition-opacity duration-700 ${
-            index === activeImageIndex ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      ))}
+      <Image
+        key={heroImages[activeImageIndex].alt}
+        src={heroImages[activeImageIndex].image}
+        alt={heroImages[activeImageIndex].alt}
+        fill
+        priority={activeImageIndex === 0}
+        sizes="(min-width: 1024px) 50vw, 0px"
+        className="object-cover"
+      />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,8,9,0.12)_0%,rgba(8,8,9,0.28)_42%,rgba(8,8,9,0.84)_100%)]" />
 
       <div className="relative z-10 flex min-h-full w-full flex-col justify-end px-8 py-8">

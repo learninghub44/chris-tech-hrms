@@ -6,11 +6,13 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
 import { QueryState } from "@/components/query-state";
 import {
   createOffer,
   getApiErrorMessage,
+  getPaginationMeta,
   listApplications,
   listOffers,
   updateOfferStatus
@@ -39,6 +41,7 @@ type OfferFormValues = {
 };
 
 const offerStatuses: OfferStatus[] = ["DRAFT", "SENT", "ACCEPTED", "DECLINED"];
+const pageSize = 25;
 
 function emptyToNull(value: string): string | null {
   const trimmedValue = value.trim();
@@ -59,14 +62,15 @@ function toNullableNumber(value: string): number | null {
 function OffersContent({ user, token }: OffersContentProps) {
   const canManageRecruitment = hasEveryPermission(user, ["recruitment:manage"]);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const offersQuery = useQuery({
-    queryKey: ["offers", token],
-    queryFn: () => listOffers(token),
+    queryKey: ["offers", token, page],
+    queryFn: () => listOffers(token, { page, pageSize }),
     retry: false
   });
   const applicationsQuery = useQuery({
     queryKey: ["applications", token, "offer-form"],
-    queryFn: () => listApplications(token),
+    queryFn: () => listApplications(token, { pageSize: 100 }),
     retry: false
   });
   const offers = useMemo(
@@ -76,6 +80,10 @@ function OffersContent({ user, token }: OffersContentProps) {
   const applications = useMemo(
     () => (applicationsQuery.data?.success ? applicationsQuery.data.data.applications : []),
     [applicationsQuery.data]
+  );
+  const pagination = useMemo(
+    () => (offersQuery.data ? getPaginationMeta(offersQuery.data) : null),
+    [offersQuery.data]
   );
   const availableApplications = useMemo(
     () =>
@@ -327,6 +335,11 @@ function OffersContent({ user, token }: OffersContentProps) {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isFetching={offersQuery.isFetching}
+                />
               </div>
             )}
           </div>
