@@ -162,8 +162,16 @@ HR Admin
 Email: hr@hrms.local
 Password: Hr@12345
 
+Manager
+Email: manager@hrms.local
+Password: Manager@12345
+
 Employee
 Email: employee@hrms.local
+Password: Employee@12345
+
+Employee - Ankit Kumar
+Email: ankit@hrms.local
 Password: Employee@12345
 ```
 
@@ -172,7 +180,8 @@ Suggested demo flow:
 1. Sign in as `admin@hrms.local`.
 2. Open the dashboard and switch between sidebar modules to review the role-aware HR workspace.
 3. Review employee management, attendance, leave approvals, payroll, recruitment, performance, and reports.
-4. Sign in as `employee@hrms.local` to compare the limited self-service experience.
+4. Sign in as `manager@hrms.local` to review team-level permissions.
+5. Sign in as `employee@hrms.local` or `ankit@hrms.local` to compare the limited self-service experience.
 
 These credentials are for local development only. Replace demo users and secrets before any production deployment.
 

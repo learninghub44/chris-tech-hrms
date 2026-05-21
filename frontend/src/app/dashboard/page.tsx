@@ -106,7 +106,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
           <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3 text-xs font-semibold uppercase text-slate-400">
             <span className="rounded-md px-2 py-1">Personal</span>
-            <span className="rounded-md bg-slate-950 px-2 py-1 text-white">
+            <span className="rounded-md bg-[#020617] px-2 py-1 text-white dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617]">
               {scopeLabel}
             </span>
             <span className="rounded-md px-2 py-1">Managed by me</span>

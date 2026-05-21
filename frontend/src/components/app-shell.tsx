@@ -483,15 +483,26 @@ export function AppShell({ user, token, children }: AppShellProps) {
   return (
     <main className="min-h-screen bg-[#f4f6f8] text-slate-950">
       <aside className="fixed inset-y-3 left-3 hidden w-[232px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-[#f8fafc] shadow-[0_18px_45px_rgba(15,23,42,0.08)] lg:flex">
-        <div className="m-2 flex h-12 items-center gap-3 rounded-lg bg-slate-950 px-3 text-white">
-          <div className="grid h-8 w-8 place-items-center rounded-md bg-white text-slate-950">
+        <Link
+          href="/dashboard"
+          className="m-2 flex h-12 items-center gap-3 rounded-lg bg-[#020617] px-3 text-white transition hover:bg-[#111827] dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617] dark:hover:bg-[#ffffff]"
+          prefetch={true}
+          onFocus={() => prefetchRoute("/dashboard")}
+          onPointerDown={() => prefetchRoute("/dashboard")}
+          onPointerEnter={() => prefetchRoute("/dashboard")}
+          onClick={() => {
+            setPendingHref("/dashboard");
+          }}
+          aria-label="Go to dashboard"
+        >
+          <div className="grid h-8 w-8 place-items-center rounded-md bg-[#ffffff] text-[#020617] dark:bg-[#020617] dark:text-white">
             <LayoutDashboard size={19} aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">HRMS</p>
-            <p className="truncate text-xs text-white/60">Organization</p>
+            <p className="truncate text-xs text-white/60 dark:text-slate-500">Organization</p>
           </div>
-        </div>
+        </Link>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-2 pb-4 pt-2">
           {renderNavSections()}
@@ -530,15 +541,27 @@ export function AppShell({ user, token, children }: AppShellProps) {
           />
           <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
             <div className="flex h-16 items-center justify-between gap-3 border-b border-slate-200 px-5">
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-white">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 rounded-md"
+                prefetch={true}
+                onFocus={() => prefetchRoute("/dashboard")}
+                onPointerDown={() => prefetchRoute("/dashboard")}
+                onPointerEnter={() => prefetchRoute("/dashboard")}
+                onClick={() => {
+                  setPendingHref("/dashboard");
+                  setIsMobileNavOpen(false);
+                }}
+                aria-label="Go to dashboard"
+              >
+                <div className="grid h-9 w-9 place-items-center rounded-md bg-[#020617] text-white dark:bg-[#f8fafc] dark:text-[#020617]">
                   <LayoutDashboard size={19} aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold">HRMS</p>
                   <p className="text-xs text-slate-500">Organization</p>
                 </div>
-              </div>
+              </Link>
               <button
                 className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600"
                 type="button"
