@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
+import hrmsIcon from "@/assets/hrms-icon.png";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "HRMS",
-  description: "Role-based HR Management System"
+  description: "Role-based HR Management System",
+  icons: {
+    icon: [
+      {
+        url: hrmsIcon.src,
+        type: "image/png"
+      }
+    ]
+  }
 };
 
 const lightOnlyThemePaths = [
