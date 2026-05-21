@@ -1,59 +1,51 @@
-# HR Management System
+# HRMS - Full-Stack Human Resource Management System
 
-A full-stack, role-based HR Management System built with Next.js, Express, Prisma, and PostgreSQL. The project brings core HR workflows into one web application: employee records, attendance, leave, payroll, recruitment, performance management, notifications, announcements, and reporting.
+HRMS is a production-style human resource management platform built with Next.js, Express, Prisma, and PostgreSQL. It combines core HR workflows into one role-based web application: employees, attendance, leave, payroll, recruitment, performance management, notifications, announcements, and reports.
 
-This repository is designed to show practical product engineering: a real data model, protected workflows, role-aware UI, reusable API patterns, and an end-to-end local setup.
+This project is designed as a portfolio-grade full-stack application. It demonstrates product thinking, scalable data modeling, permission-aware UX, typed API development, database migrations, and practical validation tooling.
 
-## Why This Project Stands Out
+## Recruiter Snapshot
 
-- Built as a production-style HR operations platform, not a static dashboard.
-- Uses JWT authentication and permission-based access control across frontend and backend.
-- Covers multiple business domains: employees, attendance, leave, payroll, recruitment, performance, and reports.
-- Includes Prisma migrations and seed data for a repeatable local demo.
-- Uses typed frontend and backend code with validation, protected routes, and reusable API helpers.
-- Includes smoke-test coverage for critical backend workflows.
-
-## Recruiter-Friendly Summary
-
-| Area | What It Demonstrates |
+| Area | What This Project Shows |
 | --- | --- |
-| Full-stack engineering | Next.js frontend, Express API, PostgreSQL database, Prisma ORM |
-| Product thinking | HR workflows organized around real users: HR admins, managers, and employees |
-| Authorization | Role and permission checks for protected pages and API endpoints |
-| Data modeling | Employees, departments, payroll, leaves, attendance, jobs, candidates, reviews, and more |
-| Frontend craft | Responsive dashboard, protected app shell, forms, API state caching, polished login/signup UI |
-| Backend craft | Modular routes, middleware, async handlers, API response utilities, validation, smoke tests |
+| Product engineering | Multi-module HR platform with real admin, manager, and employee workflows |
+| Full-stack depth | Next.js frontend, Express REST API, Prisma ORM, PostgreSQL, Docker setup |
+| Security mindset | JWT authentication, protected frontend routes, backend authorization middleware |
+| Data modeling | Employees, departments, attendance, leave, payroll, hiring, reviews, goals, and notifications |
+| Performance | React Query caching, route/data prefetching, pagination, optional Redis-backed caching, Prisma indexing |
+| Code quality | TypeScript across the stack, reusable helpers, validation, structured API responses, smoke tests |
 
-## Features
+## Resume Highlights
 
-### Authentication and Access
+- Built a role-based HRMS covering employee operations, attendance, leave, payroll, recruitment, and performance workflows.
+- Implemented JWT authentication with server-side permission checks and protected client-side routes.
+- Designed a relational PostgreSQL schema with Prisma migrations and seeded demo data.
+- Added reusable pagination, API response utilities, async handlers, and modular route organization.
+- Improved frontend responsiveness with route prefetching, data prefetching, React Query cache tuning, and faster sidebar navigation.
+- Added a light-only public auth experience while keeping dark mode available after login.
+- Included smoke-test coverage for critical backend workflows and npm workspace scripts for repeatable validation.
+
+## Key Features
+
+### Authentication and Authorization
 
 - Login, registration, logout, forgot password, and reset password flows
-- JWT-based session handling
-- Role-based permissions for Super Admin, HR Admin, Manager, and Employee
-- Protected frontend routes and backend authorization middleware
+- JWT-based sessions
+- Role and permission support for Super Admin, HR Admin, Manager, and Employee
+- Protected pages on the frontend and authorization middleware on the backend
 
-### Employee Management
+### Employee Operations
 
-- Employee records with departments, designations, managers, status, joining date, and contact details
+- Employee records with departments, designations, managers, status, joining dates, and contact details
 - Department and designation management
-- Emergency contact and employee document metadata support
 - Employee profile and self-service access
+- Emergency contact and document metadata support
 
-### Attendance and Time
+### Attendance and Leave
 
 - Clock in and clock out workflows
-- Attendance records by employee and date
-- Shift configuration
-- Holiday management
-- Attendance reports and filters
-
-### Leave Management
-
-- Leave type configuration
-- Leave application flow
-- Manager/HR approval and rejection flow
-- Leave balances and leave history
+- Attendance history, filters, shift settings, and holiday management
+- Leave application, approvals, rejection, balances, and leave type configuration
 
 ### Payroll
 
@@ -62,19 +54,12 @@ This repository is designed to show practical product engineering: a real data m
 - Payslip records and download response support
 - Payroll reports
 
-### Dashboard, Notifications, and Reports
-
-- Role-aware dashboard summary
-- Notifications and announcements
-- Employee, attendance, leave, and payroll reports
-- Optimized frontend data caching for faster navigation
-
 ### Recruitment
 
 - Job opening management
 - Candidate tracking
 - Applications, interviews, and offers
-- Candidate detail pages
+- Candidate and job detail views
 
 ### Performance Management
 
@@ -83,6 +68,13 @@ This repository is designed to show practical product engineering: a real data m
 - Feedback
 - Appraisal history
 
+### Dashboard, Reports, and Notifications
+
+- Role-aware dashboard summary
+- Notifications and announcements
+- Employee, attendance, leave, and payroll reports
+- Cached and prefetched navigation data for faster tab switching
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -90,13 +82,14 @@ This repository is designed to show practical product engineering: a real data m
 | Frontend | Next.js 15, React 19, TypeScript |
 | Styling | Tailwind CSS |
 | Forms | React Hook Form |
-| API State | TanStack Query |
+| Client State | TanStack Query |
 | Icons | Lucide React |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
 | Validation | Zod |
 | Security | JWT, Helmet, CORS, password hashing |
+| Performance | React Query caching, route prefetching, optional Redis cache, Prisma indexes |
 | Tooling | npm workspaces, Docker Compose, ESLint |
 
 ## Architecture
@@ -105,14 +98,15 @@ This repository is designed to show practical product engineering: a real data m
 Browser
   |
   v
-Next.js Frontend
+Next.js App Router frontend
   |
   v
 Express REST API
   |
-  +-- Auth middleware
-  +-- Permission middleware
+  +-- Authentication middleware
+  +-- Authorization middleware
   +-- Domain route modules
+  +-- Shared pagination/cache utilities
   |
   v
 Prisma ORM
@@ -145,19 +139,19 @@ HRMS/
 |   |   |-- app/
 |   |   |-- assets/
 |   |   |-- components/
+|   |   |-- hooks/
 |   |   |-- lib/
 |   |   |-- providers/
 |   |   `-- types/
 |   `-- package.json
 |-- docker-compose.yml
 |-- package.json
-|-- plan.md
 `-- README.md
 ```
 
 ## Local Demo Accounts
 
-After running the seed command, the local demo accounts are:
+After seeding the database, use these local-only accounts:
 
 ```text
 Super Admin
@@ -173,9 +167,14 @@ Email: employee@hrms.local
 Password: Employee@12345
 ```
 
-The HR account can access employee management, attendance management, leave approvals, payroll, reports, recruitment, announcements, and performance management. The employee account is limited to self-service features such as dashboard, profile, attendance, leave requests, payslips, announcements, notifications, and performance views.
+Suggested demo flow:
 
-This is for local development only. Change seeded credentials and secrets before any production deployment.
+1. Sign in as `admin@hrms.local`.
+2. Open the dashboard and switch between sidebar modules to review the role-aware HR workspace.
+3. Review employee management, attendance, leave approvals, payroll, recruitment, performance, and reports.
+4. Sign in as `employee@hrms.local` to compare the limited self-service experience.
+
+These credentials are for local development only. Replace demo users and secrets before any production deployment.
 
 ## Getting Started
 
@@ -193,19 +192,21 @@ npm install
 
 ### 2. Configure Environment Files
 
-Create the backend environment file from the example:
+Windows:
 
 ```bash
 copy backend\.env.example backend\.env
-```
-
-Create the frontend environment file from the example:
-
-```bash
 copy frontend\.env.example frontend\.env.local
 ```
 
-Default local values are configured for:
+macOS/Linux:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
+```
+
+Default local services:
 
 ```text
 Frontend: http://localhost:3000
@@ -213,31 +214,23 @@ Backend:  http://localhost:5000/api
 Database: postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 ```
 
+Redis is optional. Leave `REDIS_URL` empty for local development without Redis.
+
 ### 3. Start PostgreSQL
 
 ```bash
 npm run db:up
 ```
 
-### 4. Generate Prisma Client
+### 4. Prepare the Database
 
 ```bash
 npm run prisma:generate
-```
-
-### 5. Run Migrations
-
-```bash
 npm run prisma:migrate
-```
-
-### 6. Seed Demo Data
-
-```bash
 npm run db:seed
 ```
 
-### 7. Start the App
+### 5. Start the Application
 
 ```bash
 npm run dev
@@ -269,8 +262,6 @@ npm run setup:db
 
 ## Validation
 
-The project includes practical validation commands:
-
 ```bash
 npm run typecheck
 npm run lint
@@ -278,9 +269,9 @@ npm run build
 npm run test:smoke
 ```
 
-The backend smoke test verifies key workflows including health checks, login, current user, unauthenticated rejection, employee RBAC, employee details, document metadata upload, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
+The backend smoke test covers core flows such as health checks, login, current user, unauthenticated rejection, employee RBAC, employee details, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
 
-## API Modules
+## API Surface
 
 ```text
 /api/auth
@@ -295,6 +286,7 @@ The backend smoke test verifies key workflows including health checks, login, cu
 /api/payroll
 /api/reports
 /api/notifications
+/api/announcements
 /api/jobs
 /api/candidates
 /api/applications
@@ -305,60 +297,23 @@ The backend smoke test verifies key workflows including health checks, login, cu
 /api/feedback
 ```
 
-## Database Coverage
+## Why This Project Is Interview-Relevant
 
-The Prisma schema models the main HRMS domain:
-
-```text
-User
-Role
-Permission
-Employee
-Department
-Designation
-Attendance
-Shift
-Holiday
-LeaveRequest
-LeaveType
-LeaveBalance
-Salary
-Payroll
-Payslip
-EmployeeDocument
-Notification
-Announcement
-Job
-Candidate
-JobApplication
-Interview
-Offer
-Goal
-PerformanceReview
-Feedback
-```
-
-## Engineering Notes
-
-- Frontend routes are protected by session and permission checks.
-- Backend routes enforce authentication and authorization server-side.
-- API responses use a consistent success/error shape.
-- React Query caches API responses to reduce repeated network work and improve navigation speed.
-- Prisma migrations keep the database schema reproducible.
-- Generated folders such as `.next/`, `dist/`, and `node_modules/` are intentionally ignored.
+- It is larger than a CRUD demo and models several connected business domains.
+- The UI changes based on user permissions instead of exposing the same dashboard to every user.
+- Backend authorization is enforced server-side, not only hidden in the frontend.
+- The database can be recreated from migrations and seeded for repeatable demos.
+- Performance work is practical: cached queries, route prefetching, pagination, and database indexes.
+- The repository includes real local setup and validation commands a reviewer can run.
 
 ## Future Improvements
 
 - Add hosted demo URL and screenshots
 - Add chart visualizations for reports
-- Add audit logs for HR/payroll-sensitive actions
-- Add email delivery for production password reset and notifications
+- Add audit logs for HR and payroll-sensitive actions
+- Add production email delivery for password reset and notifications
 - Add file storage integration for employee documents
 - Add CI workflow for typecheck, lint, build, and smoke tests
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](./LICENSE).
 
 ## Author
 
