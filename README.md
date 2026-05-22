@@ -4,26 +4,9 @@ HRMS is a production-style human resource management platform built with Next.js
 
 This project is designed as a portfolio-grade full-stack application. It demonstrates product thinking, scalable data modeling, permission-aware UX, typed API development, database migrations, and practical validation tooling.
 
-## Recruiter Snapshot
+## Dashboard Screen
 
-| Area | What This Project Shows |
-| --- | --- |
-| Product engineering | Multi-module HR platform with real admin, manager, and employee workflows |
-| Full-stack depth | Next.js frontend, Express REST API, Prisma ORM, PostgreSQL, Docker setup |
-| Security mindset | JWT authentication, protected frontend routes, backend authorization middleware |
-| Data modeling | Employees, departments, attendance, leave, payroll, hiring, reviews, goals, and notifications |
-| Performance | React Query caching, route/data prefetching, pagination, optional Redis-backed caching, Prisma indexing |
-| Code quality | TypeScript across the stack, reusable helpers, validation, structured API responses, smoke tests |
-
-## Resume Highlights
-
-- Built a role-based HRMS covering employee operations, attendance, leave, payroll, recruitment, and performance workflows.
-- Implemented JWT authentication with server-side permission checks and protected client-side routes.
-- Designed a relational PostgreSQL schema with Prisma migrations and seeded demo data.
-- Added reusable pagination, API response utilities, async handlers, and modular route organization.
-- Improved frontend responsiveness with route prefetching, data prefetching, React Query cache tuning, and faster sidebar navigation.
-- Added a light-only public auth experience while keeping dark mode available after login.
-- Included smoke-test coverage for critical backend workflows and npm workspace scripts for repeatable validation.
+![Dashboard screen](frontend/src/assets/dashboard.png)
 
 ## Key Features
 
@@ -215,6 +198,13 @@ cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env.local
 ```
 
+Review the copied files before starting the app:
+
+- `backend/.env` controls the API port, CORS origin, database URL, JWT settings, optional Redis cache, and seeded demo passwords.
+- `frontend/.env.local` points the Next.js app at the backend API through `NEXT_PUBLIC_API_URL`.
+- For local development, you can keep `REDIS_URL` empty.
+- Before deploying anywhere outside local development, replace `JWT_SECRET` and all demo seed passwords.
+
 Default local services:
 
 ```text
@@ -223,13 +213,15 @@ Backend:  http://localhost:5000/api
 Database: postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 ```
 
-Redis is optional. Leave `REDIS_URL` empty for local development without Redis.
-
 ### 3. Start PostgreSQL
+
+With Docker Desktop running:
 
 ```bash
 npm run db:up
 ```
+
+If you use your own PostgreSQL instance, create a database named `hrms` and update `DATABASE_URL` in `backend/.env`.
 
 ### 4. Prepare the Database
 
@@ -237,6 +229,12 @@ npm run db:up
 npm run prisma:generate
 npm run prisma:migrate
 npm run db:seed
+```
+
+For a fresh Docker-based setup, this shortcut starts PostgreSQL, runs migrations, and seeds data:
+
+```bash
+npm run setup:db
 ```
 
 ### 5. Start the Application
@@ -252,68 +250,46 @@ Frontend: http://localhost:3000
 Backend health: http://localhost:5000/api/health
 ```
 
-## Useful Commands
+Use the demo accounts listed above after the seed step completes.
+
+### 6. Validate the Setup
+
+Run these checks from the repository root:
 
 ```bash
-npm run dev
+npm run typecheck
+npm run lint
+npm run build
+npm run test:smoke
+```
+
+For the full validation sequence:
+
+```bash
+npm run verify
+```
+
+The smoke test starts the backend on a temporary port, connects to the configured database, and verifies core authentication, employee, attendance, leave, payroll, dashboard, reporting, recruitment, and performance flows.
+
+### Useful Local Commands
+
+```bash
 npm run dev:frontend
 npm run dev:backend
-npm run typecheck
-npm run lint
-npm run build
-npm run test:smoke
-npm run verify
-npm run db:up
-npm run db:down
 npm run db:status
-npm run setup:db
+npm run db:down
 ```
 
-## Validation
+Stop the development servers with `Ctrl+C`. Use `npm run db:down` to stop the Docker PostgreSQL container without deleting the database volume.
 
-```bash
-npm run typecheck
-npm run lint
-npm run build
-npm run test:smoke
-```
+### Troubleshooting
 
-The backend smoke test covers core flows such as health checks, login, current user, unauthenticated rejection, employee RBAC, employee details, attendance clock in/out, leave approval, salary update, payroll generation, dashboard summary, notifications, announcements, reports, password reset response, recruitment endpoints, performance endpoints, and API validation.
+- If `npm run db:up` fails, make sure Docker Desktop is running and port `5432` is available.
+- If Prisma cannot connect, confirm `DATABASE_URL` in `backend/.env` matches the database you started.
+- If login fails for the demo accounts, rerun `npm run db:seed` after migrations finish.
+- If the frontend cannot reach the API, confirm `NEXT_PUBLIC_API_URL` is `http://localhost:5000/api` and the backend is running.
 
-## API Surface
 
-```text
-/api/auth
-/api/employees
-/api/departments
-/api/designations
-/api/attendance
-/api/shifts
-/api/holidays
-/api/leaves
-/api/leave-types
-/api/payroll
-/api/reports
-/api/notifications
-/api/announcements
-/api/jobs
-/api/candidates
-/api/applications
-/api/interviews
-/api/offers
-/api/goals
-/api/performance-reviews
-/api/feedback
-```
-
-## Why This Project Is Interview-Relevant
-
-- It is larger than a CRUD demo and models several connected business domains.
-- The UI changes based on user permissions instead of exposing the same dashboard to every user.
-- Backend authorization is enforced server-side, not only hidden in the frontend.
-- The database can be recreated from migrations and seeded for repeatable demos.
-- Performance work is practical: cached queries, route prefetching, pagination, and database indexes.
-- The repository includes real local setup and validation commands a reviewer can run.
 
 ## Future Improvements
 

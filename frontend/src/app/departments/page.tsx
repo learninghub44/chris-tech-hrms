@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plus } from "lucide-react";
+import { Building2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   createDepartment,
+  deleteDepartment,
   getApiErrorMessage,
   listDepartments
 } from "@/lib/api";
@@ -25,6 +26,7 @@ type DepartmentFormValues = {
 
 function DepartmentsContent({ user, token }: DepartmentsContentProps) {
   const [error, setError] = useState<string | null>(null);
+  const [deletingDepartmentId, setDeletingDepartmentId] = useState<string | null>(null);
   const departmentsQuery = useQuery({
     queryKey: ["departments", token],
     queryFn: () => listDepartments(token),
@@ -63,6 +65,31 @@ function DepartmentsContent({ user, token }: DepartmentsContentProps) {
     }
 
     reset();
+    await departmentsQuery.refetch();
+  }
+
+  async function removeDepartment(id: string, name: string) {
+    if (!window.confirm(`Delete department \"${name}\"?`)) {
+      return;
+    }
+
+    setError(null);
+    setDeletingDepartmentId(id);
+
+    const response = await deleteDepartment(token, id).catch(() => null);
+
+    setDeletingDepartmentId(null);
+
+    if (!response) {
+      setError("Unable to reach the API");
+      return;
+    }
+
+    if (!response.success) {
+      setError(getApiErrorMessage(response));
+      return;
+    }
+
     await departmentsQuery.refetch();
   }
 
@@ -139,6 +166,16 @@ function DepartmentsContent({ user, token }: DepartmentsContentProps) {
                     <span className="rounded-md bg-surface px-2 py-1">
                       {department._count?.designations ?? 0} designations
                     </span>
+                    <button
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-rose-700 shadow-sm transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      type="button"
+                      onClick={() => removeDepartment(department.id, department.name)}
+                      disabled={deletingDepartmentId === department.id}
+                      aria-label={`Delete department ${department.name}`}
+                    >
+                      <Trash2 size={13} aria-hidden="true" />
+                      <span>Delete</span>
+                    </button>
                   </div>
                 </div>
               ))}

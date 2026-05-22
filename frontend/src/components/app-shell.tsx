@@ -597,8 +597,9 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full bg-transparent p-0.5">
             <button
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -608,13 +609,13 @@ export function AppShell({ user, token, children }: AppShellProps) {
               <Image
                 src={darkModeIcon}
                 alt=""
-                className="h-[18px] w-[18px] dark:invert"
+                className="h-[18px] w-[18px] dark:brightness-0 dark:invert"
                 aria-hidden="true"
               />
             </button>
             <Link
               href="/notifications"
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white relative"
               aria-label="Notifications"
               prefetch={true}
               onFocus={() => prefetchRoute("/notifications")}
@@ -624,10 +625,12 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 setPendingHref("/notifications");
               }}
             >
-              <Bell size={17} aria-hidden="true" />
+              <Bell size={18} aria-hidden="true" />
+              {/* badge removed per request */}
             </Link>
+            </div>
             <button
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-9 items-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
               type="button"
               onClick={signOut}
               disabled={isSigningOut}

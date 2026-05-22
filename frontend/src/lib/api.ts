@@ -619,6 +619,13 @@ export function createDepartment(
   });
 }
 
+export function deleteDepartment(token: string, id: string) {
+  return request<{ department: Department }>(`/departments/${id}`, {
+    method: "DELETE",
+    token
+  });
+}
+
 export function listDesignations(token: string) {
   return request<{ designations: Designation[] }>("/designations", {
     method: "GET",
@@ -633,6 +640,13 @@ export function createDesignation(
   return request<{ designation: Designation }>("/designations", {
     method: "POST",
     body: input,
+    token
+  });
+}
+
+export function deleteDesignation(token: string, id: string) {
+  return request<{ designation: Designation }>(`/designations/${id}`, {
+    method: "DELETE",
     token
   });
 }

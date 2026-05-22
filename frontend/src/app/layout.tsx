@@ -53,7 +53,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning={true}>
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
         {children}
       </body>

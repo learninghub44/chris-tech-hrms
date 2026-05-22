@@ -1,6 +1,6 @@
 "use client";
 
-import { BriefcaseBusiness, Plus } from "lucide-react";
+import { BriefcaseBusiness, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
 import {
   createDesignation,
+  deleteDesignation,
   getApiErrorMessage,
   listDepartments,
   listDesignations
@@ -27,6 +28,7 @@ type DesignationFormValues = {
 
 function DesignationsContent({ user, token }: DesignationsContentProps) {
   const [error, setError] = useState<string | null>(null);
+  const [deletingDesignationId, setDeletingDesignationId] = useState<string | null>(null);
   const departmentsQuery = useQuery({
     queryKey: ["departments", token],
     queryFn: () => listDepartments(token),
@@ -75,6 +77,31 @@ function DesignationsContent({ user, token }: DesignationsContentProps) {
     }
 
     reset();
+    await designationsQuery.refetch();
+  }
+
+  async function removeDesignation(id: string, title: string) {
+    if (!window.confirm(`Delete designation \"${title}\"?`)) {
+      return;
+    }
+
+    setError(null);
+    setDeletingDesignationId(id);
+
+    const response = await deleteDesignation(token, id).catch(() => null);
+
+    setDeletingDesignationId(null);
+
+    if (!response) {
+      setError("Unable to reach the API");
+      return;
+    }
+
+    if (!response.success) {
+      setError(getApiErrorMessage(response));
+      return;
+    }
+
     await designationsQuery.refetch();
   }
 
@@ -150,7 +177,7 @@ function DesignationsContent({ user, token }: DesignationsContentProps) {
               {designations.map((designation) => (
                 <div
                   key={designation.id}
-                  className="grid gap-3 border-b border-line px-4 py-4 last:border-0 sm:grid-cols-[1fr_auto]"
+                  className="grid gap-3 border-b border-line px-4 py-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-start"
                 >
                   <div>
                     <p className="font-medium text-ink">{designation.title}</p>
@@ -163,9 +190,21 @@ function DesignationsContent({ user, token }: DesignationsContentProps) {
                       </p>
                     ) : null}
                   </div>
-                  <span className="self-start rounded-md bg-surface px-2 py-1 text-xs font-medium text-slate-600">
-                    {designation._count?.employees ?? 0} employees
-                  </span>
+                  <div className="flex items-center gap-2 self-start">
+                    <span className="rounded-md bg-surface px-2 py-1 text-xs font-medium text-slate-600">
+                      {designation._count?.employees ?? 0} employees
+                    </span>
+                    <button
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 shadow-sm transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      type="button"
+                      onClick={() => removeDesignation(designation.id, designation.title)}
+                      disabled={deletingDesignationId === designation.id}
+                      aria-label={`Delete designation ${designation.title}`}
+                    >
+                      <Trash2 size={13} aria-hidden="true" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

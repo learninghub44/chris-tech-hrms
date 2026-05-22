@@ -781,6 +781,34 @@ employeeCoreRouter.post(
   })
 );
 
+employeeCoreRouter.delete(
+  "/departments/:id",
+  requirePermissions(["employees:manage"]),
+  asyncHandler(async (req, res) => {
+    const params = parseInput(paramsSchema, req.params);
+
+    try {
+      const department = await prisma.department.delete({
+        where: {
+          id: params.id
+        },
+        include: {
+          _count: {
+            select: {
+              employees: true,
+              designations: true
+            }
+          }
+        }
+      });
+
+      res.status(200).json(ok({ department }));
+    } catch (error) {
+      handlePrismaMutationError(error);
+    }
+  })
+);
+
 employeeCoreRouter.get(
   "/designations",
   requirePermissions(["employees:manage"]),
@@ -832,6 +860,34 @@ employeeCoreRouter.post(
       });
 
       res.status(201).json(ok({ designation }));
+    } catch (error) {
+      handlePrismaMutationError(error);
+    }
+  })
+);
+
+employeeCoreRouter.delete(
+  "/designations/:id",
+  requirePermissions(["employees:manage"]),
+  asyncHandler(async (req, res) => {
+    const params = parseInput(paramsSchema, req.params);
+
+    try {
+      const designation = await prisma.designation.delete({
+        where: {
+          id: params.id
+        },
+        include: {
+          department: true,
+          _count: {
+            select: {
+              employees: true
+            }
+          }
+        }
+      });
+
+      res.status(200).json(ok({ designation }));
     } catch (error) {
       handlePrismaMutationError(error);
     }
