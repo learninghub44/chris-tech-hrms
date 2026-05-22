@@ -61,7 +61,7 @@ function NotificationsContent({ user, token }: NotificationsContentProps) {
   return (
     <AppShell user={user} token={token}>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-md bg-brand-50 text-brand-700">
             <Bell size={22} aria-hidden="true" />
           </div>

@@ -40,7 +40,7 @@ function ProfileContent({ user, token }: ProfileContentProps) {
 
         <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-            <div className="flex items-center gap-4">
+            <div className="flex min-w-0 items-center gap-4">
               <div className="grid h-14 w-14 place-items-center rounded-md bg-brand-50 text-brand-700">
                 <UserCircle size={32} aria-hidden="true" />
               </div>
@@ -51,11 +51,11 @@ function ProfileContent({ user, token }: ProfileContentProps) {
             </div>
 
             <div className="mt-6 space-y-3 text-sm">
-              <div className="flex items-center gap-3 rounded-md bg-surface px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
                 <Mail size={17} className="text-slate-500" aria-hidden="true" />
                 <span>{user.email}</span>
               </div>
-              <div className="flex items-center gap-3 rounded-md bg-surface px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
                 <ShieldCheck size={17} className="text-slate-500" aria-hidden="true" />
                 <span>{user.roles.map((role) => roleLabels[role]).join(", ")}</span>
               </div>

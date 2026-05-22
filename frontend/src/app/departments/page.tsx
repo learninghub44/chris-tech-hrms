@@ -108,7 +108,7 @@ function DepartmentsContent({ user, token }: DepartmentsContentProps) {
             className="rounded-lg border border-line bg-white p-5 shadow-soft"
             onSubmit={handleSubmit(submit)}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
                 <Building2 size={20} aria-hidden="true" />
               </div>

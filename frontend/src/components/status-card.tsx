@@ -23,15 +23,15 @@ export function StatusCard({
   tone
 }: StatusCardProps) {
   return (
-    <article className="rounded-lg border border-line bg-white p-5 shadow-soft">
-      <div className="flex items-start justify-between gap-3">
+    <article className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-soft">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-500">{label}</p>
           <p className="mt-3 text-3xl font-semibold tracking-normal text-ink">
             {value}
           </p>
         </div>
-        <div className={`grid h-10 w-10 place-items-center rounded-md ${toneClasses[tone]}`}>
+        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-md ${toneClasses[tone]}`}>
           <Icon size={20} aria-hidden="true" />
         </div>
       </div>

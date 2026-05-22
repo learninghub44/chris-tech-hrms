@@ -11,6 +11,7 @@ import { attendanceRouter } from "./modules/attendance/attendance.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { employeeCoreRouter } from "./modules/employees/employees.routes";
 import { healthRouter } from "./modules/health/health.routes";
+import { hrAssistantRouter } from "./modules/hr-assistant/hr-assistant.routes";
 import { leaveRouter } from "./modules/leaves/leaves.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { payrollRouter } from "./modules/payroll/payroll.routes";
@@ -54,6 +55,7 @@ export function createApp() {
   app.use("/api", payrollRouter);
   app.use("/api", dashboardRouter);
   app.use("/api", reportsRouter);
+  app.use("/api", hrAssistantRouter);
   app.use("/api", notificationsRouter);
   app.use("/api", recruitmentRouter);
   app.use("/api", performanceRouter);

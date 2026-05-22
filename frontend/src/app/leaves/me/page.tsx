@@ -36,7 +36,7 @@ function MyLeavesContent({ user, token }: MyLeavesContentProps) {
   return (
     <AppShell user={user} token={token}>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-md bg-brand-50 text-brand-700">
             <CalendarDays size={22} aria-hidden="true" />
           </div>
@@ -50,7 +50,7 @@ function MyLeavesContent({ user, token }: MyLeavesContentProps) {
 
         <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[760px] w-full text-left text-sm">
               <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Type</th>

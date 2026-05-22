@@ -1,241 +1,150 @@
-# HR Management System Phase Plan
+# HRMS Implementation Plan And Project Status
 
 ## 1. Product Goal
 
-Build a full-stack HR Management System where a company can manage employees, attendance, leave, payroll, recruitment, performance, notifications, and reports from one web application.
+Build a full-stack HR Management System where a company can manage employee operations, attendance, leave, payroll, recruitment, performance, notifications, announcements, reports, and employee self-service from one role-based web application.
 
-The system should support four main user types:
+The current project has moved beyond the original MVP. Recruitment, performance management, real-time notifications, responsive UI improvements, PostgreSQL persistence, and a Gemini-powered HR assistant are now part of the implemented scope.
 
-| Role | Main Responsibility | Access Level |
+## 2. Current User Roles
+
+| Role | Responsibility | Access Level |
 | --- | --- | --- |
-| Super Admin | Company settings, HR users, roles, and permissions | Full system access |
-| HR Admin | Employees, attendance, leave, payroll, documents, and recruitment | HR operations access |
-| Manager | Team members, leave approvals, and performance reviews | Team-level access |
-| Employee | Own profile, attendance, leave, documents, and payslips | Self-service access |
+| Super Admin | System-wide HRMS access, permissions, and organization-level workflows | Full system access |
+| HR Admin | Employees, attendance, leave, payroll, recruitment, performance, reports, announcements | HR operations access |
+| Manager | Team visibility, leave approvals, performance workflows | Team-level access |
+| Employee | Own profile, attendance, leave, payslips, notifications, HR assistant | Self-service access |
 
-## 2. Final Product Scope
+## 3. Current Implementation Status
 
-| Module | Purpose | MVP? |
+| Area | Status | Notes |
 | --- | --- | --- |
-| Authentication and Authorization | Login, users, roles, and permissions | Yes |
-| Employee Management | Employee records, departments, designations, documents | Yes |
-| Attendance Management | Clock in, clock out, attendance history, reports | Yes |
-| Leave Management | Leave requests, approvals, balances, holidays | Yes |
-| Payroll Management | Salary setup, payroll generation, payslips | Basic version |
-| Dashboard and Reports | HR metrics, charts, summaries, exports | Basic version |
-| Notifications | In-app and email alerts | Basic version |
-| Recruitment | Jobs, candidates, interviews, offers | Later |
-| Performance Management | Goals, reviews, ratings, feedback | Later |
+| Project foundation | Implemented | npm workspaces, Next.js frontend, Express backend, Prisma, Docker PostgreSQL |
+| Authentication | Implemented | Login, register, logout, forgot password, reset password, JWT |
+| Authorization | Implemented | Role and permission based middleware plus protected frontend pages |
+| Employee management | Implemented | Employees, departments, designations, managers, emergency contacts, document metadata |
+| Attendance | Implemented | Clock in/out, work mode, shift settings, holiday management, reports |
+| Leave management | Implemented | Leave types, requests, approvals, rejection, balances, notifications |
+| Payroll | Implemented | Salary setup, payroll generation, payroll items, payslips, reports |
+| Dashboard | Implemented | Role-aware summary cards, recent notifications, announcements, optional cache |
+| Reports | Implemented | Employee, attendance, leave, payroll reports |
+| Notifications | Implemented | In-app notifications, read state, announcements |
+| Real-time updates | Implemented | Socket.IO, JWT socket auth, user rooms, TanStack Query cache sync |
+| Recruitment | Implemented | Jobs, candidates, applications, interviews, offers |
+| Performance | Implemented | Goals, reviews, feedback, appraisal history |
+| HR assistant | Implemented | Gemini-backed assistant with HR data tools |
+| Responsive UI | Implemented | Mobile navbar/sidebar and page-level responsive fixes |
+| Smoke validation | Implemented | Backend smoke test covers key workflows |
+| Production hardening | Future | CI, deployment, audit logs, email delivery, storage, monitoring |
 
-## 3. Recommended Tech Stack
+## 4. Current Tech Stack
 
-| Layer | Recommended Tool | Why |
+| Layer | Tool | Current Use |
 | --- | --- | --- |
-| Frontend | Next.js | React-based app with routing and production deployment support |
-| Styling | Tailwind CSS | Fast, consistent UI styling |
-| Forms | React Hook Form | Clean form state and validation handling |
-| API State | TanStack Query | API fetching, caching, loading states, and refetching |
-| Charts | Recharts | Dashboard charts and reports |
-| Backend | Node.js with Express.js or NestJS | REST API for HRMS modules |
-| Authentication | JWT | Secure API access after login |
-| Authorization | Role-based access control | Restrict pages and actions by user role |
-| Database | PostgreSQL | Reliable relational database for HR data |
-| ORM | Prisma | Type-safe database models and migrations |
-| Cache | Redis | Optional caching, sessions, and rate limiting |
-| File Storage | Cloudinary or S3 | Store employee documents and generated files |
-| Email | Nodemailer | Send leave, payroll, and account notifications |
-| Background Jobs | Cron jobs | Scheduled attendance, leave, and payroll tasks |
+| Frontend | Next.js 15, React 19, TypeScript | App Router web application |
+| Styling | Tailwind CSS | Responsive HR dashboard UI |
+| Forms | React Hook Form | Form state and validation flows |
+| API state | TanStack Query | Fetching, caching, invalidation, realtime cache updates |
+| Icons | Lucide React | UI navigation and actions |
+| Backend | Node.js, Express, TypeScript | REST API and Socket.IO server |
+| Database | PostgreSQL | Persistent HRMS data |
+| ORM | Prisma | Schema, migrations, typed queries |
+| Realtime | Socket.IO | User-scoped notification delivery |
+| AI | Gemini API | HR assistant function/tool orchestration |
+| Validation | Zod | Request validation |
+| Cache | Redis optional | Dashboard summary caching |
+| Local infra | Docker Compose | PostgreSQL container |
+| Tooling | npm workspaces, ESLint, TypeScript | Build and validation workflow |
 
-## 4. Deployment Plan
-
-| Part | Good Options |
-| --- | --- |
-| Frontend | Vercel or Netlify |
-| Backend | Render, Railway, AWS, or DigitalOcean |
-| Database | Supabase, Neon, RDS, or Railway PostgreSQL |
-| File Storage | Cloudinary or S3 |
-
-## 5. System Architecture
+## 5. Current System Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Client["Client Layer"]
-        Web["Web App\nNext.js or React"]
-        Mobile["Optional Mobile App"]
-    end
+    Web["Next.js Frontend"] --> Query["TanStack Query Cache"]
+    Web --> Api["Express REST API"]
+    Web --> Socket["Socket.IO Client"]
+    Web --> Assistant["HR Assistant Widget"]
 
-    subgraph Frontend["Frontend Layer"]
-        UI["Dashboard UI"]
-        Forms["Forms\nReact Hook Form"]
-        State["API State\nTanStack Query"]
-        Charts["Charts\nRecharts"]
-    end
+    Api --> Auth["JWT Authentication"]
+    Auth --> RBAC["Permission Middleware"]
+    RBAC --> Modules["HRMS Route Modules"]
 
-    subgraph Backend["Backend API Layer"]
-        API["REST API"]
-        Auth["Authentication\nJWT"]
-        RBAC["Role-Based Access Control"]
-        Uploads["Document Uploads"]
-    end
+    Socket --> SocketServer["Socket.IO Server"]
+    SocketServer --> Rooms["Private user rooms"]
 
-    subgraph Modules["HRMS Modules"]
-        Employees["Employee Management"]
-        Attendance["Attendance"]
-        Leave["Leave"]
-        Payroll["Payroll"]
-        Recruitment["Recruitment"]
-        Performance["Performance"]
-        Reports["Reports"]
-        Notifications["Notifications"]
-    end
+    Assistant --> AssistantApi["/api/hr-assistant/chat"]
+    AssistantApi --> Gemini["Gemini API"]
+    AssistantApi --> Tools["HR Data Tools"]
 
-    subgraph Data["Data and Storage Layer"]
-        DB[("PostgreSQL Database")]
-        Cache[("Redis Cache")]
-        Files[("Cloudinary or S3\nDocuments")]
-    end
+    Modules --> Prisma["Prisma ORM"]
+    Tools --> Prisma
+    Prisma --> Postgres[("PostgreSQL")]
 
-    subgraph Background["Background Services"]
-        Jobs["Cron Jobs\nAttendance and Payroll"]
-        Email["Email Service\nNodemailer"]
-    end
+    Modules --> Notify["Notification Records"]
+    Notify --> SocketServer
 
-    Web --> UI
-    Mobile --> API
-    UI --> Forms
-    UI --> State
-    UI --> Charts
-    State --> API
-
-    API --> Auth
-    API --> RBAC
-    API --> Uploads
-    RBAC --> Modules
-
-    Modules --> DB
-    Modules --> Cache
-    Uploads --> Files
-
-    Jobs --> Attendance
-    Jobs --> Payroll
-    Notifications --> Email
-    Leave --> Notifications
-    Payroll --> Notifications
-    Recruitment --> Notifications
+    Modules --> Redis[("Optional Redis Cache")]
 ```
 
-## 6. Request Flow
+## 6. Request And Event Flows
+
+### Standard API Flow
 
 1. User logs in from the frontend.
-2. Backend validates credentials.
-3. Backend returns a JWT token.
-4. Frontend sends the token with protected API requests.
-5. Backend checks the user's role and permissions.
-6. Backend runs the requested module logic.
-7. Data is saved in PostgreSQL.
-8. Documents are uploaded to Cloudinary or S3.
-9. Notifications are sent through in-app alerts or email.
-10. Cron jobs run scheduled tasks like payroll and attendance processing.
+2. Backend validates credentials and returns a JWT.
+3. Frontend stores the session locally.
+4. Protected API requests include `Authorization: Bearer <token>`.
+5. Backend authenticates the token.
+6. Backend checks required permissions.
+7. Route module runs domain logic.
+8. Prisma saves or reads data from PostgreSQL.
+9. API returns a typed success or failure response.
 
-## 7. Phase-Based Development Plan
+### Realtime Notification Flow
 
-### Phase 0: Requirements And Project Decisions
+1. Authenticated frontend opens a Socket.IO connection.
+2. Socket handshake sends the current JWT.
+3. Backend verifies the token and joins `user:<userId>`.
+4. A workflow creates a notification after a committed database transaction.
+5. Backend emits `notifications:created` or `notifications:read` to the user's room.
+6. Frontend updates TanStack Query caches for notifications and dashboard summary.
+7. Browser UI updates without refresh.
 
-Goal: finalize the project direction before coding starts.
+### HR Assistant Flow
 
-Build or decide:
+1. Employee asks a natural language question in the floating chat widget.
+2. Frontend posts the message and recent history to `/api/hr-assistant/chat`.
+3. Backend sends Gemini a system prompt plus HR tool declarations.
+4. Gemini chooses a tool when factual HR data is needed.
+5. Backend executes the selected tool against authenticated employee data.
+6. Backend returns the tool result to Gemini.
+7. Gemini writes a concise answer for the employee.
 
-- Final tech stack
-- User roles
-- Permission rules
-- MVP scope
-- Database provider
-- Deployment provider
-- File storage provider
-- Email provider
-
-Deliverables:
-
-- Finalized feature list
-- Permission matrix
-- Basic database relationship plan
-- Confirmed project folder structure
-
-Done when:
-
-- The team knows exactly what the MVP includes.
-- The stack is fixed.
-- The first database schema can be created.
-
-### Phase 1: Project Foundation
-
-Goal: create the base frontend, backend, database, and developer setup.
-
-Build:
-
-- Frontend project
-- Backend project
-- PostgreSQL connection
-- Prisma setup
-- Environment variable setup
-- Base dashboard layout
-- Common UI layout with sidebar, header, and content area
-- Error handling pattern
-- API response format
-
-Main database tables:
-
-- users
-- roles
-- permissions
-- user_roles
-
-Main API routes:
+Supported assistant tools:
 
 ```text
-GET /api/health
-GET /api/auth/me
+get_leave_balance
+get_next_payroll
+get_manager
 ```
 
-Frontend pages:
+## 7. Implemented Module Details
 
-- Login page
-- Base dashboard page
-- Not authorized page
+### Authentication And RBAC
 
-Done when:
-
-- Frontend runs locally.
-- Backend runs locally.
-- Database connection works.
-- A basic dashboard shell is visible after login.
-
-### Phase 2: Authentication And Role-Based Access
-
-Goal: make the system secure and role-aware.
-
-Build:
+Implemented capabilities:
 
 - Login
-- Register or create user
+- Register
+- Logout
 - Forgot password
 - Reset password
-- JWT authentication
-- Password hashing
-- Protected API routes
-- Protected frontend pages
-- Role-based page access
-- Account status: active, inactive, terminated
+- Current user session
+- JWT verification
+- Account status checks
+- Permission middleware
 
-Main database tables:
-
-- users
-- roles
-- permissions
-- user_roles
-- password_reset_tokens
-
-Main API routes:
+Primary routes:
 
 ```text
 POST /api/auth/login
@@ -246,50 +155,24 @@ GET  /api/auth/me
 POST /api/auth/logout
 ```
 
-Frontend pages:
+### Employee Core
 
-- Login
-- Forgot password
-- Reset password
-- User profile
+Implemented capabilities:
 
-Done when:
-
-- Users can log in and log out.
-- Unauthorized users cannot access protected pages.
-- Each role sees only allowed menu items and actions.
-
-### Phase 3: Employee Core
-
-Goal: build the main employee management workflow.
-
-Build:
-
-- Employee list
-- Add employee
-- Edit employee
-- Delete or deactivate employee
-- Employee profile
-- Departments
-- Designations
-- Employment status
+- Employee list, create, detail, update, deactivate
+- Department management
+- Designation management
+- Profile view
+- Manager hierarchy
 - Emergency contacts
-- Employee documents
-- Document upload
+- Employee document metadata
 
-Main database tables:
-
-- employees
-- departments
-- designations
-- employee_documents
-- emergency_contacts
-
-Main API routes:
+Primary routes:
 
 ```text
 GET    /api/employees
 POST   /api/employees
+GET    /api/employees/me
 GET    /api/employees/:id
 PUT    /api/employees/:id
 DELETE /api/employees/:id
@@ -300,43 +183,19 @@ POST   /api/designations
 POST   /api/employees/:id/documents
 ```
 
-Frontend pages:
+### Attendance And Time
 
-- Employees list
-- Add employee
-- Edit employee
-- Employee profile
-- Departments
-- Designations
-
-Done when:
-
-- HR can manage employee records from the UI.
-- Employees can view their own profile.
-- Documents can be uploaded and linked to employee records.
-
-### Phase 4: Attendance Management
-
-Goal: track daily attendance and provide attendance reports.
-
-Build:
+Implemented capabilities:
 
 - Clock in
 - Clock out
-- Daily attendance records
-- Late mark logic
-- Work-from-home status
+- Attendance history
+- Attendance report
 - Shift setup
 - Holiday setup
-- Attendance report
+- Work mode tracking
 
-Main database tables:
-
-- attendance
-- shifts
-- holidays
-
-Main API routes:
+Primary routes:
 
 ```text
 POST /api/attendance/clock-in
@@ -349,43 +208,19 @@ GET  /api/holidays
 POST /api/holidays
 ```
 
-Frontend pages:
+### Leave Management
 
-- My attendance
-- Attendance report
-- Shift settings
-- Holiday calendar
+Implemented capabilities:
 
-Done when:
-
-- Employees can clock in and clock out.
-- HR can view attendance reports.
-- Attendance data can be filtered by employee, date, and department.
-
-### Phase 5: Leave Management
-
-Goal: allow employees to request leave and managers or HR to approve it.
-
-Build:
-
-- Leave types
-- Leave request form
-- Leave approval workflow
-- Leave rejection workflow
-- Leave balance tracking
+- Leave type setup
+- Employee leave request
+- Manager/HR approval
+- Manager/HR rejection
+- Leave balance updates
 - Leave history
-- Holiday calendar integration
-- Leave notifications
+- Realtime notifications
 
-Main database tables:
-
-- leave_types
-- leave_requests
-- leave_balances
-- holidays
-- notifications
-
-Main API routes:
+Primary routes:
 
 ```text
 POST /api/leaves
@@ -398,100 +233,47 @@ GET  /api/leave-types
 POST /api/leave-types
 ```
 
-Frontend pages:
+### Payroll
 
-- Apply leave
-- My leave history
-- Leave approvals
-- Leave balances
-- Leave settings
-
-Done when:
-
-- Employees can apply for leave.
-- Managers or HR can approve or reject leave.
-- Leave balances update correctly.
-
-### Phase 6: Basic Payroll
-
-Goal: generate simple monthly payroll and payslips.
-
-Build:
+Implemented capabilities:
 
 - Salary setup
-- Allowances
-- Deductions
+- Salary update
 - Monthly payroll generation
-- Payroll review
-- Payslip generation
-- Payslip download
-- Payroll notifications
+- Payroll details
+- Payslip records
+- Payslip download response
+- Realtime payslip notifications
 
-Main database tables:
-
-- salaries
-- payrolls
-- payroll_items
-- payslips
-
-Main API routes:
+Primary routes:
 
 ```text
+GET  /api/salaries
+POST /api/salaries
+PUT  /api/salaries/:id
 POST /api/payroll/generate
 GET  /api/payroll
 GET  /api/payroll/:id
 GET  /api/payroll/:id/payslip
-GET  /api/salaries
-POST /api/salaries
-PUT  /api/salaries/:id
+GET  /api/payroll/me
 ```
 
-Frontend pages:
+### Dashboard, Reports, Notifications, And Announcements
 
-- Salary setup
-- Payroll list
-- Payroll detail
-- My payslips
+Implemented capabilities:
 
-Done when:
-
-- HR can create salary structures.
-- HR can generate monthly payroll.
-- Employees can download payslips.
-
-### Phase 7: Dashboard, Reports, And Notifications
-
-Goal: give users clear summaries and alerts.
-
-Build:
-
-- Admin dashboard
-- HR dashboard
-- Manager dashboard
-- Employee dashboard
+- Role-aware dashboard summary
+- Optional Redis cache for dashboard summary
 - Employee report
 - Attendance report
 - Leave report
 - Payroll report
 - In-app notifications
-- Email notifications
+- Notification read state
+- Audience-based announcements
+- Realtime notification cache sync
 
-Dashboard cards:
-
-- Total employees
-- Present employees today
-- Employees on leave
-- Pending leave requests
-- Monthly payroll cost
-- New hires
-- Attrition rate
-
-Main database tables:
-
-- notifications
-- announcements
-
-Main API routes:
+Primary routes:
 
 ```text
 GET  /api/dashboard/summary
@@ -501,231 +283,230 @@ GET  /api/reports/leaves
 GET  /api/reports/payroll
 GET  /api/notifications
 PUT  /api/notifications/:id/read
-POST /api/announcements
 GET  /api/announcements
+POST /api/announcements
 ```
 
-Frontend pages:
+### Recruitment
 
-- Dashboard
-- Reports
-- Notifications
-- Announcements
-
-Done when:
-
-- Each role has a useful dashboard.
-- HR can view core reports.
-- Users receive important notifications.
-
-### Phase 8: Recruitment
-
-Goal: manage hiring from job post to offer.
-
-Build:
-
-- Job posts
-- Candidate applications
-- Candidate profiles
-- Interview scheduling
-- Candidate status tracking
-- Offer letters
-
-Main database tables:
-
-- jobs
-- candidates
-- applications
-- interviews
-- offers
-
-Main API routes:
-
-```text
-POST /api/jobs
-GET  /api/jobs
-GET  /api/jobs/:id
-POST /api/candidates
-GET  /api/candidates
-POST /api/interviews
-PUT  /api/applications/:id/status
-POST /api/offers
-```
-
-Frontend pages:
+Implemented capabilities:
 
 - Jobs
 - Candidates
-- Candidate profile
-- Interviews
+- Applications
+- Interview scheduling
+- Interview status updates
 - Offers
+- Offer status updates
+- Realtime interviewer notifications
 
-Done when:
-
-- HR can publish jobs.
-- HR can manage candidates.
-- HR can track interview and offer status.
-
-### Phase 9: Performance Management
-
-Goal: support employee goals, feedback, reviews, and appraisals.
-
-Build:
-
-- Employee goals
-- Manager reviews
-- Ratings
-- Feedback
-- Appraisal history
-
-Main database tables:
-
-- goals
-- performance_reviews
-- feedback
-
-Main API routes:
+Primary routes:
 
 ```text
+GET  /api/jobs
+POST /api/jobs
+GET  /api/jobs/:id
+GET  /api/candidates
+POST /api/candidates
+GET  /api/candidates/:id
+GET  /api/applications
+POST /api/applications
+PUT  /api/applications/:id/status
+GET  /api/interviews
+POST /api/interviews
+PUT  /api/interviews/:id/status
+GET  /api/offers
+POST /api/offers
+PUT  /api/offers/:id/status
+```
+
+### Performance Management
+
+Implemented capabilities:
+
+- Performance employee list
+- Goals
+- Goal updates
+- Reviews
+- Review status updates
+- Feedback
+- Appraisal history UI
+
+Primary routes:
+
+```text
+GET  /api/performance/employees
 GET  /api/goals
 POST /api/goals
 PUT  /api/goals/:id
 GET  /api/performance-reviews
 POST /api/performance-reviews
-POST /api/feedback
+PUT  /api/performance-reviews/:id/status
 GET  /api/feedback
+POST /api/feedback
 ```
 
-Frontend pages:
+### HR Assistant
 
-- Goals
-- Performance reviews
-- Feedback
-- Appraisal history
+Implemented capabilities:
 
-Done when:
+- Floating chat widget
+- Gemini model request
+- HR tool declarations
+- Tool execution against authenticated employee data
+- Short natural language responses
 
-- Employees and managers can track goals.
-- Managers can submit reviews.
-- HR can view performance history.
-
-### Phase 10: Testing, Polish, And Deployment
-
-Goal: prepare the system for real use.
-
-Build:
-
-- Form validation improvements
-- Loading and empty states
-- Error states
-- Responsive UI
-- API validation
-- Unit tests
-- Integration tests
-- Permission tests
-- Deployment configuration
-- Production environment variables
-- Database migration process
-
-Testing checklist:
-
-- Authentication works.
-- Role permissions work.
-- Employee CRUD works.
-- Attendance rules work.
-- Leave balances update correctly.
-- Payroll calculation is correct.
-- Reports show correct data.
-- Uploaded documents open correctly.
-- Emails are sent correctly.
-
-Done when:
-
-- The app is deployed.
-- Core workflows work in production.
-- The MVP is ready for real users.
-
-## 8. MVP Build Plan
-
-The MVP should stop after Phase 7.
-
-MVP includes:
-
-1. Project foundation
-2. Authentication
-3. Role-based access
-4. Employee management
-5. Attendance
-6. Leave management
-7. Basic payroll
-8. Dashboard
-9. Basic reports
-10. Notifications
-
-MVP does not include:
-
-- Recruitment
-- Performance management
-- Advanced payroll automation
-- Mobile app
-- Advanced analytics
-
-## 9. Simple User Flow
+Primary route:
 
 ```text
-Employee logs in
--> Employee marks attendance
--> Employee applies for leave
--> Manager approves or rejects leave
--> HR reviews attendance and leave data
--> HR generates monthly payroll
--> Employee downloads payslip
+POST /api/hr-assistant/chat
 ```
 
-## 10. Main Database Entities
+## 8. Current Database Entities
 
 ```text
 User
 Role
 Permission
+UserRole
+RolePermission
+PasswordResetToken
 Employee
 Department
 Designation
+EmergencyContact
+EmployeeDocument
 Attendance
 Shift
 Holiday
-LeaveRequest
 LeaveType
+LeaveRequest
 LeaveBalance
-Payroll
 Salary
+Payroll
+PayrollItem
 Payslip
-Document
-Job
-Candidate
-Application
-Interview
-Offer
-PerformanceReview
-Goal
-Feedback
 Notification
 Announcement
+Job
+Candidate
+JobApplication
+Interview
+Offer
+Goal
+PerformanceReview
+Feedback
 ```
 
-## 11. Build Priority
+## 9. Validation Strategy
 
-Build in this order:
+Current commands:
 
-1. Authentication and roles
-2. Employee management
-3. Attendance
-4. Leave management
-5. Basic payroll
-6. Dashboard and reports
-7. Notifications
-8. Recruitment
-9. Performance management
-10. Deployment and polish
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm run test:smoke
+npm run verify
+```
 
-This order gives a usable HRMS early, then adds advanced features later.
+Current smoke test coverage:
+
+- Health endpoint and database connection
+- Authentication and unauthenticated rejection
+- Employee RBAC checks
+- Employee detail and document metadata
+- Attendance clock-in and clock-out
+- Leave request, approval, and balance update
+- Salary update and payroll generation
+- Payslip response
+- Dashboard, notifications, announcements, and reports
+- Password reset development response
+- Recruitment and performance endpoint availability
+- Validation error behavior
+
+## 10. Current Demo Flow
+
+```text
+Admin logs in
+-> Admin reviews dashboard
+-> Admin manages employees, departments, and designations
+-> Employee logs in and marks attendance
+-> Employee applies for leave
+-> Manager or HR approves/rejects leave
+-> Employee receives realtime notification
+-> HR generates payroll
+-> Employee receives realtime payslip notification
+-> HR schedules interview
+-> Interviewer receives realtime interview notification
+-> Employee asks HR assistant about leave, payroll, or manager
+```
+
+## 11. Portfolio Highlights
+
+This project now demonstrates:
+
+- End-to-end TypeScript full-stack development
+- PostgreSQL relational modeling with Prisma
+- Role and permission based product workflows
+- Real-time event delivery with Socket.IO
+- LLM orchestration with Gemini tool use
+- TanStack Query cache synchronization
+- Responsive operational UI design
+- API validation with Zod
+- Smoke testing of real backend flows
+
+## 12. Remaining Roadmap
+
+### Production Readiness
+
+- Add hosted demo and production deployment configuration
+- Add CI for typecheck, lint, build, and smoke tests
+- Add structured audit logs for HR, payroll, auth, and permission-sensitive actions
+- Add API rate limiting and request logging for production
+- Add observability: health checks, metrics, error tracking
+
+### Notifications And Communication
+
+- Add production email delivery for password reset, leave, payroll, interviews, and announcements
+- Add notification preferences by user
+- Add Socket.IO Redis adapter for multi-instance scaling
+
+### Files And Documents
+
+- Add S3, Cloudinary, or equivalent storage for employee documents
+- Add secure file download URLs
+- Add generated PDF payslips and offer letters
+
+### Reporting And Analytics
+
+- Add charts to reports and dashboard
+- Add CSV/PDF export for HR reports
+- Add advanced filters and saved report views
+
+### Security And Compliance
+
+- Add stronger password policy controls
+- Add account lockout or throttling
+- Add audit trails for employee, payroll, and permission changes
+- Review PII handling before any production deployment
+
+### Testing
+
+- Add integration tests for Socket.IO notification delivery
+- Add HR assistant tests using deterministic tool execution
+- Add browser smoke tests for the most important user workflows
+
+## 13. Build Priority From Here
+
+Recommended next order:
+
+1. Production email delivery
+2. File storage for employee documents
+3. Audit logs
+4. CI workflow
+5. Report charts and exports
+6. Socket.IO Redis adapter
+7. Deployment
+
+This order improves real-world readiness without disrupting the implemented HRMS feature set.

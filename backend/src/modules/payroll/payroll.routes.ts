@@ -1,8 +1,9 @@
 import type { Request } from "express";
 import { Router } from "express";
-import { Prisma } from "@prisma/client";
+import { Prisma, type Notification } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
@@ -198,12 +199,12 @@ async function createNotificationForUser(input: {
   title: string;
   message: string;
   category: string;
-}) {
+}): Promise<Notification | null> {
   if (!input.userId) {
-    return;
+    return null;
   }
 
-  await input.transaction.notification.create({
+  return input.transaction.notification.create({
     data: {
       userId: input.userId,
       title: input.title,
@@ -363,7 +364,7 @@ payrollRouter.post(
     }
 
     try {
-      const payroll = await prisma.$transaction(async (transaction) => {
+      const transactionResult = await prisma.$transaction(async (transaction) => {
         const existingPayroll = await transaction.payroll.findUnique({
           where: {
             month_year: {
@@ -414,6 +415,7 @@ payrollRouter.post(
             totalNet
           }
         });
+        const notifications: Notification[] = [];
 
         for (const itemInput of itemInputs) {
           const payrollItem = await transaction.payrollItem.create({
@@ -446,24 +448,34 @@ payrollRouter.post(
             }
           });
 
-          await createNotificationForUser({
+          const notification = await createNotificationForUser({
             transaction,
             userId: itemInput.salary.employee.userId,
             title: "Payslip generated",
             message: `Your ${getMonthName(body.month)} ${body.year} payslip is available`,
             category: "payroll"
           });
+
+          if (notification) {
+            notifications.push(notification);
+          }
         }
 
-        return transaction.payroll.findUniqueOrThrow({
+        const payroll = await transaction.payroll.findUniqueOrThrow({
           where: {
             id: createdPayroll.id
           },
           include: payrollDetailInclude
         });
+
+        return {
+          payroll,
+          notifications
+        };
       });
 
-      res.status(201).json(ok({ payroll }));
+      transactionResult.notifications.forEach(emitNotificationCreated);
+      res.status(201).json(ok({ payroll: transactionResult.payroll }));
     } catch (error) {
       handlePrismaMutationError(error);
     }

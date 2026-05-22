@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-surface px-5 py-10">
       <section className="w-full max-w-md rounded-lg border border-line bg-white p-6 shadow-soft">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
             <KeyRound size={21} aria-hidden="true" />
           </div>

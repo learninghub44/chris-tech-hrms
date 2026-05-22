@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   AlertCircle,
@@ -129,7 +129,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
                   className="border-b border-slate-200 px-5 py-5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
                   key={card.key}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase text-slate-500">
                         {card.label}
@@ -161,7 +161,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
         <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold tracking-normal text-slate-950">
                   Notifications
@@ -180,12 +180,12 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
             <div className="divide-y divide-slate-100 px-5">
               {notifications.map((notification) => (
-                <div key={notification.id} className="flex gap-3 py-4">
+                <div key={notification.id} className="flex min-w-0 gap-3 py-4">
                   <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
                     <Bell size={17} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
                       <p className="font-semibold text-slate-950">{notification.title}</p>
                       <span className="shrink-0 text-xs text-slate-400">
                         {formatDateTime(notification.createdAt)}
@@ -206,7 +206,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold tracking-normal text-slate-950">
                   Announcements
@@ -225,12 +225,12 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
             <div className="divide-y divide-slate-100 px-5">
               {announcements.map((announcement) => (
-                <div key={announcement.id} className="flex gap-3 py-4">
+                <div key={announcement.id} className="flex min-w-0 gap-3 py-4">
                   <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
                     <Megaphone size={17} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
                       <p className="font-semibold text-slate-950">{announcement.title}</p>
                       <span className="shrink-0 text-xs text-slate-400">
                         {formatDate(announcement.publishedAt)}

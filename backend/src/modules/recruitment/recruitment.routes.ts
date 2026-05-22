@@ -5,10 +5,12 @@ import {
   InterviewStatus,
   JobStatus,
   OfferStatus,
-  Prisma
+  Prisma,
+  type Notification
 } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
@@ -301,6 +303,10 @@ function toDateOnlyFromInput(value: string): Date {
   const [year, month, day] = value.split("-").map(Number);
 
   return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getCandidateName(candidate: { firstName: string; lastName: string }): string {
+  return `${candidate.firstName} ${candidate.lastName}`.trim();
 }
 
 function getApplicationStatusForOffer(status: OfferStatus): ApplicationStatus {
@@ -624,10 +630,23 @@ recruitmentRouter.post(
     const body = parseInput(interviewBodySchema, req.body);
 
     try {
-      const interview = await prisma.$transaction(async (transaction) => {
+      const transactionResult = await prisma.$transaction(async (transaction) => {
         const application = await transaction.jobApplication.findUnique({
           where: {
             id: body.applicationId
+          },
+          include: {
+            candidate: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
+            job: {
+              select: {
+                title: true
+              }
+            }
           }
         });
 
@@ -647,6 +666,29 @@ recruitmentRouter.post(
             feedback: body.feedback
           }
         });
+        let notification: Notification | null = null;
+
+        if (body.interviewerId) {
+          const interviewer = await transaction.employee.findUnique({
+            where: {
+              id: body.interviewerId
+            },
+            select: {
+              userId: true
+            }
+          });
+
+          if (interviewer?.userId) {
+            notification = await transaction.notification.create({
+              data: {
+                userId: interviewer.userId,
+                title: "Interview scheduled",
+                message: `Interview scheduled for ${getCandidateName(application.candidate)} - ${application.job.title}`,
+                category: "recruitment"
+              }
+            });
+          }
+        }
 
         await transaction.jobApplication.update({
           where: {
@@ -657,15 +699,21 @@ recruitmentRouter.post(
           }
         });
 
-        return transaction.interview.findUniqueOrThrow({
+        const interview = await transaction.interview.findUniqueOrThrow({
           where: {
             id: createdInterview.id
           },
           include: interviewInclude
         });
+
+        return {
+          interview,
+          notifications: notification ? [notification] : []
+        };
       });
 
-      res.status(201).json(ok({ interview }));
+      transactionResult.notifications.forEach(emitNotificationCreated);
+      res.status(201).json(ok({ interview: transactionResult.interview }));
     } catch (error) {
       handlePrismaMutationError(error);
     }

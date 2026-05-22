@@ -28,7 +28,10 @@ const envSchema = z.object({
   REDIS_URL: z.preprocess(emptyStringToUndefined, z.string().url().optional()),
   DASHBOARD_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   PRISMA_CONNECTION_LIMIT: z.coerce.number().int().positive().default(10),
-  PRISMA_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(20)
+  PRISMA_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(20),
+  GEMINI_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
+  GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(65_536).default(700)
 });
 
 export const env = envSchema.parse(process.env);

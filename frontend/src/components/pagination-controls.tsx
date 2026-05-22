@@ -59,7 +59,7 @@ export function PaginationControls({
       <span>
         Showing {start}-{end} of {values.total}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
           type="button"
@@ -69,7 +69,7 @@ export function PaginationControls({
         >
           <ChevronLeft size={16} aria-hidden="true" />
         </button>
-        <span className="min-w-20 text-center text-xs font-medium text-slate-500">
+        <span className="min-w-20 shrink-0 text-center text-xs font-medium text-slate-500">
           Page {values.page} of {values.totalPages}
         </span>
         <button

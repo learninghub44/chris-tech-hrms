@@ -30,8 +30,10 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import darkModeIcon from "@/assets/dark-mode.png";
+import { HrAssistantWidget } from "@/components/hr-assistant-widget";
+import { RealtimeNotifications } from "@/components/realtime-notifications";
 import { logout } from "@/lib/api";
 import { clearAuthSession } from "@/lib/auth";
 import { prefetchNavData } from "@/lib/nav-prefetch";
@@ -270,6 +272,7 @@ const navSectionOrder = [
 ];
 
 const navDataPrefetchKeys = new Set<string>();
+const navScrollStorageKey = "hrms-nav-scroll-top";
 
 function getNavDataPrefetchKey(token: string, href: string): string {
   return `${token}:${href}`;
@@ -294,6 +297,8 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
@@ -331,6 +336,25 @@ export function AppShell({ user, token, children }: AppShellProps) {
   useEffect(() => {
     setPendingHref(null);
   }, [pathname]);
+
+  useEffect(() => {
+    const storedScrollTop = window.sessionStorage.getItem(navScrollStorageKey);
+
+    if (!storedScrollTop) {
+      return;
+    }
+
+    const scrollTop = Number(storedScrollTop);
+
+    if (!Number.isFinite(scrollTop)) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      desktopNavRef.current?.scrollTo({ top: scrollTop });
+      mobileNavRef.current?.scrollTo({ top: scrollTop });
+    });
+  }, [pathname, isMobileNavOpen]);
 
   useEffect(() => {
     function prefetchVisibleRoutes() {
@@ -411,6 +435,12 @@ export function AppShell({ user, token, children }: AppShellProps) {
     prefetchNavTargetData(queryClient, token, href);
   }
 
+  function rememberNavScroll() {
+    const scrollTop = desktopNavRef.current?.scrollTop ?? mobileNavRef.current?.scrollTop ?? 0;
+
+    window.sessionStorage.setItem(navScrollStorageKey, String(scrollTop));
+  }
+
   async function signOut() {
     setIsSigningOut(true);
     await logout(token).catch((error: unknown) => {
@@ -429,7 +459,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
       const active = item.href
         ? activePathname === item.href || activePathname.startsWith(`${item.href}/`)
         : false;
-      const className = `flex h-9 w-full items-center gap-3 rounded-md border px-3 text-sm transition ${
+      const className = `flex min-h-10 w-full min-w-0 items-center gap-3 rounded-md border px-3 text-sm transition ${
         active
           ? "border-slate-200 bg-white font-semibold text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
           : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white"
@@ -449,21 +479,22 @@ export function AppShell({ user, token, children }: AppShellProps) {
             onPointerDown={() => prefetchRoute(href)}
             onPointerEnter={() => prefetchRoute(href)}
             onClick={() => {
+              rememberNavScroll();
               setPendingHref(href);
               prefetchRoute(href);
               setIsMobileNavOpen(false);
             }}
           >
-            <Icon size={18} aria-hidden="true" />
-            {item.label}
+            <Icon className="shrink-0" size={18} aria-hidden="true" />
+          <span className="min-w-0 truncate">{item.label}</span>
           </Link>
         );
       }
 
       return (
         <button key={item.label} className={className} type="button" disabled>
-          <Icon size={18} aria-hidden="true" />
-          {item.label}
+          <Icon className="shrink-0" size={18} aria-hidden="true" />
+          <span className="min-w-0 truncate">{item.label}</span>
         </button>
       );
     });
@@ -481,21 +512,22 @@ export function AppShell({ user, token, children }: AppShellProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f6f8] text-slate-950">
+    <main className="min-h-screen overflow-x-hidden bg-[#f4f6f8] text-slate-950">
       <aside className="fixed inset-y-3 left-3 hidden w-[232px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-[#f8fafc] shadow-[0_18px_45px_rgba(15,23,42,0.08)] lg:flex">
         <Link
           href="/dashboard"
-          className="m-2 flex h-12 items-center gap-3 rounded-lg bg-[#020617] px-3 text-white transition hover:bg-[#111827] dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617] dark:hover:bg-[#ffffff]"
+          className="m-2 flex h-12 min-w-0 items-center gap-3 rounded-lg bg-[#020617] px-3 text-white transition hover:bg-[#111827] dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617] dark:hover:bg-[#ffffff]"
           prefetch={true}
           onFocus={() => prefetchRoute("/dashboard")}
           onPointerDown={() => prefetchRoute("/dashboard")}
           onPointerEnter={() => prefetchRoute("/dashboard")}
           onClick={() => {
+            rememberNavScroll();
             setPendingHref("/dashboard");
           }}
           aria-label="Go to dashboard"
         >
-          <div className="grid h-8 w-8 place-items-center rounded-md bg-[#ffffff] text-[#020617] dark:bg-[#020617] dark:text-white">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#ffffff] text-[#020617] dark:bg-[#020617] dark:text-white">
             <LayoutDashboard size={19} aria-hidden="true" />
           </div>
           <div className="min-w-0">
@@ -504,23 +536,24 @@ export function AppShell({ user, token, children }: AppShellProps) {
           </div>
         </Link>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-2 pb-4 pt-2">
+        <nav ref={desktopNavRef} className="flex-1 space-y-5 overflow-y-auto px-2 pb-4 pt-2">
           {renderNavSections()}
         </nav>
 
         <div className="border-t border-slate-200 p-3">
           <Link
             href="/profile"
-            className="flex items-center gap-3 rounded-md px-2 py-2 transition hover:bg-white"
+            className="flex min-w-0 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-white"
             prefetch={true}
             onFocus={() => prefetchRoute("/profile")}
             onPointerDown={() => prefetchRoute("/profile")}
             onPointerEnter={() => prefetchRoute("/profile")}
             onClick={() => {
+              rememberNavScroll();
               setPendingHref("/profile");
             }}
           >
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
               <UserCircle size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -539,22 +572,23 @@ export function AppShell({ user, token, children }: AppShellProps) {
             onClick={() => setIsMobileNavOpen(false)}
             aria-label="Close navigation"
           />
-          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
-            <div className="flex h-16 items-center justify-between gap-3 border-b border-slate-200 px-5">
+          <aside className="relative flex h-full w-[min(20rem,calc(100vw-1rem))] max-w-[92vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
+            <div className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-4">
               <Link
                 href="/dashboard"
-                className="flex items-center gap-3 rounded-md"
+                className="flex min-w-0 items-center gap-3 rounded-md"
                 prefetch={true}
                 onFocus={() => prefetchRoute("/dashboard")}
                 onPointerDown={() => prefetchRoute("/dashboard")}
                 onPointerEnter={() => prefetchRoute("/dashboard")}
                 onClick={() => {
+                  rememberNavScroll();
                   setPendingHref("/dashboard");
                   setIsMobileNavOpen(false);
                 }}
                 aria-label="Go to dashboard"
               >
-                <div className="grid h-9 w-9 place-items-center rounded-md bg-[#020617] text-white dark:bg-[#f8fafc] dark:text-[#020617]">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#020617] text-white dark:bg-[#f8fafc] dark:text-[#020617]">
                   <LayoutDashboard size={19} aria-hidden="true" />
                 </div>
                 <div>
@@ -563,7 +597,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 </div>
               </Link>
               <button
-                className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-600"
                 type="button"
                 onClick={() => setIsMobileNavOpen(false)}
                 aria-label="Close navigation"
@@ -571,81 +605,86 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
-            <nav className="space-y-5 overflow-y-auto p-3">{renderNavSections()}</nav>
+            <nav ref={mobileNavRef} className="space-y-5 overflow-y-auto p-3">{renderNavSections()}</nav>
           </aside>
         </div>
       ) : null}
 
-      <section className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f4f6f8]/92 px-3 py-3 backdrop-blur sm:px-5">
-          <div className="flex h-12 items-center justify-between rounded-lg border border-slate-200 bg-white px-3 shadow-[0_8px_26px_rgba(15,23,42,0.04)] sm:px-4">
-          <div className="flex items-center gap-3">
-            <button
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 lg:hidden"
-              type="button"
-              onClick={() => setIsMobileNavOpen(true)}
-              aria-label="Open navigation"
-            >
-              <Menu size={18} aria-hidden="true" />
-            </button>
-            <div>
-              <p className="text-sm font-semibold text-slate-950">Company Workspace</p>
-              <p className="text-xs text-slate-500">
-                {primaryRole ? roleLabels[primaryRole] : "User"} | {user.email}
-              </p>
+      <section className="min-w-0 lg:pl-[252px]">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f4f6f8]/92 px-3 py-2 backdrop-blur sm:px-5 sm:py-3">
+          <div className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 shadow-[0_8px_26px_rgba(15,23,42,0.04)] sm:gap-3 sm:px-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+              <button
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-600 lg:hidden"
+                type="button"
+                onClick={() => setIsMobileNavOpen(true)}
+                aria-label="Open navigation"
+              >
+                <Menu size={18} aria-hidden="true" />
+              </button>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-950">
+                  <span className="sm:hidden">HRMS</span>
+                  <span className="hidden sm:inline">Company Workspace</span>
+                </p>
+                <p className="hidden break-all text-xs text-slate-500 sm:block sm:truncate">
+                  {primaryRole ? roleLabels[primaryRole] : "User"} | {user.email}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full bg-transparent p-0.5">
-            <button
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
-              type="button"
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              aria-pressed={theme === "dark"}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              <Image
-                src={darkModeIcon}
-                alt=""
-                className="h-[18px] w-[18px] dark:brightness-0 dark:invert"
-                aria-hidden="true"
-              />
-            </button>
-            <Link
-              href="/notifications"
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white relative"
-              aria-label="Notifications"
-              prefetch={true}
-              onFocus={() => prefetchRoute("/notifications")}
-              onPointerDown={() => prefetchRoute("/notifications")}
-              onPointerEnter={() => prefetchRoute("/notifications")}
-              onClick={() => {
-                setPendingHref("/notifications");
-              }}
-            >
-              <Bell size={18} aria-hidden="true" />
-              {/* badge removed per request */}
-            </Link>
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <button
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-pressed={theme === "dark"}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                <Image
+                  src={darkModeIcon}
+                  alt=""
+                  className="h-[18px] w-[18px] dark:brightness-0 dark:invert"
+                  aria-hidden="true"
+                />
+              </button>
+              <Link
+                href="/notifications"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                aria-label="Notifications"
+                prefetch={true}
+                onFocus={() => prefetchRoute("/notifications")}
+                onPointerDown={() => prefetchRoute("/notifications")}
+                onPointerEnter={() => prefetchRoute("/notifications")}
+                onClick={() => {
+                  rememberNavScroll();
+                  setPendingHref("/notifications");
+                }}
+              >
+                <Bell size={18} aria-hidden="true" />
+              </Link>
+              <button
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:px-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                type="button"
+                aria-label="Sign out"
+                onClick={signOut}
+                disabled={isSigningOut}
+              >
+                <LogOut size={16} aria-hidden="true" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
             </div>
-            <button
-              className="inline-flex h-9 items-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
-              type="button"
-              onClick={signOut}
-              disabled={isSigningOut}
-            >
-              <LogOut size={16} aria-hidden="true" />
-              Sign out
-            </button>
-          </div>
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl px-3 pb-6 pt-3 sm:px-5">
+        <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-3 sm:px-5">
           {children}
         </div>
       </section>
+
+      <RealtimeNotifications token={token} />
+      <HrAssistantWidget token={token} />
     </main>
   );
 }

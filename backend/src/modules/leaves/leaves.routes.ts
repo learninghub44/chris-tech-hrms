@@ -1,8 +1,9 @@
 import type { Request } from "express";
 import { Router } from "express";
-import { LeaveDayType, LeaveRequestStatus, Prisma } from "@prisma/client";
+import { LeaveDayType, LeaveRequestStatus, Prisma, type Notification } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
@@ -248,7 +249,7 @@ async function createNotificationsForPermission(input: {
   title: string;
   message: string;
   category: string;
-}) {
+}): Promise<Notification[]> {
   const users = await input.transaction.user.findMany({
     where: {
       status: "ACTIVE",
@@ -272,18 +273,21 @@ async function createNotificationsForPermission(input: {
   });
 
   if (users.length === 0) {
-    return;
+    return [];
   }
 
-  await input.transaction.notification.createMany({
-    data: users.map((user) => ({
-      userId: user.id,
-      title: input.title,
-      message: input.message,
-      category: input.category
-    })),
-    skipDuplicates: true
-  });
+  return Promise.all(
+    users.map((user) =>
+      input.transaction.notification.create({
+        data: {
+          userId: user.id,
+          title: input.title,
+          message: input.message,
+          category: input.category
+        }
+      })
+    )
+  );
 }
 
 async function createNotificationForUser(input: {
@@ -292,12 +296,12 @@ async function createNotificationForUser(input: {
   title: string;
   message: string;
   category: string;
-}) {
+}): Promise<Notification | null> {
   if (!input.userId) {
-    return;
+    return null;
   }
 
-  await input.transaction.notification.create({
+  return input.transaction.notification.create({
     data: {
       userId: input.userId,
       title: input.title,
@@ -406,7 +410,7 @@ leaveRouter.post(
     }
 
     try {
-      const leaveRequest = await prisma.$transaction(async (transaction) => {
+      const transactionResult = await prisma.$transaction(async (transaction) => {
         const balance = await getOrCreateLeaveBalance({
           transaction,
           employeeId: employee.id,
@@ -452,28 +456,40 @@ leaveRouter.post(
           include: leaveRequestInclude
         });
 
+        const notifications: Notification[] = [];
+
         if (requestIsApproved) {
-          await createNotificationForUser({
+          const notification = await createNotificationForUser({
             transaction,
             userId: createdLeaveRequest.employee.userId,
             title: "Leave approved",
             message: "Your leave request was approved automatically",
             category: "leave"
           });
+
+          if (notification) {
+            notifications.push(notification);
+          }
         } else {
-          await createNotificationsForPermission({
+          const permissionNotifications = await createNotificationsForPermission({
             transaction,
             permission: "leave:approve",
             title: "Leave request pending",
             message: `${employee.firstName} ${employee.lastName} requested ${totalDays} day(s) of leave`,
             category: "leave"
           });
+
+          notifications.push(...permissionNotifications);
         }
 
-        return createdLeaveRequest;
+        return {
+          leaveRequest: createdLeaveRequest,
+          notifications
+        };
       });
 
-      res.status(201).json(ok({ leaveRequest }));
+      transactionResult.notifications.forEach(emitNotificationCreated);
+      res.status(201).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);
     }
@@ -650,7 +666,7 @@ leaveRouter.put(
     const body = parseInput(leaveDecisionSchema, req.body);
 
     try {
-      const leaveRequest = await prisma.$transaction(async (transaction) => {
+      const transactionResult = await prisma.$transaction(async (transaction) => {
         const existingLeaveRequest = await transaction.leaveRequest.findUnique({
           where: {
             id: params.id
@@ -715,7 +731,7 @@ leaveRouter.put(
           include: leaveRequestInclude
         });
 
-        await createNotificationForUser({
+        const notification = await createNotificationForUser({
           transaction,
           userId: existingLeaveRequest.employee.userId,
           title: "Leave approved",
@@ -723,10 +739,14 @@ leaveRouter.put(
           category: "leave"
         });
 
-        return updatedLeaveRequest;
+        return {
+          leaveRequest: updatedLeaveRequest,
+          notifications: notification ? [notification] : []
+        };
       });
 
-      res.status(200).json(ok({ leaveRequest }));
+      transactionResult.notifications.forEach(emitNotificationCreated);
+      res.status(200).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);
     }
@@ -741,7 +761,7 @@ leaveRouter.put(
     const body = parseInput(leaveDecisionSchema, req.body);
 
     try {
-      const leaveRequest = await prisma.$transaction(async (transaction) => {
+      const transactionResult = await prisma.$transaction(async (transaction) => {
         const existingLeaveRequest = await transaction.leaveRequest.findUnique({
           where: {
             id: params.id
@@ -803,7 +823,7 @@ leaveRouter.put(
           include: leaveRequestInclude
         });
 
-        await createNotificationForUser({
+        const notification = await createNotificationForUser({
           transaction,
           userId: existingLeaveRequest.employee.userId,
           title: "Leave rejected",
@@ -811,10 +831,14 @@ leaveRouter.put(
           category: "leave"
         });
 
-        return updatedLeaveRequest;
+        return {
+          leaveRequest: updatedLeaveRequest,
+          notifications: notification ? [notification] : []
+        };
       });
 
-      res.status(200).json(ok({ leaveRequest }));
+      transactionResult.notifications.forEach(emitNotificationCreated);
+      res.status(200).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);
     }

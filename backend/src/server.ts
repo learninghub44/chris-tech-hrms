@@ -1,10 +1,15 @@
+import { createServer } from "http";
 import { createApp } from "./app";
 import { env } from "./config/env";
 import { prisma } from "./lib/prisma";
+import { initializeRealtime } from "./lib/realtime";
 
 const app = createApp();
+const httpServer = createServer(app);
 
-const server = app.listen(env.PORT, () => {
+initializeRealtime(httpServer);
+
+const server = httpServer.listen(env.PORT, () => {
   console.log(`HRMS API listening on http://localhost:${env.PORT}`);
 });
 

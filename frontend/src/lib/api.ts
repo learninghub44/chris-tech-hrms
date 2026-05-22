@@ -215,6 +215,16 @@ export type MeResponse = {
   user: AuthUser;
 };
 
+export type HrAssistantChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type HrAssistantChatResponse = {
+  reply: string;
+  toolsUsed: string[];
+};
+
 export type ForgotPasswordResponse = {
   message: string;
   deliveryMode: "email" | "development_response";
@@ -520,6 +530,17 @@ export function getMe(token: string) {
 export function logout(token: string) {
   return request<{ message: string }>("/auth/logout", {
     method: "POST",
+    token
+  });
+}
+
+export function askHrAssistant(
+  token: string,
+  input: { message: string; history: HrAssistantChatMessage[] }
+) {
+  return request<HrAssistantChatResponse>("/hr-assistant/chat", {
+    method: "POST",
+    body: input,
     token
   });
 }

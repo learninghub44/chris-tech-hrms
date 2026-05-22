@@ -1,8 +1,9 @@
 import type { Request } from "express";
 import { Router } from "express";
-import { AnnouncementAudience, Prisma } from "@prisma/client";
+import { AnnouncementAudience, Prisma, type Notification } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { emitNotificationCreated, emitNotificationRead } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
@@ -56,7 +57,7 @@ async function createAnnouncementNotifications(input: {
   title: string;
   message: string;
   audience: AnnouncementAudience;
-}) {
+}): Promise<Notification[]> {
   const users = await input.transaction.user.findMany({
     where: {
       status: "ACTIVE",
@@ -78,17 +79,21 @@ async function createAnnouncementNotifications(input: {
   });
 
   if (users.length === 0) {
-    return;
+    return [];
   }
 
-  await input.transaction.notification.createMany({
-    data: users.map((user) => ({
-      userId: user.id,
-      title: input.title,
-      message: input.message,
-      category: `announcement:${input.announcementId}`
-    }))
-  });
+  return Promise.all(
+    users.map((user) =>
+      input.transaction.notification.create({
+        data: {
+          userId: user.id,
+          title: input.title,
+          message: input.message,
+          category: `announcement:${input.announcementId}`
+        }
+      })
+    )
+  );
 }
 
 notificationsRouter.use(authenticate);
@@ -144,6 +149,7 @@ notificationsRouter.put(
       throw new AppError(404, "NOTIFICATION_NOT_FOUND", "Notification was not found");
     }
 
+    const wasUnread = !notification.isRead;
     const updatedNotification = await prisma.notification.update({
       where: {
         id: notification.id
@@ -154,6 +160,10 @@ notificationsRouter.put(
       }
     });
 
+    emitNotificationRead({
+      notification: updatedNotification,
+      wasUnread
+    });
     res.status(200).json(ok({ notification: updatedNotification }));
   })
 );
@@ -208,7 +218,7 @@ notificationsRouter.post(
     const auth = getAuth(req);
     const body = parseInput(announcementBodySchema, req.body);
 
-    const announcement = await prisma.$transaction(async (transaction) => {
+    const transactionResult = await prisma.$transaction(async (transaction) => {
       const createdAnnouncement = await transaction.announcement.create({
         data: {
           title: body.title,
@@ -228,20 +238,23 @@ notificationsRouter.post(
           }
         }
       });
+      const notifications = body.isPublished
+        ? await createAnnouncementNotifications({
+            transaction,
+            announcementId: createdAnnouncement.id,
+            title: createdAnnouncement.title,
+            message: createdAnnouncement.message,
+            audience: createdAnnouncement.audience
+          })
+        : [];
 
-      if (body.isPublished) {
-        await createAnnouncementNotifications({
-          transaction,
-          announcementId: createdAnnouncement.id,
-          title: createdAnnouncement.title,
-          message: createdAnnouncement.message,
-          audience: createdAnnouncement.audience
-        });
-      }
-
-      return createdAnnouncement;
+      return {
+        announcement: createdAnnouncement,
+        notifications
+      };
     });
 
-    res.status(201).json(ok({ announcement }));
+    transactionResult.notifications.forEach(emitNotificationCreated);
+    res.status(201).json(ok({ announcement: transactionResult.announcement }));
   })
 );

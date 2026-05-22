@@ -1,48 +1,65 @@
 # HRMS - Full-Stack Human Resource Management System
 
-HRMS is a production-style human resource management platform built with Next.js, Express, Prisma, and PostgreSQL. It combines core HR workflows into one role-based web application: employees, attendance, leave, payroll, recruitment, performance management, notifications, announcements, and reports.
+HRMS is a full-stack human resource management platform built with Next.js, Express, Prisma, PostgreSQL, Socket.IO, and Gemini AI. It brings core HR workflows into one role-based web application: employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant.
 
-This project is designed as a portfolio-grade full-stack application. It demonstrates product thinking, scalable data modeling, permission-aware UX, typed API development, database migrations, and practical validation tooling.
+The project is designed as a portfolio-grade HR product. It demonstrates typed API development, relational data modeling, role-based access control, real-time event delivery, LLM tool use, responsive frontend work, and practical validation tooling.
 
 ## Dashboard Screen
 
 ![Dashboard screen](frontend/src/assets/dashboard.png)
 
-## Key Features
+## Current Feature Set
 
-### Authentication and Authorization
+### Authentication And Permissions
 
-- Login, registration, logout, forgot password, and reset password flows
-- JWT-based sessions
+- Login, registration, logout, forgot password, and reset password
+- JWT-based API sessions
 - Role and permission support for Super Admin, HR Admin, Manager, and Employee
-- Protected pages on the frontend and authorization middleware on the backend
+- Backend authorization middleware and frontend protected pages
+- Role-aware sidebar navigation and route access
 
 ### Employee Operations
 
-- Employee records with departments, designations, managers, status, joining dates, and contact details
+- Employee CRUD with employee code, status, contact details, joining and exit dates
 - Department and designation management
-- Employee profile and self-service access
-- Emergency contact and document metadata support
+- Manager/reporting relationships
+- Employee profile self-service
+- Emergency contacts and employee document metadata
 
-### Attendance and Leave
+### Attendance And Time
 
-- Clock in and clock out workflows
-- Attendance history, filters, shift settings, and holiday management
-- Leave application, approvals, rejection, balances, and leave type configuration
+- Clock in and clock out
+- Work mode support for office and work-from-home
+- Attendance history and HR attendance reports
+- Shift settings with late and half-day thresholds
+- Holiday management
+
+### Leave Management
+
+- Leave type setup
+- Employee leave applications
+- Manager/HR approval and rejection workflows
+- Leave balance tracking by employee, leave type, and year
+- Automatic balance updates for pending, approved, and rejected leave
+- Real-time leave notifications
 
 ### Payroll
 
-- Salary setup with allowances and deductions
-- Payroll generation
-- Payslip records and download response support
+- Salary setup with base salary, allowances, deductions, and effective dates
+- Monthly payroll generation
+- Payroll items and employee payslip records
+- Payslip download response support
 - Payroll reports
+- Real-time payslip notifications
 
 ### Recruitment
 
 - Job opening management
-- Candidate tracking
-- Applications, interviews, and offers
-- Candidate and job detail views
+- Candidate profiles
+- Job applications
+- Interview scheduling
+- Offer tracking
+- Real-time interviewer notifications when interviews are scheduled
 
 ### Performance Management
 
@@ -50,13 +67,36 @@ This project is designed as a portfolio-grade full-stack application. It demonst
 - Performance reviews
 - Feedback
 - Appraisal history
+- Employee and manager scoped performance views
 
-### Dashboard, Reports, and Notifications
+### Dashboard, Reports, Notifications, And Announcements
 
 - Role-aware dashboard summary
-- Notifications and announcements
 - Employee, attendance, leave, and payroll reports
-- Cached and prefetched navigation data for faster tab switching
+- In-app notifications with read state
+- Published announcements by audience
+- Socket.IO real-time notification delivery per user
+- TanStack Query cache updates without page refresh
+- Optional Redis dashboard caching
+
+### AI HR Assistant
+
+- Floating HR assistant chat widget
+- Gemini API integration
+- Tool-calling style HR functions backed by real data:
+  - `get_leave_balance`
+  - `get_next_payroll`
+  - `get_manager`
+- Answers are scoped to the authenticated employee
+- If Gemini is not configured, the API returns a clear setup hint
+
+### Frontend Experience
+
+- Responsive App Router frontend
+- Mobile-friendly navbar and sidebar
+- Compact glossy AI chat widget
+- Route prefetching and data prefetching for faster navigation
+- Text wrapping and responsive layout improvements across pages
 
 ## Tech Stack
 
@@ -65,32 +105,40 @@ This project is designed as a portfolio-grade full-stack application. It demonst
 | Frontend | Next.js 15, React 19, TypeScript |
 | Styling | Tailwind CSS |
 | Forms | React Hook Form |
-| Client State | TanStack Query |
+| API State | TanStack Query |
 | Icons | Lucide React |
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
+| Realtime | Socket.IO |
+| AI | Gemini API with function/tool orchestration |
 | Validation | Zod |
 | Security | JWT, Helmet, CORS, password hashing |
-| Performance | React Query caching, route prefetching, optional Redis cache, Prisma indexes |
-| Tooling | npm workspaces, Docker Compose, ESLint |
+| Cache | Optional Redis cache |
+| Tooling | npm workspaces, Docker Compose, ESLint, TypeScript |
 
 ## Architecture
 
 ```text
 Browser
   |
+  |-- REST requests with JWT
+  |-- Socket.IO connection with JWT auth
   v
 Next.js App Router frontend
   |
+  |-- TanStack Query cache
+  |-- Realtime notification subscriber
+  |-- HR assistant widget
   v
-Express REST API
+Express API
   |
-  +-- Authentication middleware
-  +-- Authorization middleware
-  +-- Domain route modules
-  +-- Shared pagination/cache utilities
-  |
+  |-- Authentication middleware
+  |-- Authorization middleware
+  |-- Domain route modules
+  |-- Socket.IO user rooms
+  |-- Gemini HR assistant tool calls
+  |-- Optional Redis cache
   v
 Prisma ORM
   |
@@ -112,9 +160,22 @@ HRMS/
 |   |-- src/
 |   |   |-- config/
 |   |   |-- lib/
+|   |   |   |-- cache.ts
+|   |   |   |-- prisma.ts
+|   |   |   `-- realtime.ts
 |   |   |-- middleware/
 |   |   |-- modules/
-|   |   |-- types/
+|   |   |   |-- auth/
+|   |   |   |-- attendance/
+|   |   |   |-- dashboard/
+|   |   |   |-- employees/
+|   |   |   |-- hr-assistant/
+|   |   |   |-- leaves/
+|   |   |   |-- notifications/
+|   |   |   |-- payroll/
+|   |   |   |-- performance/
+|   |   |   |-- recruitment/
+|   |   |   `-- reports/
 |   |   `-- utils/
 |   `-- package.json
 |-- frontend/
@@ -122,13 +183,13 @@ HRMS/
 |   |   |-- app/
 |   |   |-- assets/
 |   |   |-- components/
-|   |   |-- hooks/
 |   |   |-- lib/
 |   |   |-- providers/
 |   |   `-- types/
 |   `-- package.json
 |-- docker-compose.yml
 |-- package.json
+|-- plan.md
 `-- README.md
 ```
 
@@ -161,10 +222,10 @@ Password: Employee@12345
 Suggested demo flow:
 
 1. Sign in as `admin@hrms.local`.
-2. Open the dashboard and switch between sidebar modules to review the role-aware HR workspace.
-3. Review employee management, attendance, leave approvals, payroll, recruitment, performance, and reports.
-4. Sign in as `manager@hrms.local` to review team-level permissions.
-5. Sign in as `employee@hrms.local` or `ankit@hrms.local` to compare the limited self-service experience.
+2. Review the dashboard, employees, attendance, leave approvals, payroll, recruitment, performance, reports, notifications, and announcements.
+3. Generate or approve a workflow item and watch notifications update without refresh.
+4. Sign in as `manager@hrms.local` to review team-level access.
+5. Sign in as `employee@hrms.local` or `ankit@hrms.local` to compare self-service access and test the HR assistant.
 
 These credentials are for local development only. Replace demo users and secrets before any production deployment.
 
@@ -175,6 +236,7 @@ These credentials are for local development only. Replace demo users and secrets
 - Node.js 20+
 - npm 10+
 - Docker Desktop, or a local PostgreSQL instance
+- Optional: Gemini API key for the HR assistant
 
 ### 1. Install Dependencies
 
@@ -200,16 +262,19 @@ cp frontend/.env.example frontend/.env.local
 
 Review the copied files before starting the app:
 
-- `backend/.env` controls the API port, CORS origin, database URL, JWT settings, optional Redis cache, and seeded demo passwords.
+- `backend/.env` controls the API port, CORS origin, database URL, JWT settings, optional Redis cache, Gemini settings, Prisma settings, and seeded demo passwords.
 - `frontend/.env.local` points the Next.js app at the backend API through `NEXT_PUBLIC_API_URL`.
-- For local development, you can keep `REDIS_URL` empty.
-- Before deploying anywhere outside local development, replace `JWT_SECRET` and all demo seed passwords.
+- Add `GEMINI_API_KEY=<your-gemini-key>` to `backend/.env` if you want the HR assistant to answer with Gemini.
+- Keep real API keys out of `.env.example` and out of commits.
+- For local development, leave `REDIS_URL` empty unless you are running Redis.
+- Before production, replace `JWT_SECRET` and all demo seed passwords.
 
 Default local services:
 
 ```text
 Frontend: http://localhost:3000
 Backend:  http://localhost:5000/api
+Socket.IO: http://localhost:5000
 Database: postgresql://postgres:postgres@localhost:5432/hrms?schema=public
 ```
 
@@ -223,7 +288,7 @@ npm run db:up
 
 If you use your own PostgreSQL instance, create a database named `hrms` and update `DATABASE_URL` in `backend/.env`.
 
-### 4. Prepare the Database
+### 4. Prepare The Database
 
 ```bash
 npm run prisma:generate
@@ -237,10 +302,19 @@ For a fresh Docker-based setup, this shortcut starts PostgreSQL, runs migrations
 npm run setup:db
 ```
 
-### 5. Start the Application
+### 5. Start The Application
+
+Run both backend and frontend:
 
 ```bash
 npm run dev
+```
+
+Or run them separately:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
 ```
 
 Open:
@@ -252,7 +326,7 @@ Backend health: http://localhost:5000/api/health
 
 Use the demo accounts listed above after the seed step completes.
 
-### 6. Validate the Setup
+### 6. Validate The Setup
 
 Run these checks from the repository root:
 
@@ -269,36 +343,114 @@ For the full validation sequence:
 npm run verify
 ```
 
-The smoke test starts the backend on a temporary port, connects to the configured database, and verifies core authentication, employee, attendance, leave, payroll, dashboard, reporting, recruitment, and performance flows.
+The smoke test starts the backend on a temporary port, connects to the configured database, and verifies authentication, RBAC, employee, attendance, leave, payroll, dashboard, notifications, announcements, reports, recruitment, and performance endpoints.
 
-### Useful Local Commands
+## Where Saved Data Lives
+
+All application data is saved in PostgreSQL through Prisma. The default Docker database is:
+
+```text
+Host: localhost
+Port: 5432
+Database: hrms
+User: postgres
+Password: postgres
+Schema: public
+```
+
+Ways to inspect saved data:
+
+- Use pgAdmin, DBeaver, TablePlus, or any PostgreSQL client with the connection above.
+- Run Prisma Studio:
 
 ```bash
+cd backend
+npx prisma studio
+```
+
+- Use `psql` if it is installed:
+
+```bash
+psql "postgresql://postgres:postgres@localhost:5432/hrms?schema=public"
+```
+
+Important tables include `users`, `employees`, `attendance`, `leave_requests`, `leave_balances`, `payrolls`, `payslips`, `jobs`, `candidates`, `interviews`, `goals`, `performance_reviews`, `feedback`, `notifications`, and `announcements`.
+
+## Realtime Notifications
+
+Socket.IO is attached to the same backend server as Express.
+
+- The frontend connects to `http://localhost:5000` when `NEXT_PUBLIC_API_URL=http://localhost:5000/api`.
+- The socket handshake uses the logged-in user's JWT.
+- The backend joins each connection to a private `user:<userId>` room.
+- Workflow events emit only to the affected user.
+- The frontend updates TanStack Query cache for notifications and dashboard summary.
+
+Realtime events are currently emitted for:
+
+- Leave request auto-approval
+- Leave approval and rejection
+- Payslip generation
+- Interview scheduling
+- Published announcements
+- Marking notifications as read
+
+## HR Assistant
+
+The HR assistant is available as a floating chat widget after login. It uses Gemini and server-side HR tools to answer employee questions from real data.
+
+Example questions:
+
+```text
+How many leaves do I have left?
+When is my next payroll?
+Who is my manager?
+```
+
+Setup:
+
+1. Add `GEMINI_API_KEY=<your-gemini-key>` to `backend/.env`.
+2. Keep `GEMINI_MODEL` and `GEMINI_MAX_OUTPUT_TOKENS` from `.env.example`, or adjust them.
+3. Restart the backend after changing `.env`.
+
+If the key is missing, the assistant API returns `GEMINI_NOT_CONFIGURED` with a setup hint.
+
+## Useful Local Commands
+
+```bash
+npm run dev
 npm run dev:frontend
 npm run dev:backend
 npm run db:status
 npm run db:down
+npm run prisma:generate
+npm run prisma:migrate
+npm run db:seed
 ```
 
-Stop the development servers with `Ctrl+C`. Use `npm run db:down` to stop the Docker PostgreSQL container without deleting the database volume.
+Stop development servers with `Ctrl+C`. Use `npm run db:down` to stop the Docker PostgreSQL container without deleting the database volume.
 
-### Troubleshooting
+## Troubleshooting
 
 - If `npm run db:up` fails, make sure Docker Desktop is running and port `5432` is available.
 - If Prisma cannot connect, confirm `DATABASE_URL` in `backend/.env` matches the database you started.
-- If login fails for the demo accounts, rerun `npm run db:seed` after migrations finish.
+- If login fails for demo accounts, rerun `npm run db:seed` after migrations finish.
 - If the frontend cannot reach the API, confirm `NEXT_PUBLIC_API_URL` is `http://localhost:5000/api` and the backend is running.
-
-
+- If `npm run dev:frontend` fails with `EADDRINUSE` on port `3000`, another Next.js process is already running. Stop it or use the already-running `http://localhost:3000`.
+- If `npm run dev:backend` fails with `EADDRINUSE` on port `5000`, another backend process is already running. Stop it or update `PORT` in `backend/.env`.
+- If the HR assistant says it is not configured, set `GEMINI_API_KEY` in `backend/.env` and restart the backend.
+- If realtime notifications do not update, verify the backend is running on the same origin implied by `NEXT_PUBLIC_API_URL` and that the user is logged in with a valid token.
 
 ## Future Improvements
 
-- Add hosted demo URL and screenshots
-- Add chart visualizations for reports
-- Add audit logs for HR and payroll-sensitive actions
-- Add production email delivery for password reset and notifications
-- Add file storage integration for employee documents
-- Add CI workflow for typecheck, lint, build, and smoke tests
+- Hosted demo URL and updated screenshots
+- Production email delivery for password reset and HR notifications
+- File storage integration for employee documents and generated files
+- Audit logs for HR, payroll, and permission-sensitive actions
+- Charts and exports for reports
+- CI workflow for typecheck, lint, build, and smoke tests
+- WebSocket scaling with a Socket.IO Redis adapter
+- Rate limiting and observability for production API usage
 
 ## Author
 

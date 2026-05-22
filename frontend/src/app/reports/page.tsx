@@ -55,7 +55,7 @@ function ReportsContent({ user, token }: ReportsContentProps) {
     <AppShell user={user} token={token}>
       <div className="space-y-6">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-md bg-brand-50 text-brand-700">
               <BarChart3 size={22} aria-hidden="true" />
             </div>
@@ -123,7 +123,7 @@ function ReportsContent({ user, token }: ReportsContentProps) {
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
             <h2 className="text-lg font-semibold tracking-normal">Employee Report</h2>
             <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[760px] w-full text-left text-sm">
                 <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Employee</th>
@@ -152,7 +152,7 @@ function ReportsContent({ user, token }: ReportsContentProps) {
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
             <h2 className="text-lg font-semibold tracking-normal">Leave Report</h2>
             <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[760px] w-full text-left text-sm">
                 <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Employee</th>
@@ -192,7 +192,7 @@ function ReportsContent({ user, token }: ReportsContentProps) {
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
             <h2 className="text-lg font-semibold tracking-normal">Payroll Report</h2>
             <div className="mt-5 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-[760px] w-full text-left text-sm">
                 <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Month</th>

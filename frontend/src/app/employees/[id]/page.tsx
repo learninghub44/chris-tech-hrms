@@ -69,7 +69,7 @@ function EmployeeProfile({ employee }: { employee: Employee }) {
   return (
     <section className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
       <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <div className="grid h-14 w-14 place-items-center rounded-md bg-brand-50 text-brand-700">
             <UserCircle size={32} aria-hidden="true" />
           </div>
@@ -81,15 +81,15 @@ function EmployeeProfile({ employee }: { employee: Employee }) {
           </div>
         </div>
         <div className="mt-6 space-y-3 text-sm">
-          <div className="flex items-center gap-3 rounded-md bg-surface px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
             <Mail size={17} className="text-slate-500" aria-hidden="true" />
             <span>{employee.workEmail}</span>
           </div>
-          <div className="flex items-center gap-3 rounded-md bg-surface px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
             <Phone size={17} className="text-slate-500" aria-hidden="true" />
             <span>{employee.phone ?? "Not set"}</span>
           </div>
-          <div className="flex items-center gap-3 rounded-md bg-surface px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
             <ShieldCheck size={17} className="text-slate-500" aria-hidden="true" />
             <span>{employmentStatusLabels[employee.status]}</span>
           </div>
@@ -225,7 +225,7 @@ function EmployeeProfileContent({ user, token }: EmployeeProfileContentProps) {
                 <div className="mt-5 space-y-3">
                   {employee.emergencyContacts.map((contact) => (
                     <div key={contact.id} className="rounded-md bg-surface px-4 py-3">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center justify-between gap-3">
                         <p className="font-medium text-ink">{contact.name}</p>
                         {contact.isPrimary ? (
                           <span className="rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
@@ -247,7 +247,7 @@ function EmployeeProfileContent({ user, token }: EmployeeProfileContentProps) {
               </div>
 
               <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
                     <BriefcaseBusiness size={20} aria-hidden="true" />
                   </div>
@@ -295,7 +295,7 @@ function EmployeeProfileContent({ user, token }: EmployeeProfileContentProps) {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center justify-between gap-3">
                         <p className="font-medium text-ink">{document.fileName}</p>
                         <span className="rounded-md bg-white px-2 py-1 text-xs font-medium text-slate-600">
                           {document.documentType}

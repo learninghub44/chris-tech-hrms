@@ -219,7 +219,7 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
           ) : null}
 
           <div className="mt-5 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+            <table className="min-w-[760px] w-full text-left text-sm">
               <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Employee</th>
