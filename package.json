@@ -21,6 +21,7 @@
     "setup:db": "npm run db:up && npm run prisma:migrate && npm run db:seed",
     "prisma:generate": "npm run prisma:generate --workspace backend",
     "prisma:migrate": "npm run prisma:migrate --workspace backend",
+    "prisma:migrate:deploy": "npm run prisma:migrate:deploy --workspace backend",
     "db:seed": "npm run db:seed --workspace backend"
   },
   "devDependencies": {
