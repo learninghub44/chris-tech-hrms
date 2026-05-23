@@ -20,15 +20,12 @@ import { recruitmentRouter } from "./modules/recruitment/recruitment.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 
 function getAllowedCorsOrigins(): string[] {
-  const origins = new Set([env.CORS_ORIGIN]);
-
-  if (env.CORS_ORIGIN === "http://localhost:3000") {
-    origins.add("http://127.0.0.1:3000");
-  }
-
-  if (env.CORS_ORIGIN === "http://127.0.0.1:3000") {
-    origins.add("http://localhost:3000");
-  }
+  const origins = new Set([
+    env.CORS_ORIGIN,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://hrms-frontend-eight-sooty.vercel.app", // ← your Vercel URL
+  ]);
 
   return [...origins];
 }
