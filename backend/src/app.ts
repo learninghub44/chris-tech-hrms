@@ -24,7 +24,7 @@ function getAllowedCorsOrigins(): string[] {
     env.CORS_ORIGIN,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://hrms-frontend-nu-orcin.vercel.app/", // ← your Vercel URL
+    "https://hrms-frontend-tawny.vercel.app"
   ]);
 
   return [...origins];
