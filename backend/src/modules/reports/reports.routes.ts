@@ -8,6 +8,11 @@ import { requireAnyPermission, requirePermissions } from "../../middleware/autho
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import {
+  getMonthDateRange,
+  toDateOnlyFromInput
+} from "../../utils/date";
+import { materializeMissingAbsences } from "../attendance/attendance-completion";
 
 export const reportsRouter = Router();
 
@@ -76,18 +81,8 @@ function hasPermission(req: Request, permission: string): boolean {
   return assertAuthenticated(req).permissions.includes(permission);
 }
 
-function toDateOnlyFromInput(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
 function getDefaultDateRange(): { dateFrom: Date; dateTo: Date } {
-  const now = new Date();
-  const dateTo = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const dateFrom = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
-
-  return { dateFrom, dateTo };
+  return getMonthDateRange(new Date());
 }
 
 async function getTeamEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
@@ -181,10 +176,12 @@ reportsRouter.get(
     const query = parseInput(attendanceReportQuerySchema, req.query);
     const defaultRange = getDefaultDateRange();
     const employeeWhere = await getTeamEmployeeWhere(req);
+    const dateFrom = query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom;
+    const dateTo = query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo;
     const where: Prisma.AttendanceWhereInput = {
       date: {
-        gte: query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom,
-        lte: query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo
+        gte: dateFrom,
+        lte: dateTo
       },
       employee: employeeWhere
     };
@@ -203,6 +200,13 @@ reportsRouter.get(
         departmentId: query.departmentId
       };
     }
+
+    await materializeMissingAbsences({
+      dateFrom,
+      dateTo,
+      employeeId: query.employeeId,
+      employeeWhere: where.employee
+    });
 
     const attendance = await prisma.attendance.findMany({
       where,

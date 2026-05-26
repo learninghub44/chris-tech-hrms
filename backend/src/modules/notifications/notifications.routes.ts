@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import { Router } from "express";
-import { AnnouncementAudience, Prisma, type Notification } from "@prisma/client";
+import { AnnouncementAudience, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated, emitNotificationRead } from "../../lib/realtime";
@@ -14,6 +14,10 @@ import {
   getPaginationMeta,
   paginationQuerySchema
 } from "../../utils/pagination";
+import {
+  createAnnouncementNotifications,
+  getAnnouncementAudienceValues
+} from "./announcement-notifications";
 
 export const notificationsRouter = Router();
 
@@ -45,55 +49,6 @@ function getAuth(req: Request) {
   }
 
   return req.auth;
-}
-
-function getAudienceValues(roles: string[]): AnnouncementAudience[] {
-  return ["ALL", ...roles] as AnnouncementAudience[];
-}
-
-async function createAnnouncementNotifications(input: {
-  transaction: Prisma.TransactionClient;
-  announcementId: string;
-  title: string;
-  message: string;
-  audience: AnnouncementAudience;
-}): Promise<Notification[]> {
-  const users = await input.transaction.user.findMany({
-    where: {
-      status: "ACTIVE",
-      ...(input.audience === "ALL"
-        ? {}
-        : {
-            roles: {
-              some: {
-                role: {
-                  name: input.audience
-                }
-              }
-            }
-          })
-    },
-    select: {
-      id: true
-    }
-  });
-
-  if (users.length === 0) {
-    return [];
-  }
-
-  return Promise.all(
-    users.map((user) =>
-      input.transaction.notification.create({
-        data: {
-          userId: user.id,
-          title: input.title,
-          message: input.message,
-          category: `announcement:${input.announcementId}`
-        }
-      })
-    )
-  );
 }
 
 notificationsRouter.use(authenticate);
@@ -187,7 +142,7 @@ notificationsRouter.get(
       : {
           isPublished: true,
           audience: {
-            in: getAudienceValues(auth.roles)
+            in: getAnnouncementAudienceValues(auth.roles)
           }
         };
     const [total, announcements] = await prisma.$transaction([

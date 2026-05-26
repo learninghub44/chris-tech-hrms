@@ -10,6 +10,14 @@ const exampleJwtSecret = "replace-with-a-random-secret-at-least-32-characters";
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const emptyStringToUndefined = (value: unknown): unknown =>
   typeof value === "string" && value.trim().length === 0 ? undefined : value;
+const isValidTimeZone = (value: string): boolean => {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+};
 const corsOriginsSchema = z.string().superRefine((value, context) => {
   const origins = value
     .split(",")
@@ -54,6 +62,7 @@ const envSchema = z.object({
   DASHBOARD_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   PRISMA_CONNECTION_LIMIT: z.coerce.number().int().positive().default(10),
   PRISMA_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(20),
+  BUSINESS_TIME_ZONE: z.string().min(1).default("Asia/Kolkata").refine(isValidTimeZone),
   GEMINI_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
   GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
   GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(65_536).default(700)

@@ -41,7 +41,7 @@ import {
   notificationUnreadCountEventName,
   type NotificationUnreadCountEventDetail
 } from "@/lib/optimistic-cache";
-import { hasEveryPermission, roleLabels } from "@/lib/permissions";
+import { hasAnyPermission, hasEveryPermission, roleLabels } from "@/lib/permissions";
 import { applyTheme, getPreferredTheme, persistTheme, type ThemeMode } from "@/lib/theme";
 import type { AuthUser } from "@/types";
 
@@ -55,6 +55,7 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   permissions: string[];
+  permissionMode?: "all" | "any";
   section: string;
   href?: string;
 };
@@ -203,7 +204,15 @@ const navItems: NavItem[] = [
     icon: CalendarCheck,
     href: "/holidays",
     section: "Time",
-    permissions: ["attendance:manage"]
+    permissions: [
+      "attendance:manage",
+      "attendance:read",
+      "attendance:write",
+      "leave:request",
+      "leave:approve",
+      "leave:manage"
+    ],
+    permissionMode: "any"
   },
   {
     label: "Apply Leave",
@@ -314,7 +323,12 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const primaryRole = user.roles[0];
   const canReadNotifications = hasEveryPermission(user, ["notifications:read"]);
   const visibleNavItems = useMemo(
-    () => navItems.filter((item) => hasEveryPermission(user, item.permissions)),
+    () =>
+      navItems.filter((item) =>
+        item.permissionMode === "any"
+          ? hasAnyPermission(user, item.permissions)
+          : hasEveryPermission(user, item.permissions)
+      ),
     [user]
   );
   const notificationsQuery = useQuery({

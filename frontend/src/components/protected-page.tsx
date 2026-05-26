@@ -11,21 +11,26 @@ import {
   getCachedAuthSession,
   updateAuthUser
 } from "@/lib/auth";
-import { hasEveryPermission } from "@/lib/permissions";
+import { hasAnyPermission, hasEveryPermission } from "@/lib/permissions";
 import type { AuthSession, AuthUser } from "@/types";
 
 type ProtectedPageProps = {
   requiredPermissions: string[];
+  permissionMode?: "all" | "any";
   children: (context: { user: AuthUser; token: string }) => React.ReactNode;
 };
 
 export function ProtectedPage({
+  permissionMode = "all",
   requiredPermissions,
   children
 }: ProtectedPageProps) {
   return (
     <QueryProvider>
-      <ProtectedPageContent requiredPermissions={requiredPermissions}>
+      <ProtectedPageContent
+        permissionMode={permissionMode}
+        requiredPermissions={requiredPermissions}
+      >
         {children}
       </ProtectedPageContent>
     </QueryProvider>
@@ -33,6 +38,7 @@ export function ProtectedPage({
 }
 
 function ProtectedPageContent({
+  permissionMode = "all",
   requiredPermissions,
   children
 }: ProtectedPageProps) {
@@ -95,8 +101,12 @@ function ProtectedPageContent({
       return false;
     }
 
+    if (permissionMode === "any") {
+      return hasAnyPermission(user, requiredPermissions);
+    }
+
     return hasEveryPermission(user, requiredPermissions);
-  }, [requiredPermissions, user]);
+  }, [permissionMode, requiredPermissions, user]);
   const isCheckingUpdatedPermissions = Boolean(user && !isAuthorized && me.isLoading);
 
   useEffect(() => {

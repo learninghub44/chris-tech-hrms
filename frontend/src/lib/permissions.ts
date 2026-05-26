@@ -15,3 +15,12 @@ export function hasEveryPermission(
 
   return requiredPermissions.every((permission) => permissions.has(permission));
 }
+
+export function hasAnyPermission(
+  user: AuthUser,
+  requiredPermissions: string[]
+): boolean {
+  const permissions = new Set(user.permissions);
+
+  return requiredPermissions.some((permission) => permissions.has(permission));
+}

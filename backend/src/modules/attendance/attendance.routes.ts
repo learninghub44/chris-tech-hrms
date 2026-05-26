@@ -1,8 +1,15 @@
 import type { Request } from "express";
 import { Router } from "express";
-import { AttendanceStatus, AttendanceWorkMode, HolidayType, Prisma } from "@prisma/client";
+import {
+  AnnouncementAudience,
+  AttendanceStatus,
+  AttendanceWorkMode,
+  HolidayType,
+  Prisma
+} from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma";
+import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
@@ -13,6 +20,14 @@ import {
   getPaginationMeta,
   paginationQuerySchema
 } from "../../utils/pagination";
+import {
+  getBusinessMinutesFromMidnight,
+  getTrailingDateRange,
+  toDateOnlyFromDate,
+  toDateOnlyFromInput
+} from "../../utils/date";
+import { materializeMissingAbsences } from "./attendance-completion";
+import { createAnnouncementNotifications } from "../notifications/announcement-notifications";
 
 export const attendanceRouter = Router();
 
@@ -110,6 +125,13 @@ const holidayQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2100).optional()
 });
 
+const holidayDateFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+  year: "numeric"
+});
+
 function parseInput<T extends z.ZodTypeAny>(schema: T, input: unknown): z.infer<T> {
   const result = schema.safeParse(input);
 
@@ -128,33 +150,25 @@ function assertAuthenticated(req: Request) {
   return req.auth;
 }
 
-function toDateOnlyFromDate(date: Date): Date {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-}
+function getHolidayAnnouncementMessage(input: {
+  name: string;
+  date: Date;
+  description: string | null;
+}): string {
+  const dateLabel = holidayDateFormatter.format(input.date);
+  const description = input.description ? ` ${input.description}` : "";
 
-function toDateOnlyFromInput(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-
-  return new Date(Date.UTC(year, month - 1, day));
+  return `${input.name} has been added to the holiday calendar for ${dateLabel}.${description}`;
 }
 
 function getDefaultDateRange(): { dateFrom: Date; dateTo: Date } {
-  const now = new Date();
-  const dateTo = toDateOnlyFromDate(now);
-  const dateFrom = new Date(dateTo);
-  dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
-
-  return { dateFrom, dateTo };
+  return getTrailingDateRange(30);
 }
 
 function parseTimeToMinutes(value: string): number {
   const [hours, minutes] = value.split(":").map(Number);
 
   return hours * 60 + minutes;
-}
-
-function getMinutesFromLocalMidnight(date: Date): number {
-  return date.getHours() * 60 + date.getMinutes();
 }
 
 function computeClockInStatus(
@@ -168,7 +182,7 @@ function computeClockInStatus(
 
   const lateAfter = parseTimeToMinutes(shift.startTime) + shift.lateAfterMinutes;
 
-  return getMinutesFromLocalMidnight(now) > lateAfter ? "LATE" : "PRESENT";
+  return getBusinessMinutesFromMidnight(now) > lateAfter ? "LATE" : "PRESENT";
 }
 
 function computeClockOutStatus(input: {
@@ -366,6 +380,13 @@ attendanceRouter.get(
         lte: dateTo
       }
     };
+
+    await materializeMissingAbsences({
+      dateFrom,
+      dateTo,
+      employeeId: employee.id
+    });
+
     const [total, attendance, todayAttendance] = await prisma.$transaction([
       prisma.attendance.count({
         where
@@ -440,6 +461,13 @@ attendanceRouter.get(
     if (Object.keys(employeeWhere).length > 0) {
       where.employee = employeeWhere;
     }
+
+    await materializeMissingAbsences({
+      dateFrom,
+      dateTo,
+      employeeId: query.employeeId,
+      employeeWhere
+    });
 
     const pagination = getPagination(query);
     const [total, attendance] = await prisma.$transaction([
@@ -521,13 +549,14 @@ attendanceRouter.get(
   requireAnyPermission([
     "attendance:manage",
     "attendance:read",
+    "attendance:write",
     "leave:request",
     "leave:approve",
     "leave:manage"
   ]),
   asyncHandler(async (req, res) => {
     const query = parseInput(holidayQuerySchema, req.query);
-    const year = query.year ?? new Date().getFullYear();
+    const year = query.year ?? toDateOnlyFromDate(new Date()).getUTCFullYear();
     const dateFrom = new Date(Date.UTC(year, 0, 1));
     const dateTo = new Date(Date.UTC(year, 11, 31));
     const holidays = await prisma.holiday.findMany({
@@ -550,19 +579,60 @@ attendanceRouter.post(
   "/holidays",
   requireAnyPermission(["attendance:manage", "leave:manage"]),
   asyncHandler(async (req, res) => {
+    const auth = assertAuthenticated(req);
     const body = parseInput(holidayBodySchema, req.body);
 
     try {
-      const holiday = await prisma.holiday.create({
-        data: {
-          name: body.name,
-          date: toDateOnlyFromInput(body.date),
-          type: body.type,
-          description: body.description
-        }
+      const transactionResult = await prisma.$transaction(async (transaction) => {
+        const holiday = await transaction.holiday.create({
+          data: {
+            name: body.name,
+            date: toDateOnlyFromInput(body.date),
+            type: body.type,
+            description: body.description
+          }
+        });
+        const title = `Holiday: ${holiday.name}`;
+        const message = getHolidayAnnouncementMessage(holiday);
+        const announcement = await transaction.announcement.create({
+          data: {
+            title,
+            message,
+            audience: AnnouncementAudience.ALL,
+            isPublished: true,
+            publishedAt: new Date(),
+            createdById: auth.id
+          },
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        });
+        const notifications = await createAnnouncementNotifications({
+          transaction,
+          announcementId: announcement.id,
+          title: announcement.title,
+          message: announcement.message,
+          audience: announcement.audience
+        });
+
+        return {
+          announcement,
+          holiday,
+          notifications
+        };
       });
 
-      res.status(201).json(ok({ holiday }));
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
+      res.status(201).json(ok({
+        announcement: transactionResult.announcement,
+        holiday: transactionResult.holiday
+      }));
     } catch (error) {
       handlePrismaMutationError(error);
     }

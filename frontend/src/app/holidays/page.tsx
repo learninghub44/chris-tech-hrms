@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
 import { createHoliday, getApiErrorMessage, listHolidays } from "@/lib/api";
 import { formatDate } from "@/lib/employee-format";
+import { hasAnyPermission } from "@/lib/permissions";
 import { holidayTypeLabels } from "@/lib/time-format";
 import type { AuthUser, HolidayType } from "@/types";
 
@@ -23,9 +24,21 @@ type HolidayFormValues = {
   description: string;
 };
 
+const holidayReadPermissions = [
+  "attendance:manage",
+  "attendance:read",
+  "attendance:write",
+  "leave:request",
+  "leave:approve",
+  "leave:manage"
+];
+
+const holidayManagePermissions = ["attendance:manage", "leave:manage"];
+
 function HolidaysContent({ user, token }: HolidaysContentProps) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [error, setError] = useState<string | null>(null);
+  const canManageHolidays = hasAnyPermission(user, holidayManagePermissions);
   const holidaysQuery = useQuery({
     queryKey: ["holidays", token, year],
     queryFn: () => listHolidays(token, year),
@@ -79,70 +92,76 @@ function HolidaysContent({ user, token }: HolidaysContentProps) {
           </h1>
         </div>
 
-        <section className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-          <form
-            className="rounded-lg border border-line bg-white p-5 shadow-soft"
-            onSubmit={handleSubmit(submit)}
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
-                <CalendarCheck size={20} aria-hidden="true" />
+        <section
+          className={`grid gap-4 ${
+            canManageHolidays ? "lg:grid-cols-[0.8fr_1.2fr]" : ""
+          }`}
+        >
+          {canManageHolidays ? (
+            <form
+              className="rounded-lg border border-line bg-white p-5 shadow-soft"
+              onSubmit={handleSubmit(submit)}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+                  <CalendarCheck size={20} aria-hidden="true" />
+                </div>
+                <h2 className="text-lg font-semibold tracking-normal">Add Holiday</h2>
               </div>
-              <h2 className="text-lg font-semibold tracking-normal">Add Holiday</h2>
-            </div>
 
-            {error ? (
-              <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
+              {error ? (
+                <div className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </div>
+              ) : null}
 
-            <label className="mt-5 block text-sm font-medium text-slate-700">
-              Name
-              <input
-                className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-                {...register("name", { required: true })}
-              />
-            </label>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Date
+              <label className="mt-5 block text-sm font-medium text-slate-700">
+                Name
                 <input
                   className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-                  type="date"
-                  {...register("date", { required: true })}
+                  {...register("name", { required: true })}
                 />
               </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Type
-                <select
-                  className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-                  {...register("type")}
-                >
-                  {Object.entries(holidayTypeLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Date
+                  <input
+                    className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+                    type="date"
+                    {...register("date", { required: true })}
+                  />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Type
+                  <select
+                    className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
+                    {...register("type")}
+                  >
+                    {Object.entries(holidayTypeLabels).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="mt-5 block text-sm font-medium text-slate-700">
+                Description
+                <textarea
+                  className="mt-2 min-h-24 w-full rounded-md border border-line px-3 py-3 text-sm outline-none transition focus:border-brand-600"
+                  {...register("description")}
+                />
               </label>
-            </div>
-            <label className="mt-5 block text-sm font-medium text-slate-700">
-              Description
-              <textarea
-                className="mt-2 min-h-24 w-full rounded-md border border-line px-3 py-3 text-sm outline-none transition focus:border-brand-600"
-                {...register("description")}
-              />
-            </label>
-            <button
-              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-              type="submit"
-              disabled={isSubmitting}
-            >
-              <Plus size={17} aria-hidden="true" />
-              Create holiday
-            </button>
-          </form>
+              <button
+                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                <Plus size={17} aria-hidden="true" />
+                Create holiday
+              </button>
+            </form>
+          ) : null}
 
           <div className="rounded-lg border border-line bg-white p-5 shadow-soft">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
@@ -181,7 +200,7 @@ function HolidaysContent({ user, token }: HolidaysContentProps) {
 
 export default function HolidaysPage() {
   return (
-    <ProtectedPage requiredPermissions={["attendance:manage"]}>
+    <ProtectedPage permissionMode="any" requiredPermissions={holidayReadPermissions}>
       {({ user, token }) => <HolidaysContent user={user} token={token} />}
     </ProtectedPage>
   );
