@@ -13,6 +13,10 @@ import {
   getPaginationMeta,
   paginationQuerySchema
 } from "../../utils/pagination";
+import {
+  getCurrentLeaveBalanceYear,
+  initializeLeaveBalancesForEmployee
+} from "./onboarding";
 
 export const employeeCoreRouter = Router();
 
@@ -554,6 +558,12 @@ employeeCoreRouter.post(
       const employee = await prisma.$transaction(async (transaction) => {
         const createdEmployee = await transaction.employee.create({
           data: buildEmployeeCreateData(body, userId)
+        });
+
+        await initializeLeaveBalancesForEmployee({
+          transaction,
+          employeeId: createdEmployee.id,
+          year: getCurrentLeaveBalanceYear()
         });
 
         if (body.emergencyContacts.length > 0) {

@@ -101,11 +101,13 @@ function NotificationsContent({ user, token }: NotificationsContentProps) {
     }
 
     replaceNotificationInCache(queryClient, token, response.data.notification);
-    syncNotificationUnreadCountInCache(
-      queryClient,
-      token,
-      response.data.unreadCount
-    );
+    if (Number.isFinite(response.data.unreadCount)) {
+      syncNotificationUnreadCountInCache(
+        queryClient,
+        token,
+        response.data.unreadCount
+      );
+    }
     void queryClient.invalidateQueries({
       queryKey: ["notifications", token],
       exact: false

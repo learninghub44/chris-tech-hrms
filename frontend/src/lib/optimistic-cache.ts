@@ -16,6 +16,13 @@ export type QuerySnapshot = {
   data: unknown;
 };
 
+export const notificationUnreadCountEventName = "hrms:notification-unread-count";
+
+export type NotificationUnreadCountEventDetail = {
+  token: string;
+  unreadCount: number;
+};
+
 const announcementListPageSize = 25;
 const dashboardAnnouncementLimit = 5;
 
@@ -155,6 +162,24 @@ function removeAnnouncement(
   return announcements.filter((announcement) => announcement.id !== announcementId);
 }
 
+function publishNotificationUnreadCount(token: string, unreadCount: number): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<NotificationUnreadCountEventDetail>(
+      notificationUnreadCountEventName,
+      {
+        detail: {
+          token,
+          unreadCount
+        }
+      }
+    )
+  );
+}
+
 export function snapshotNotificationState(
   queryClient: QueryClient,
   token: string
@@ -194,6 +219,7 @@ export function markNotificationReadInCache(
     queryKey: ["notifications", token],
     exact: false
   });
+  let optimisticUnreadCount: number | null = null;
 
   notificationQueries.forEach((query) => {
     queryClient.setQueryData<ApiResponse<NotificationsResponse>>(
@@ -203,6 +229,10 @@ export function markNotificationReadInCache(
           return current;
         }
 
+        const unreadCount = nextUnreadCount(current.data.unreadCount, unreadDelta);
+
+        optimisticUnreadCount ??= unreadCount;
+
         return {
           ...current,
           data: {
@@ -210,7 +240,7 @@ export function markNotificationReadInCache(
             notifications: current.data.notifications.map((notification) =>
               markNotificationRead(notification, notificationId, readAt)
             ),
-            unreadCount: nextUnreadCount(current.data.unreadCount, unreadDelta)
+            unreadCount
           }
         };
       }
@@ -238,6 +268,10 @@ export function markNotificationReadInCache(
       };
     }
   );
+
+  if (optimisticUnreadCount !== null) {
+    publishNotificationUnreadCount(token, optimisticUnreadCount);
+  }
 }
 
 export function replaceNotificationInCache(
@@ -292,7 +326,9 @@ export function syncNotificationUnreadCountInCache(
   token: string,
   unreadCount: number
 ): void {
-  const nextUnreadCount = Math.max(0, unreadCount);
+  const nextUnreadCount = Number.isFinite(unreadCount)
+    ? Math.max(0, unreadCount)
+    : 0;
   const notificationQueries = queryClient.getQueryCache().findAll({
     queryKey: ["notifications", token],
     exact: false
@@ -330,6 +366,8 @@ export function syncNotificationUnreadCountInCache(
       };
     }
   );
+
+  publishNotificationUnreadCount(token, nextUnreadCount);
 }
 
 export function insertPublishedAnnouncementInCache(

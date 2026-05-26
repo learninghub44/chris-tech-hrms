@@ -37,6 +37,10 @@ import { RealtimeNotifications } from "@/components/realtime-notifications";
 import { listNotifications, logout } from "@/lib/api";
 import { clearAuthSession } from "@/lib/auth";
 import { prefetchNavData } from "@/lib/nav-prefetch";
+import {
+  notificationUnreadCountEventName,
+  type NotificationUnreadCountEventDetail
+} from "@/lib/optimistic-cache";
 import { hasEveryPermission, roleLabels } from "@/lib/permissions";
 import { applyTheme, getPreferredTheme, persistTheme, type ThemeMode } from "@/lib/theme";
 import type { AuthUser } from "@/types";
@@ -304,6 +308,9 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [liveUnreadNotificationCount, setLiveUnreadNotificationCount] = useState<
+    number | null
+  >(null);
   const primaryRole = user.roles[0];
   const canReadNotifications = hasEveryPermission(user, ["notifications:read"]);
   const visibleNavItems = useMemo(
@@ -322,9 +329,11 @@ export function AppShell({ user, token, children }: AppShellProps) {
     staleTime: 5 * 60_000,
     refetchOnMount: false
   });
-  const unreadNotificationCount = notificationsQuery.data?.success
+  const queryUnreadNotificationCount = notificationsQuery.data?.success
     ? notificationsQuery.data.data.unreadCount
     : 0;
+  const unreadNotificationCount =
+    liveUnreadNotificationCount ?? queryUnreadNotificationCount;
   const hasUnreadNotifications = unreadNotificationCount > 0;
   const unreadNotificationLabel =
     unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
@@ -345,6 +354,36 @@ export function AppShell({ user, token, children }: AppShellProps) {
     setTheme(preferredTheme);
     applyTheme(preferredTheme);
   }, []);
+
+  useEffect(() => {
+    if (notificationsQuery.data?.success) {
+      setLiveUnreadNotificationCount(notificationsQuery.data.data.unreadCount);
+    }
+  }, [notificationsQuery.data]);
+
+  useEffect(() => {
+    function handleUnreadCountUpdate(event: Event) {
+      const detail = (event as CustomEvent<NotificationUnreadCountEventDetail>).detail;
+
+      if (detail?.token !== token) {
+        return;
+      }
+
+      setLiveUnreadNotificationCount(detail.unreadCount);
+    }
+
+    window.addEventListener(
+      notificationUnreadCountEventName,
+      handleUnreadCountUpdate
+    );
+
+    return () => {
+      window.removeEventListener(
+        notificationUnreadCountEventName,
+        handleUnreadCountUpdate
+      );
+    };
+  }, [token]);
 
   useEffect(() => {
     setPendingHref(null);

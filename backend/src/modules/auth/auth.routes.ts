@@ -5,6 +5,7 @@ import { authenticate } from "../../middleware/authenticate";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
+import { linkExistingEmployeeForUser } from "../employees/onboarding";
 import {
   createPasswordResetToken,
   getAuthUserById,
@@ -151,6 +152,12 @@ authRouter.post(
           userId: createdUser.id,
           roleId: employeeRole.id
         }
+      });
+
+      await linkExistingEmployeeForUser({
+        transaction,
+        userId: createdUser.id,
+        email: createdUser.email
       });
 
       return createdUser;
