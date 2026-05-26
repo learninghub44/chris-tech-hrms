@@ -80,7 +80,7 @@ function LeaveApprovalsContent({ user, token }: LeaveApprovalsContentProps) {
       return;
     }
 
-    await leaveRequestsQuery.refetch();
+    void leaveRequestsQuery.refetch();
   }
 
   return (

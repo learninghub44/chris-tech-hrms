@@ -179,7 +179,7 @@ function EmployeeProfileContent({ user, token }: EmployeeProfileContentProps) {
       documentType: "Contract",
       notes: ""
     });
-    await employeeQuery.refetch();
+    void employeeQuery.refetch();
   }
 
   return (

@@ -155,7 +155,7 @@ function InterviewsContent({ user, token }: InterviewsContentProps) {
       status: "SCHEDULED",
       feedback: ""
     });
-    await Promise.all([interviewsQuery.refetch(), applicationsQuery.refetch()]);
+    void Promise.all([interviewsQuery.refetch(), applicationsQuery.refetch()]);
   }
 
   async function changeStatus(
@@ -182,7 +182,7 @@ function InterviewsContent({ user, token }: InterviewsContentProps) {
       return;
     }
 
-    await interviewsQuery.refetch();
+    void interviewsQuery.refetch();
   }
 
   return (

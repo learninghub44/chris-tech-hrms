@@ -71,7 +71,7 @@ function LeaveTypesContent({ user, token }: LeaveTypesContentProps) {
     }
 
     reset();
-    await leaveTypesQuery.refetch();
+    void leaveTypesQuery.refetch();
   }
 
   return (

@@ -61,7 +61,7 @@ function CandidateDetailContent({ user, token }: CandidateDetailContentProps) {
       return;
     }
 
-    await candidateQuery.refetch();
+    void candidateQuery.refetch();
   }
 
   return (

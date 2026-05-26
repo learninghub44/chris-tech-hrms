@@ -133,9 +133,20 @@ export async function deleteCachedByPrefix(prefix: string): Promise<void> {
   }
 
   try {
-    const keys = await redis.keys(`${prefix}*`);
+    const keys: string[] = [];
 
-    await Promise.all(keys.map((key) => redis.del(key)));
+    for await (const key of redis.scanIterator({
+      MATCH: `${prefix}*`,
+      COUNT: 100
+    })) {
+      if (typeof key === "string") {
+        keys.push(key);
+      }
+    }
+
+    if (keys.length > 0) {
+      await Promise.all(keys.map((key) => redis.del(key)));
+    }
   } catch (error) {
     logRedisWarning(error);
   }

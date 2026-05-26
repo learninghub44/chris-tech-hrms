@@ -130,7 +130,7 @@ function GoalsContent({ user, token }: GoalsContentProps) {
 
     setMessage("Goal saved");
     reset();
-    await goalsQuery.refetch();
+    void goalsQuery.refetch();
   }
 
   async function changeGoalStatus(goalId: string, nextStatus: GoalStatus) {
@@ -149,7 +149,7 @@ function GoalsContent({ user, token }: GoalsContentProps) {
       return;
     }
 
-    await goalsQuery.refetch();
+    void goalsQuery.refetch();
   }
 
   async function changeGoalProgress(goalId: string, nextProgress: number) {
@@ -168,7 +168,7 @@ function GoalsContent({ user, token }: GoalsContentProps) {
       return;
     }
 
-    await goalsQuery.refetch();
+    void goalsQuery.refetch();
   }
 
   return (

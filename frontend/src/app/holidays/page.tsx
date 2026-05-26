@@ -66,7 +66,7 @@ function HolidaysContent({ user, token }: HolidaysContentProps) {
     }
 
     reset();
-    await holidaysQuery.refetch();
+    void holidaysQuery.refetch();
   }
 
   return (

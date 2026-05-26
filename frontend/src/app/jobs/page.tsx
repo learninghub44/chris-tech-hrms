@@ -131,7 +131,7 @@ function JobsContent({ user, token }: JobsContentProps) {
 
     setMessage("Job created");
     reset();
-    await jobsQuery.refetch();
+    void jobsQuery.refetch();
   }
 
   return (

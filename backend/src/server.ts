@@ -7,6 +7,10 @@ import { initializeRealtime } from "./lib/realtime";
 const app = createApp();
 const httpServer = createServer(app);
 
+httpServer.keepAliveTimeout = 65_000;
+httpServer.headersTimeout = 66_000;
+httpServer.requestTimeout = 120_000;
+
 initializeRealtime(httpServer);
 
 const server = httpServer.listen(env.PORT, () => {

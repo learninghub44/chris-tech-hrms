@@ -319,11 +319,13 @@ export function AppShell({ user, token, children }: AppShellProps) {
       }),
     enabled: canReadNotifications,
     retry: false,
-    staleTime: 30_000
+    staleTime: 5 * 60_000,
+    refetchOnMount: false
   });
   const unreadNotificationCount = notificationsQuery.data?.success
     ? notificationsQuery.data.data.unreadCount
     : 0;
+  const hasUnreadNotifications = unreadNotificationCount > 0;
   const unreadNotificationLabel =
     unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
   const visibleNavSections = useMemo<NavSection[]>(
@@ -334,13 +336,6 @@ export function AppShell({ user, token, children }: AppShellProps) {
           items: visibleNavItems.filter((item) => item.section === section)
         }))
         .filter((section) => section.items.length > 0),
-    [visibleNavItems]
-  );
-  const visibleNavHrefs = useMemo(
-    () =>
-      visibleNavItems
-        .map((item) => item.href)
-        .filter((href): href is string => Boolean(href)),
     [visibleNavItems]
   );
 
@@ -373,72 +368,6 @@ export function AppShell({ user, token, children }: AppShellProps) {
       mobileNavRef.current?.scrollTo({ top: scrollTop });
     });
   }, [pathname, isMobileNavOpen]);
-
-  useEffect(() => {
-    function prefetchVisibleRoutes() {
-      visibleNavHrefs.forEach((href) => {
-        router.prefetch(href);
-      });
-    }
-
-    if (typeof window.requestIdleCallback === "function") {
-      const idleCallbackId = window.requestIdleCallback(prefetchVisibleRoutes, {
-        timeout: 1500
-      });
-
-      return () => window.cancelIdleCallback(idleCallbackId);
-    }
-
-    const timeoutId = globalThis.setTimeout(prefetchVisibleRoutes, 250);
-
-    return () => globalThis.clearTimeout(timeoutId);
-  }, [router, visibleNavHrefs]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const idleCallbackIds: number[] = [];
-    const timeoutIds: number[] = [];
-
-    function prefetchData(href: string) {
-      if (cancelled) {
-        return;
-      }
-
-      prefetchNavTargetData(queryClient, token, href);
-    }
-
-    visibleNavHrefs.forEach((href, index) => {
-      const timeoutId = window.setTimeout(() => {
-        if (cancelled) {
-          return;
-        }
-
-        if (typeof window.requestIdleCallback === "function") {
-          const idleCallbackId = window.requestIdleCallback(
-            () => prefetchData(href),
-            { timeout: 1200 }
-          );
-
-          idleCallbackIds.push(idleCallbackId);
-          return;
-        }
-
-        prefetchData(href);
-      }, 350 + index * 140);
-
-      timeoutIds.push(timeoutId);
-    });
-
-    return () => {
-      cancelled = true;
-      idleCallbackIds.forEach((idleCallbackId) => {
-        window.cancelIdleCallback(idleCallbackId);
-      });
-      timeoutIds.forEach((timeoutId) => {
-        window.clearTimeout(timeoutId);
-      });
-    };
-  }, [queryClient, token, visibleNavHrefs]);
 
   function toggleTheme() {
     const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
@@ -491,7 +420,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
             key={item.label}
             className={className}
             href={href}
-            prefetch={true}
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             onFocus={() => prefetchRoute(href)}
             onPointerDown={() => prefetchRoute(href)}
@@ -535,7 +464,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
         <Link
           href="/dashboard"
           className="m-2 flex h-12 min-w-0 items-center gap-3 rounded-lg bg-[#020617] px-3 text-white transition hover:bg-[#111827] dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617] dark:hover:bg-[#ffffff]"
-          prefetch={true}
+          prefetch={false}
           onFocus={() => prefetchRoute("/dashboard")}
           onPointerDown={() => prefetchRoute("/dashboard")}
           onPointerEnter={() => prefetchRoute("/dashboard")}
@@ -562,7 +491,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
           <Link
             href="/profile"
             className="flex min-w-0 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-white"
-            prefetch={true}
+            prefetch={false}
             onFocus={() => prefetchRoute("/profile")}
             onPointerDown={() => prefetchRoute("/profile")}
             onPointerEnter={() => prefetchRoute("/profile")}
@@ -595,7 +524,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
               <Link
                 href="/dashboard"
                 className="flex min-w-0 items-center gap-3 rounded-md"
-                prefetch={true}
+                prefetch={false}
                 onFocus={() => prefetchRoute("/dashboard")}
                 onPointerDown={() => prefetchRoute("/dashboard")}
                 onPointerEnter={() => prefetchRoute("/dashboard")}
@@ -671,11 +600,11 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 href="/notifications"
                 className="relative grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
                 aria-label={
-                  unreadNotificationCount > 0
+                  hasUnreadNotifications
                     ? `${unreadNotificationCount} unread notifications`
                     : "Notifications"
                 }
-                prefetch={true}
+                prefetch={false}
                 onFocus={() => prefetchRoute("/notifications")}
                 onPointerDown={() => prefetchRoute("/notifications")}
                 onPointerEnter={() => prefetchRoute("/notifications")}
@@ -685,11 +614,17 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 }}
               >
                 <Bell size={18} aria-hidden="true" />
-                {unreadNotificationCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
-                    {unreadNotificationLabel}
-                  </span>
-                ) : null}
+                <span
+                  className={`absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-150 ${
+                    hasUnreadNotifications
+                      ? "scale-100 opacity-100"
+                      : "pointer-events-none scale-50 opacity-0"
+                  }`}
+                  aria-hidden={!hasUnreadNotifications}
+                  aria-live="polite"
+                >
+                  {hasUnreadNotifications ? unreadNotificationLabel : null}
+                </span>
               </Link>
               <button
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:px-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"

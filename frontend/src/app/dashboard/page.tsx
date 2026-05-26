@@ -4,7 +4,9 @@ import {
   AlertCircle,
   Bell,
   CalendarDays,
-  DollarSign,
+  Check,
+  IndianRupee,
+  Loader2,
   RefreshCw,
   Megaphone,
   TrendingDown,
@@ -13,10 +15,17 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
-import { getDashboardSummary } from "@/lib/api";
+import { getApiErrorMessage, getDashboardSummary, markNotificationRead } from "@/lib/api";
+import {
+  markNotificationReadInCache,
+  replaceNotificationInCache,
+  restoreQuerySnapshots,
+  snapshotNotificationState
+} from "@/lib/optimistic-cache";
 import { formatDate } from "@/lib/employee-format";
 import { formatMoney } from "@/lib/payroll-format";
 import { formatDateTime } from "@/lib/time-format";
@@ -32,7 +41,7 @@ const cardIcons: Record<string, LucideIcon> = {
   present_today: Users,
   on_leave: CalendarDays,
   pending_leaves: AlertCircle,
-  monthly_payroll: DollarSign,
+  monthly_payroll: IndianRupee,
   new_hires: UserPlus,
   attrition_rate: TrendingDown,
   unread_notifications: Bell
@@ -73,6 +82,11 @@ function getUserFirstName(name: string): string {
 }
 
 function DashboardContent({ user, token }: DashboardContentProps) {
+  const queryClient = useQueryClient();
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [isRefreshingDashboard, setIsRefreshingDashboard] = useState(false);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [markingNotificationId, setMarkingNotificationId] = useState<string | null>(null);
   const summaryQuery = useQuery({
     queryKey: ["dashboard-summary", token],
     queryFn: () => getDashboardSummary(token),
@@ -84,6 +98,70 @@ function DashboardContent({ user, token }: DashboardContentProps) {
   const announcements = summary?.announcements ?? [];
   const scopeLabel =
     summary?.scope === "organization" ? "Organization" : "Self-service";
+
+  async function refreshDashboard() {
+    setDashboardError(null);
+    setIsRefreshingDashboard(true);
+
+    const response = await getDashboardSummary(token, { refresh: true }).catch(() => null);
+
+    setIsRefreshingDashboard(false);
+
+    if (!response) {
+      setDashboardError("Unable to reach the API");
+      return;
+    }
+
+    if (!response.success) {
+      setDashboardError(getApiErrorMessage(response));
+      return;
+    }
+
+    queryClient.setQueryData(["dashboard-summary", token], response);
+    void queryClient.invalidateQueries({
+      queryKey: ["notifications", token],
+      exact: false
+    });
+  }
+
+  async function markDashboardNotificationRead(id: string) {
+    setNotificationError(null);
+    setMarkingNotificationId(id);
+
+    const snapshots = snapshotNotificationState(queryClient, token);
+    markNotificationReadInCache(
+      queryClient,
+      token,
+      id,
+      new Date().toISOString()
+    );
+
+    const response = await markNotificationRead(token, id).catch(() => null);
+
+    setMarkingNotificationId(null);
+
+    if (!response) {
+      restoreQuerySnapshots(queryClient, snapshots);
+      setNotificationError("Unable to reach the API");
+      return;
+    }
+
+    if (!response.success) {
+      restoreQuerySnapshots(queryClient, snapshots);
+      setNotificationError(getApiErrorMessage(response));
+      return;
+    }
+
+    replaceNotificationInCache(queryClient, token, response.data.notification);
+    void queryClient.invalidateQueries({
+      queryKey: ["notifications", token],
+      exact: false
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["dashboard-summary", token],
+      exact: true
+    });
+  }
 
   return (
     <AppShell user={user} token={token}>
@@ -111,16 +189,27 @@ function DashboardContent({ user, token }: DashboardContentProps) {
             </span>
             <span className="rounded-md px-2 py-1">Managed by me</span>
             <button
-              className="ml-auto grid h-8 w-8 place-items-center rounded-md text-slate-500 transition hover:bg-slate-50"
+              className="ml-auto grid h-8 w-8 place-items-center rounded-md text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
-              onClick={() => summaryQuery.refetch()}
+              onClick={refreshDashboard}
+              disabled={isRefreshingDashboard}
               aria-label="Refresh dashboard"
+              aria-busy={isRefreshingDashboard}
             >
-              <RefreshCw size={16} aria-hidden="true" />
+              <RefreshCw
+                className={isRefreshingDashboard ? "animate-spin" : undefined}
+                size={16}
+                aria-hidden="true"
+              />
             </button>
           </div>
 
           <section className="grid sm:grid-cols-2 xl:grid-cols-4">
+            {dashboardError ? (
+              <div className="col-span-full border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {dashboardError}
+              </div>
+            ) : null}
             {cards.map((card) => {
               const Icon = cardIcons[card.key] ?? Users;
 
@@ -169,6 +258,9 @@ function DashboardContent({ user, token }: DashboardContentProps) {
                 <p className="mt-1 text-xs text-slate-500">
                   Recent alerts and workflow updates
                 </p>
+                {notificationError ? (
+                  <p className="mt-2 text-xs text-red-700">{notificationError}</p>
+                ) : null}
               </div>
               <Link
                 className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -179,7 +271,10 @@ function DashboardContent({ user, token }: DashboardContentProps) {
             </div>
 
             <div className="divide-y divide-slate-100 px-5">
-              {notifications.map((notification) => (
+              {notifications.map((notification) => {
+                const isMarking = markingNotificationId === notification.id;
+
+                return (
                 <div key={notification.id} className="flex min-w-0 gap-3 py-4">
                   <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
                     <Bell size={17} aria-hidden="true" />
@@ -187,16 +282,37 @@ function DashboardContent({ user, token }: DashboardContentProps) {
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <p className="font-semibold text-slate-950">{notification.title}</p>
-                      <span className="shrink-0 text-xs text-slate-400">
-                        {formatDateTime(notification.createdAt)}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span className="text-xs text-slate-400">
+                          {formatDateTime(notification.createdAt)}
+                        </span>
+                        <button
+                          className="inline-flex h-8 items-center justify-center gap-1 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-700 transition active:scale-[0.98] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          onClick={() => markDashboardNotificationRead(notification.id)}
+                          disabled={notification.isRead || isMarking}
+                          aria-busy={isMarking}
+                        >
+                          {isMarking ? (
+                            <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                          ) : (
+                            <Check size={14} aria-hidden="true" />
+                          )}
+                          {isMarking
+                            ? "Saving..."
+                            : notification.isRead
+                              ? "Read"
+                              : "Mark as read"}
+                        </button>
+                      </div>
                     </div>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
                       {notification.message}
                     </p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             {!summaryQuery.isLoading && notifications.length === 0 ? (
               <div className="m-5 rounded-md border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">

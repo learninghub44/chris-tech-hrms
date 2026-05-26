@@ -13,6 +13,8 @@ import { asyncHandler } from "../../utils/async-handler";
 
 export const dashboardRouter = Router();
 
+const announcementNotificationCategoryPrefix = "announcement:";
+
 type DashboardCard = {
   key: string;
   label: string;
@@ -60,6 +62,12 @@ function getYearRange(date: Date): { yearStart: Date; yearEnd: Date } {
 
 function getUserAudiences(roles: string[]): Array<"ALL" | "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE"> {
   return ["ALL", ...roles] as Array<"ALL" | "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE">;
+}
+
+function shouldBypassDashboardCache(value: unknown): boolean {
+  const refreshValue = Array.isArray(value) ? value[0] : value;
+
+  return refreshValue === "true" || refreshValue === "1";
 }
 
 async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
@@ -121,7 +129,10 @@ dashboardRouter.get(
       permissions: auth.permissions,
       date: today
     });
-    const cachedSummary = await getCachedJson<DashboardSummaryPayload>(cacheKey);
+    const shouldBypassCache = shouldBypassDashboardCache(req.query.refresh);
+    const cachedSummary = shouldBypassCache
+      ? null
+      : await getCachedJson<DashboardSummaryPayload>(cacheKey);
 
     if (cachedSummary) {
       res.status(200).json(ok(cachedSummary, { cache: "hit" }));
@@ -134,6 +145,16 @@ dashboardRouter.get(
     const canSeePayroll =
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
     const userWhere = getScopedUserWhere(req);
+    const announcementWhere: Prisma.AnnouncementWhereInput = {
+      isPublished: true,
+      ...(hasPermission(req, "announcements:manage") || canSeeOrgMetrics
+        ? {}
+        : {
+            audience: {
+              in: getUserAudiences(auth.roles)
+            }
+          })
+    };
     const [
       employeeCount,
       activeEmployeeCount,
@@ -242,7 +263,12 @@ dashboardRouter.get(
       }),
       prisma.notification.findMany({
         where: {
-          userId: auth.id
+          userId: auth.id,
+          category: {
+            not: {
+              startsWith: announcementNotificationCategoryPrefix
+            }
+          }
         },
         orderBy: {
           createdAt: "desc"
@@ -250,12 +276,7 @@ dashboardRouter.get(
         take: 5
       }),
       prisma.announcement.findMany({
-        where: {
-          isPublished: true,
-          audience: {
-            in: getUserAudiences(auth.roles)
-          }
-        },
+        where: announcementWhere,
         orderBy: {
           publishedAt: "desc"
         },
@@ -342,6 +363,6 @@ dashboardRouter.get(
 
     await setCachedJson(cacheKey, summary, env.DASHBOARD_CACHE_TTL_SECONDS);
 
-    res.status(200).json(ok(summary, { cache: "miss" }));
+    res.status(200).json(ok(summary, { cache: shouldBypassCache ? "refresh" : "miss" }));
   })
 );

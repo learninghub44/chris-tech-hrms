@@ -140,7 +140,7 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
       return;
     }
 
-    await employeesQuery.refetch();
+    void employeesQuery.refetch();
   }
 
   return (

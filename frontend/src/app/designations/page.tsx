@@ -77,7 +77,7 @@ function DesignationsContent({ user, token }: DesignationsContentProps) {
     }
 
     reset();
-    await designationsQuery.refetch();
+    void designationsQuery.refetch();
   }
 
   async function removeDesignation(id: string, title: string) {
@@ -102,7 +102,7 @@ function DesignationsContent({ user, token }: DesignationsContentProps) {
       return;
     }
 
-    await designationsQuery.refetch();
+    void designationsQuery.refetch();
   }
 
   return (

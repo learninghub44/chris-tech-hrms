@@ -34,6 +34,7 @@ type ClientToServerEvents = Record<string, never>;
 
 const notificationsPageSize = 25;
 const dashboardNotificationLimit = 5;
+const announcementNotificationCategoryPrefix = "announcement:";
 
 function getRealtimeUrl(): string {
   const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(
@@ -46,6 +47,10 @@ function getRealtimeUrl(): string {
 
 function nextUnreadCount(currentCount: number, unreadDelta: number): number {
   return Math.max(0, currentCount + unreadDelta);
+}
+
+function isAnnouncementNotification(notification: NotificationRecord): boolean {
+  return notification.category.startsWith(announcementNotificationCategoryPrefix);
 }
 
 function notificationExists(
@@ -87,6 +92,46 @@ function updateNotificationsCache(
       (current) => updater(current, query.queryKey)
     );
   });
+}
+
+function isNotificationReadInCache(
+  queryClient: QueryClient,
+  token: string,
+  notificationId: string
+): boolean {
+  const notificationQueries = queryClient.getQueryCache().findAll({
+    queryKey: ["notifications", token],
+    exact: false
+  });
+
+  const isReadInNotificationCache = notificationQueries.some((query) => {
+    const current = queryClient.getQueryData<ApiResponse<NotificationsResponse>>(
+      query.queryKey
+    );
+
+    return Boolean(
+      current?.success &&
+        current.data.notifications.some(
+          (notification) => notification.id === notificationId && notification.isRead
+        )
+    );
+  });
+
+  if (isReadInNotificationCache) {
+    return true;
+  }
+
+  const dashboardSummary = queryClient.getQueryData<ApiResponse<DashboardSummary>>([
+    "dashboard-summary",
+    token
+  ]);
+
+  return Boolean(
+    dashboardSummary?.success &&
+      dashboardSummary.data.notifications.some(
+        (notification) => notification.id === notificationId && notification.isRead
+      )
+  );
 }
 
 function applyDashboardUnreadDelta(
@@ -162,10 +207,12 @@ function syncCreatedNotification(
         data: applyDashboardUnreadDelta(
           {
             ...current.data,
-            notifications: upsertNotification(
-              current.data.notifications,
-              event.notification
-            ).slice(0, dashboardNotificationLimit)
+            notifications: isAnnouncementNotification(event.notification)
+              ? current.data.notifications
+              : upsertNotification(
+                  current.data.notifications,
+                  event.notification
+                ).slice(0, dashboardNotificationLimit)
           },
           event.unreadDelta
         )
@@ -192,6 +239,14 @@ function syncReadNotification(
   token: string,
   event: NotificationEvent
 ): void {
+  const unreadDelta = isNotificationReadInCache(
+    queryClient,
+    token,
+    event.notification.id
+  )
+    ? 0
+    : event.unreadDelta;
+
   updateNotificationsCache(queryClient, token, (current) => {
     if (!current?.success) {
       return current;
@@ -204,7 +259,7 @@ function syncReadNotification(
         notifications: current.data.notifications.map((notification) =>
           notification.id === event.notification.id ? event.notification : notification
         ),
-        unreadCount: nextUnreadCount(current.data.unreadCount, event.unreadDelta)
+        unreadCount: nextUnreadCount(current.data.unreadCount, unreadDelta)
       }
     };
   });
@@ -227,7 +282,7 @@ function syncReadNotification(
                 : notification
             )
           },
-          event.unreadDelta
+          unreadDelta
         )
       };
     }

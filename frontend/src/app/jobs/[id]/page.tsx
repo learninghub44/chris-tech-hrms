@@ -59,7 +59,7 @@ function JobDetailContent({ user, token }: JobDetailContentProps) {
       return;
     }
 
-    await jobQuery.refetch();
+    void jobQuery.refetch();
   }
 
   return (

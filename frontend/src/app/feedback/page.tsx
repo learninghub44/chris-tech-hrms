@@ -95,7 +95,7 @@ function FeedbackContent({ user, token }: FeedbackContentProps) {
 
     setMessage("Feedback saved");
     reset();
-    await feedbackQuery.refetch();
+    void feedbackQuery.refetch();
   }
 
   return (

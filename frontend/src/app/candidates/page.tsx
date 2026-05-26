@@ -127,7 +127,7 @@ function CandidatesContent({ user, token }: CandidatesContentProps) {
 
     setMessage("Candidate created");
     reset();
-    await candidatesQuery.refetch();
+    void candidatesQuery.refetch();
   }
 
   return (

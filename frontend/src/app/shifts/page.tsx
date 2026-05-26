@@ -68,7 +68,7 @@ function ShiftsContent({ user, token }: ShiftsContentProps) {
     }
 
     reset();
-    await shiftsQuery.refetch();
+    void shiftsQuery.refetch();
   }
 
   return (

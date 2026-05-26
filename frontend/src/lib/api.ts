@@ -481,8 +481,16 @@ export function getHealth() {
   });
 }
 
-export function getDashboardSummary(token: string) {
-  return request<DashboardSummary>("/dashboard/summary", {
+export function getDashboardSummary(token: string, input?: { refresh: boolean }) {
+  const params = new URLSearchParams();
+
+  if (input?.refresh) {
+    params.set("refresh", "true");
+  }
+
+  const query = params.toString();
+
+  return request<DashboardSummary>(`/dashboard/summary${query ? `?${query}` : ""}`, {
     method: "GET",
     token
   });

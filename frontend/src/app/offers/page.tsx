@@ -139,7 +139,7 @@ function OffersContent({ user, token }: OffersContentProps) {
 
     setMessage("Offer created");
     reset();
-    await Promise.all([offersQuery.refetch(), applicationsQuery.refetch()]);
+    void Promise.all([offersQuery.refetch(), applicationsQuery.refetch()]);
   }
 
   async function changeStatus(id: string, status: OfferStatus, currentNotes: string | null) {
@@ -160,7 +160,7 @@ function OffersContent({ user, token }: OffersContentProps) {
       return;
     }
 
-    await Promise.all([offersQuery.refetch(), applicationsQuery.refetch()]);
+    void Promise.all([offersQuery.refetch(), applicationsQuery.refetch()]);
   }
 
   return (

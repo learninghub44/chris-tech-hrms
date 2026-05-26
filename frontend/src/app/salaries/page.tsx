@@ -138,7 +138,7 @@ function SalariesContent({ user, token }: SalariesContentProps) {
     }
 
     setMessage(selectedSalary ? "Salary setup updated" : "Salary setup created");
-    await salariesQuery.refetch();
+    void salariesQuery.refetch();
   }
 
   function startNewSetup() {

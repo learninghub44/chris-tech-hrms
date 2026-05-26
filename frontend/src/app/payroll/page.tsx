@@ -84,7 +84,7 @@ function PayrollContent({ user, token }: PayrollContentProps) {
 
     setYear(Number(values.year));
     setMessage("Payroll generated");
-    await payrollsQuery.refetch();
+    void payrollsQuery.refetch();
   }
 
   return (

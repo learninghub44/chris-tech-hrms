@@ -89,7 +89,7 @@ function AttendanceContent({ user, token }: AttendanceContentProps) {
       return;
     }
 
-    await attendanceQuery.refetch();
+    void attendanceQuery.refetch();
   }
 
   async function submitClockOut() {
@@ -106,7 +106,7 @@ function AttendanceContent({ user, token }: AttendanceContentProps) {
       return;
     }
 
-    await attendanceQuery.refetch();
+    void attendanceQuery.refetch();
   }
 
   return (

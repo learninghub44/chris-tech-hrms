@@ -83,7 +83,7 @@ function ApplyLeaveContent({ user, token }: ApplyLeaveContentProps) {
 
     setMessage("Leave request submitted");
     reset();
-    await balancesQuery.refetch();
+    void balancesQuery.refetch();
   }
 
   return (

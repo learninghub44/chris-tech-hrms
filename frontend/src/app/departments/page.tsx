@@ -65,7 +65,7 @@ function DepartmentsContent({ user, token }: DepartmentsContentProps) {
     }
 
     reset();
-    await departmentsQuery.refetch();
+    void departmentsQuery.refetch();
   }
 
   async function removeDepartment(id: string, name: string) {
@@ -90,7 +90,7 @@ function DepartmentsContent({ user, token }: DepartmentsContentProps) {
       return;
     }
 
-    await departmentsQuery.refetch();
+    void departmentsQuery.refetch();
   }
 
   return (

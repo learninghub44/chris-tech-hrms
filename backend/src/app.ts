@@ -1,6 +1,7 @@
 import cors from "cors";
 import compression from "compression";
 import express from "express";
+import type { Request } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
@@ -28,11 +29,17 @@ export function createApp() {
   app.use(
     cors({
       origin: getAllowedCorsOrigins(),
-      credentials: true
+      credentials: true,
+      maxAge: 86_400,
+      optionsSuccessStatus: 204
     })
   );
   app.use(express.json({ limit: "5mb" }));
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+  app.use(
+    morgan(env.NODE_ENV === "production" ? "tiny" : "dev", {
+      skip: (req: Request) => req.path === "/api/health"
+    })
+  );
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);

@@ -1,9 +1,9 @@
 "use client";
 
-import { Megaphone, Plus } from "lucide-react";
+import { Loader2, Megaphone, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { PaginationControls } from "@/components/pagination-controls";
 import { ProtectedPage } from "@/components/protected-page";
@@ -13,9 +13,13 @@ import {
   getPaginationMeta,
   listAnnouncements
 } from "@/lib/api";
+import {
+  insertPublishedAnnouncementInCache,
+  removeAnnouncementFromCache
+} from "@/lib/optimistic-cache";
 import { formatDateTime } from "@/lib/time-format";
 import { hasEveryPermission } from "@/lib/permissions";
-import type { AnnouncementAudience, AuthUser } from "@/types";
+import type { Announcement, AnnouncementAudience, AuthUser } from "@/types";
 
 type AnnouncementsContentProps = {
   user: AuthUser;
@@ -39,6 +43,7 @@ const audienceLabels: Record<AnnouncementAudience, string> = {
 const pageSize = 25;
 
 function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
+  const queryClient = useQueryClient();
   const canManageAnnouncements = hasEveryPermission(user, ["announcements:manage"]);
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -70,26 +75,62 @@ function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
 
   async function submit(values: AnnouncementFormValues) {
     setMessage(null);
-    const response = await createAnnouncement(token, {
+    const now = new Date().toISOString();
+    const optimisticAnnouncement: Announcement = {
+      id: `pending-${now}`,
       title: values.title.trim(),
       message: values.message.trim(),
+      audience: values.audience,
+      isPublished: values.isPublished,
+      publishedAt: now,
+      createdById: user.id,
+      createdBy: {
+        id: user.id,
+        name: user.name,
+        email: user.email
+      },
+      createdAt: now,
+      updatedAt: now
+    };
+
+    insertPublishedAnnouncementInCache(queryClient, token, optimisticAnnouncement);
+    setPage(1);
+
+    const response = await createAnnouncement(token, {
+      title: optimisticAnnouncement.title,
+      message: optimisticAnnouncement.message,
       audience: values.audience,
       isPublished: values.isPublished
     }).catch(() => null);
 
     if (!response) {
+      removeAnnouncementFromCache(queryClient, token, optimisticAnnouncement.id);
       setMessage("Unable to reach the API");
       return;
     }
 
     if (!response.success) {
+      removeAnnouncementFromCache(queryClient, token, optimisticAnnouncement.id);
       setMessage(getApiErrorMessage(response));
       return;
     }
 
     setMessage("Announcement saved");
     reset();
-    await announcementsQuery.refetch();
+    removeAnnouncementFromCache(queryClient, token, optimisticAnnouncement.id);
+    insertPublishedAnnouncementInCache(queryClient, token, response.data.announcement);
+    void queryClient.invalidateQueries({
+      queryKey: ["announcements", token],
+      exact: false
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["dashboard-summary", token],
+      exact: true
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["notifications", token],
+      exact: false
+    });
   }
 
   return (
@@ -146,18 +187,25 @@ function AnnouncementsContent({ user, token }: AnnouncementsContentProps) {
                   {...register("message", { required: true })}
                 />
               </label>
-              <label className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                <input type="checkbox" {...register("isPublished")} />
-                Publish now
-              </label>
-              <button
-                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-                disabled={isSubmitting}
-              >
-                <Plus size={17} aria-hidden="true" />
-                Save announcement
-              </button>
+              <div className="mt-5 flex flex-wrap items-center gap-4">
+                <label className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-slate-700">
+                  <input type="checkbox" {...register("isPublished")} />
+                  Publish now
+                </label>
+                <button
+                  className="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-md bg-brand-600 px-3 text-sm font-semibold text-white transition active:scale-[0.98] hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  type="submit"
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="animate-spin" size={16} aria-hidden="true" />
+                  ) : (
+                    <Plus size={16} aria-hidden="true" />
+                  )}
+                  {isSubmitting ? "Saving..." : "Save"}
+                </button>
+              </div>
             </form>
           ) : null}
 

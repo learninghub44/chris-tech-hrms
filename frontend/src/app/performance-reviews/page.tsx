@@ -143,7 +143,7 @@ function ReviewsContent({ user, token }: ReviewsContentProps) {
 
     setMessage("Performance review saved");
     reset();
-    await reviewsQuery.refetch();
+    void reviewsQuery.refetch();
   }
 
   async function changeReviewStatus(
@@ -165,7 +165,7 @@ function ReviewsContent({ user, token }: ReviewsContentProps) {
       return;
     }
 
-    await reviewsQuery.refetch();
+    void reviewsQuery.refetch();
   }
 
   return (

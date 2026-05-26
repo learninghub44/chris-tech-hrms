@@ -444,6 +444,7 @@ model Notification {
   @@index([isRead])
   @@index([userId, createdAt])
   @@index([userId, isRead])
+  @@index([userId, category, createdAt])
   @@map("notifications")
 }
 
@@ -550,6 +551,7 @@ model Announcement {
   @@index([isPublished])
   @@index([createdById])
   @@index([isPublished, audience, publishedAt])
+  @@index([isPublished, publishedAt])
   @@map("announcements")
 }
 
