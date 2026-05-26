@@ -30,6 +30,29 @@ type DashboardSummaryPayload = {
   scope: "organization" | "self_or_team";
 };
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function resolveDashboardValue<T>(input: {
+  label: string;
+  fallback: T;
+  failures: string[];
+  task: () => Promise<T>;
+}): Promise<T> {
+  try {
+    return await input.task();
+  } catch (error) {
+    input.failures.push(input.label);
+    console.error("Dashboard summary query failed", {
+      label: input.label,
+      error: getErrorMessage(error)
+    });
+
+    return input.fallback;
+  }
+}
+
 function assertAuthenticated(req: Request) {
   if (!req.auth) {
     throw new AppError(401, "AUTHENTICATION_REQUIRED", "A valid access token is required");
@@ -145,6 +168,7 @@ dashboardRouter.get(
     const canSeePayroll =
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
     const userWhere = getScopedUserWhere(req);
+    const failedSections: string[] = [];
     const announcementWhere: Prisma.AnnouncementWhereInput = {
       isPublished: true,
       ...(hasPermission(req, "announcements:manage") || canSeeOrgMetrics
@@ -171,111 +195,181 @@ dashboardRouter.get(
       notificationCandidates,
       announcements
     ] = await Promise.all([
-      prisma.employee.count({
-        where: employeeWhere
+      resolveDashboardValue({
+        label: "employeeCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.employee.count({
+          where: employeeWhere
+        })
       }),
-      prisma.employee.count({
-        where: {
-          ...employeeWhere,
-          status: {
-            in: ["ONBOARDING", "ACTIVE", "PROBATION"]
-          }
-        }
-      }),
-      prisma.user.count({
-        where: userWhere
-      }),
-      prisma.user.count({
-        where: {
-          ...userWhere,
-          status: "ACTIVE"
-        }
-      }),
-      prisma.attendance.count({
-        where: {
-          date: today,
-          status: {
-            in: ["PRESENT", "LATE", "HALF_DAY", "WORK_FROM_HOME"]
-          },
-          employee: employeeWhere
-        }
-      }),
-      prisma.leaveRequest.count({
-        where: {
-          status: "APPROVED",
-          startDate: {
-            lte: today
-          },
-          endDate: {
-            gte: today
-          },
-          employee: employeeWhere
-        }
-      }),
-      prisma.leaveRequest.count({
-        where: {
-          status: "PENDING",
-          employee: employeeWhere
-        }
-      }),
-      prisma.employee.count({
-        where: {
-          ...employeeWhere,
-          dateOfJoining: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        }
-      }),
-      prisma.user.count({
-        where: {
-          ...userWhere,
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd
-          }
-        }
-      }),
-      prisma.employee.count({
-        where: {
-          ...employeeWhere,
-          dateOfExit: {
-            gte: yearStart,
-            lte: yearEnd
-          }
-        }
-      }),
-      canSeePayroll
-        ? prisma.payroll.findUnique({
-            where: {
-              month_year: {
-                month: now.getMonth() + 1,
-                year: now.getFullYear()
-              }
+      resolveDashboardValue({
+        label: "activeEmployeeCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.employee.count({
+          where: {
+            ...employeeWhere,
+            status: {
+              in: ["ONBOARDING", "ACTIVE", "PROBATION"]
             }
-          })
-        : Promise.resolve(null),
-      prisma.notification.count({
-        where: {
-          userId: auth.id,
-          isRead: false
-        }
+          }
+        })
       }),
-      prisma.notification.findMany({
-        where: {
-          userId: auth.id
-        },
-        orderBy: {
-          createdAt: "desc"
-        },
-        take: 20
+      resolveDashboardValue({
+        label: "userCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.user.count({
+          where: userWhere
+        })
       }),
-      prisma.announcement.findMany({
-        where: announcementWhere,
-        orderBy: {
-          publishedAt: "desc"
-        },
-        take: 5
+      resolveDashboardValue({
+        label: "activeUserCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.user.count({
+          where: {
+            ...userWhere,
+            status: "ACTIVE"
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "presentTodayCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.attendance.count({
+          where: {
+            date: today,
+            status: {
+              in: ["PRESENT", "LATE", "HALF_DAY", "WORK_FROM_HOME"]
+            },
+            employee: employeeWhere
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "employeesOnLeaveCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.leaveRequest.count({
+          where: {
+            status: "APPROVED",
+            startDate: {
+              lte: today
+            },
+            endDate: {
+              gte: today
+            },
+            employee: employeeWhere
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "pendingLeaveCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.leaveRequest.count({
+          where: {
+            status: "PENDING",
+            employee: employeeWhere
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "newHireCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.employee.count({
+          where: {
+            ...employeeWhere,
+            dateOfJoining: {
+              gte: monthStart,
+              lte: monthEnd
+            }
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "newUserCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.user.count({
+          where: {
+            ...userWhere,
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd
+            }
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "exitCount",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.employee.count({
+          where: {
+            ...employeeWhere,
+            dateOfExit: {
+              gte: yearStart,
+              lte: yearEnd
+            }
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "monthlyPayroll",
+        fallback: null as Prisma.PayrollGetPayload<Record<string, never>> | null,
+        failures: failedSections,
+        task: () => canSeePayroll
+          ? prisma.payroll.findUnique({
+              where: {
+                month_year: {
+                  month: now.getMonth() + 1,
+                  year: now.getFullYear()
+                }
+              }
+            })
+          : Promise.resolve(null)
+      }),
+      resolveDashboardValue({
+        label: "unreadNotifications",
+        fallback: 0,
+        failures: failedSections,
+        task: () => prisma.notification.count({
+          where: {
+            userId: auth.id,
+            isRead: false
+          }
+        })
+      }),
+      resolveDashboardValue({
+        label: "notificationCandidates",
+        fallback: [] as Prisma.NotificationGetPayload<Record<string, never>>[],
+        failures: failedSections,
+        task: () => prisma.notification.findMany({
+          where: {
+            userId: auth.id
+          },
+          orderBy: {
+            createdAt: "desc"
+          },
+          take: 20
+        })
+      }),
+      resolveDashboardValue({
+        label: "announcements",
+        fallback: [] as Prisma.AnnouncementGetPayload<Record<string, never>>[],
+        failures: failedSections,
+        task: () => prisma.announcement.findMany({
+          where: announcementWhere,
+          orderBy: {
+            publishedAt: "desc"
+          },
+          take: 5
+        })
       })
     ]);
     const notifications = notificationCandidates
@@ -364,6 +458,11 @@ dashboardRouter.get(
 
     await setCachedJson(cacheKey, summary, env.DASHBOARD_CACHE_TTL_SECONDS);
 
-    res.status(200).json(ok(summary, { cache: shouldBypassCache ? "refresh" : "miss" }));
+    res.status(200).json(
+      ok(summary, {
+        cache: shouldBypassCache ? "refresh" : "miss",
+        ...(failedSections.length > 0 ? { partial: true, failedSections } : {})
+      })
+    );
   })
 );
