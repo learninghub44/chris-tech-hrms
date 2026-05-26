@@ -53,6 +53,48 @@ async function resolveDashboardValue<T>(input: {
   }
 }
 
+async function readDashboardCache(
+  cacheKey: string
+): Promise<DashboardSummaryPayload | null> {
+  try {
+    return await getCachedJson<DashboardSummaryPayload>(cacheKey);
+  } catch (error) {
+    console.error("Dashboard summary cache read failed", {
+      error: getErrorMessage(error)
+    });
+
+    return null;
+  }
+}
+
+async function writeDashboardCache(input: {
+  cacheKey: string;
+  summary: DashboardSummaryPayload;
+  ttlSeconds: number;
+}): Promise<void> {
+  try {
+    await setCachedJson(input.cacheKey, input.summary, input.ttlSeconds);
+  } catch (error) {
+    console.error("Dashboard summary cache write failed", {
+      error: getErrorMessage(error)
+    });
+  }
+}
+
+async function resolveScopedEmployeeWhere(input: {
+  req: Request;
+  failures: string[];
+}): Promise<Prisma.EmployeeWhereInput> {
+  return resolveDashboardValue({
+    label: "employeeScope",
+    fallback: {
+      id: "__none__"
+    },
+    failures: input.failures,
+    task: () => getScopedEmployeeWhere(input.req)
+  });
+}
+
 function assertAuthenticated(req: Request) {
   if (!req.auth) {
     throw new AppError(401, "AUTHENTICATION_REQUIRED", "A valid access token is required");
@@ -146,6 +188,7 @@ dashboardRouter.get(
     const today = toDateOnlyFromDate(now);
     const { monthStart, monthEnd } = getMonthRange(now);
     const { yearStart, yearEnd } = getYearRange(now);
+    const failedSections: string[] = [];
     const cacheKey = getDashboardCacheKey({
       userId: auth.id,
       roles: auth.roles,
@@ -155,20 +198,22 @@ dashboardRouter.get(
     const shouldBypassCache = shouldBypassDashboardCache(req.query.refresh);
     const cachedSummary = shouldBypassCache
       ? null
-      : await getCachedJson<DashboardSummaryPayload>(cacheKey);
+      : await readDashboardCache(cacheKey);
 
     if (cachedSummary) {
       res.status(200).json(ok(cachedSummary, { cache: "hit" }));
       return;
     }
 
-    const employeeWhere = await getScopedEmployeeWhere(req);
+    const employeeWhere = await resolveScopedEmployeeWhere({
+      req,
+      failures: failedSections
+    });
     const canSeeOrgMetrics =
       hasPermission(req, "employees:manage") || hasPermission(req, "reports:read");
     const canSeePayroll =
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
     const userWhere = getScopedUserWhere(req);
-    const failedSections: string[] = [];
     const announcementWhere: Prisma.AnnouncementWhereInput = {
       isPublished: true,
       ...(hasPermission(req, "announcements:manage") || canSeeOrgMetrics
@@ -456,7 +501,11 @@ dashboardRouter.get(
       scope: canSeeOrgMetrics ? "organization" : "self_or_team"
     };
 
-    await setCachedJson(cacheKey, summary, env.DASHBOARD_CACHE_TTL_SECONDS);
+    await writeDashboardCache({
+      cacheKey,
+      summary,
+      ttlSeconds: env.DASHBOARD_CACHE_TTL_SECONDS
+    });
 
     res.status(200).json(
       ok(summary, {

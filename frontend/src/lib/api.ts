@@ -47,10 +47,8 @@ import type {
 } from "@/types";
 
 const localApiUrl = "http://localhost:5000/api";
-const deployedApiUrl = "https://hrms-backend.onrender.com/api";
 const configuredApiUrl =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (process.env.NODE_ENV === "production" ? deployedApiUrl : localApiUrl);
+  process.env.NEXT_PUBLIC_API_URL?.trim() || localApiUrl;
 
 function trimTrailingSlashes(value: string): string {
   return value.replace(/\/+$/, "");
@@ -75,11 +73,11 @@ function isBrowserOnHostedOrigin(): boolean {
 }
 
 export function getApiBaseUrl(): string {
-  if (isBrowserOnHostedOrigin() && isLocalhostUrl(configuredApiUrl)) {
-    return deployedApiUrl;
-  }
-
   return trimTrailingSlashes(configuredApiUrl);
+}
+
+function isHostedFrontendPointingToLocalApi(): boolean {
+  return isBrowserOnHostedOrigin() && isLocalhostUrl(configuredApiUrl);
 }
 
 type ApiSuccess<T> = {
@@ -470,6 +468,20 @@ async function request<T>(
   path: string,
   options: RequestOptions
 ): Promise<ApiResponse<T>> {
+  const apiBaseUrl = getApiBaseUrl();
+
+  if (isHostedFrontendPointingToLocalApi()) {
+    return failResponse(
+      "API_URL_NOT_CONFIGURED",
+      "The deployed frontend is still pointing at a local API URL. Set NEXT_PUBLIC_API_URL in Vercel to your Render backend API URL.",
+      {
+        configuredApiUrl,
+        expectedFormat: "https://<your-render-service>.onrender.com/api",
+        path
+      }
+    );
+  }
+
   const headers = new Headers({
     Accept: "application/json"
   });
@@ -482,11 +494,26 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    method: options.method,
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      method: options.method,
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+  } catch (error) {
+    return failResponse(
+      "API_REQUEST_FAILED",
+      "Unable to reach the API. Check NEXT_PUBLIC_API_URL and the Render backend service status.",
+      {
+        apiUrl: apiBaseUrl,
+        path,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    );
+  }
+
   const payload = await readApiResponse<T>(response, path);
 
   if (!response.ok && payload.success) {
