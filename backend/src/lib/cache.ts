@@ -118,3 +118,25 @@ export async function setCachedJson<T>(key: string, value: T, ttlSeconds: number
     logRedisWarning(error);
   }
 }
+
+export async function deleteCachedByPrefix(prefix: string): Promise<void> {
+  for (const key of memoryCache.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryCache.delete(key);
+    }
+  }
+
+  const redis = await getRedisClient();
+
+  if (!redis) {
+    return;
+  }
+
+  try {
+    const keys = await redis.keys(`${prefix}*`);
+
+    await Promise.all(keys.map((key) => redis.del(key)));
+  } catch (error) {
+    logRedisWarning(error);
+  }
+}

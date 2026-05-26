@@ -4,6 +4,7 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
+import { getAllowedCorsOrigins } from "./config/cors";
 import { errorHandler } from "./middleware/error-handler";
 import { notFoundHandler } from "./middleware/not-found";
 import { authRouter } from "./modules/auth/auth.routes";
@@ -18,17 +19,6 @@ import { payrollRouter } from "./modules/payroll/payroll.routes";
 import { performanceRouter } from "./modules/performance/performance.routes";
 import { recruitmentRouter } from "./modules/recruitment/recruitment.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
-
-function getAllowedCorsOrigins(): string[] {
-  const origins = new Set([
-    env.CORS_ORIGIN,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://hrms-frontend-tawny.vercel.app"
-  ]);
-
-  return [...origins];
-}
 
 export function createApp() {
   const app = express();

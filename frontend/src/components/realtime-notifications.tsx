@@ -181,6 +181,10 @@ function syncCreatedNotification(
     queryKey: ["dashboard-summary", token],
     exact: true
   });
+  void queryClient.invalidateQueries({
+    queryKey: ["announcements", token],
+    exact: false
+  });
 }
 
 function syncReadNotification(
@@ -239,6 +243,21 @@ function syncReadNotification(
   });
 }
 
+function syncRealtimeReady(queryClient: QueryClient, token: string): void {
+  void queryClient.invalidateQueries({
+    queryKey: ["notifications", token],
+    exact: false
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["dashboard-summary", token],
+    exact: true
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["announcements", token],
+    exact: false
+  });
+}
+
 export function RealtimeNotifications({ token }: RealtimeNotificationsProps) {
   const queryClient = useQueryClient();
 
@@ -262,10 +281,16 @@ export function RealtimeNotifications({ token }: RealtimeNotificationsProps) {
       syncReadNotification(queryClient, token, event);
     }
 
+    function handleRealtimeReady() {
+      syncRealtimeReady(queryClient, token);
+    }
+
+    socket.on("notifications:ready", handleRealtimeReady);
     socket.on("notifications:created", handleNotificationCreated);
     socket.on("notifications:read", handleNotificationRead);
 
     return () => {
+      socket.off("notifications:ready", handleRealtimeReady);
       socket.off("notifications:created", handleNotificationCreated);
       socket.off("notifications:read", handleNotificationRead);
       socket.disconnect();

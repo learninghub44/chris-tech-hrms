@@ -488,7 +488,7 @@ leaveRouter.post(
         };
       });
 
-      transactionResult.notifications.forEach(emitNotificationCreated);
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
       res.status(201).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);
@@ -745,7 +745,7 @@ leaveRouter.put(
         };
       });
 
-      transactionResult.notifications.forEach(emitNotificationCreated);
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
       res.status(200).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);
@@ -837,7 +837,7 @@ leaveRouter.put(
         };
       });
 
-      transactionResult.notifications.forEach(emitNotificationCreated);
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
       res.status(200).json(ok({ leaveRequest: transactionResult.leaveRequest }));
     } catch (error) {
       handlePrismaMutationError(error);

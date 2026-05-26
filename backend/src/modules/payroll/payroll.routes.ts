@@ -474,7 +474,7 @@ payrollRouter.post(
         };
       });
 
-      transactionResult.notifications.forEach(emitNotificationCreated);
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
       res.status(201).json(ok({ payroll: transactionResult.payroll }));
     } catch (error) {
       handlePrismaMutationError(error);

@@ -10,6 +10,31 @@ const exampleJwtSecret = "replace-with-a-random-secret-at-least-32-characters";
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const emptyStringToUndefined = (value: unknown): unknown =>
   typeof value === "string" && value.trim().length === 0 ? undefined : value;
+const corsOriginsSchema = z.string().superRefine((value, context) => {
+  const origins = value
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+  if (origins.length === 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "At least one CORS origin is required"
+    });
+    return;
+  }
+
+  origins.forEach((origin) => {
+    try {
+      new URL(origin);
+    } catch {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Invalid CORS origin: ${origin}`
+      });
+    }
+  });
+});
 
 if (!hasDatabaseUrl) {
   process.env.DATABASE_URL = defaultDatabaseUrl;
@@ -20,7 +45,7 @@ const envSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   PORT: z.coerce.number().int().positive().default(5000),
-  CORS_ORIGIN: z.string().url().default("http://localhost:3000"),
+  CORS_ORIGIN: corsOriginsSchema.default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1).default(defaultDatabaseUrl),
   JWT_SECRET: z.string().min(32).default(defaultJwtSecret),
   JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(86_400),

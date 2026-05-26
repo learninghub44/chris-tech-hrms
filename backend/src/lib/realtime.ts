@@ -1,7 +1,8 @@
 import type { Server as HttpServer } from "http";
 import type { Notification } from "@prisma/client";
 import { Server as SocketServer } from "socket.io";
-import { env } from "../config/env";
+import { getAllowedCorsOrigins } from "../config/cors";
+import { clearDashboardSummaryCacheForUser } from "./dashboard-cache";
 import { getAuthUserById } from "../modules/auth/auth.service";
 import { verifyAccessToken } from "../modules/auth/jwt";
 
@@ -44,20 +45,6 @@ let realtimeServer: SocketServer<
   InterServerEvents,
   SocketData
 > | null = null;
-
-function getAllowedCorsOrigins(): string[] {
-  const origins = new Set([env.CORS_ORIGIN]);
-
-  if (env.CORS_ORIGIN === "http://localhost:3000") {
-    origins.add("http://127.0.0.1:3000");
-  }
-
-  if (env.CORS_ORIGIN === "http://127.0.0.1:3000") {
-    origins.add("http://localhost:3000");
-  }
-
-  return [...origins];
-}
 
 function getUserRoom(userId: string): string {
   return `user:${userId}`;
@@ -162,17 +149,21 @@ export function initializeRealtime(server: HttpServer) {
   return socketServer;
 }
 
-export function emitNotificationCreated(notification: Notification): void {
+export async function emitNotificationCreated(notification: Notification): Promise<void> {
+  await clearDashboardSummaryCacheForUser(notification.userId);
+
   realtimeServer?.to(getUserRoom(notification.userId)).emit("notifications:created", {
     notification: toRealtimeNotification(notification),
     unreadDelta: notification.isRead ? 0 : 1
   });
 }
 
-export function emitNotificationRead(input: {
+export async function emitNotificationRead(input: {
   notification: Notification;
   wasUnread: boolean;
-}): void {
+}): Promise<void> {
+  await clearDashboardSummaryCacheForUser(input.notification.userId);
+
   realtimeServer?.to(getUserRoom(input.notification.userId)).emit("notifications:read", {
     notification: toRealtimeNotification(input.notification),
     unreadDelta: input.wasUnread ? -1 : 0

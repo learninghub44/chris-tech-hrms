@@ -3,6 +3,7 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { env } from "../../config/env";
 import { getCachedJson, setCachedJson } from "../../lib/cache";
+import { getDashboardCacheKey } from "../../lib/dashboard-cache";
 import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requirePermissions } from "../../middleware/authorize";
@@ -61,21 +62,6 @@ function getUserAudiences(roles: string[]): Array<"ALL" | "SUPER_ADMIN" | "HR_AD
   return ["ALL", ...roles] as Array<"ALL" | "SUPER_ADMIN" | "HR_ADMIN" | "MANAGER" | "EMPLOYEE">;
 }
 
-function getDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function getDashboardCacheKey(input: {
-  userId: string;
-  roles: string[];
-  permissions: string[];
-  date: Date;
-}): string {
-  const accessKey = [...input.roles, ...input.permissions].sort().join(",");
-
-  return `dashboard:summary:${input.userId}:${getDateKey(input.date)}:${accessKey}`;
-}
-
 async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
   const auth = assertAuthenticated(req);
 
@@ -103,6 +89,18 @@ async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWher
 
   return {
     id: employee.id
+  };
+}
+
+function getScopedUserWhere(req: Request): Prisma.UserWhereInput {
+  const auth = assertAuthenticated(req);
+
+  if (hasPermission(req, "employees:manage") || hasPermission(req, "reports:read")) {
+    return {};
+  }
+
+  return {
+    id: auth.id
   };
 }
 
@@ -135,13 +133,17 @@ dashboardRouter.get(
       hasPermission(req, "employees:manage") || hasPermission(req, "reports:read");
     const canSeePayroll =
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
+    const userWhere = getScopedUserWhere(req);
     const [
       employeeCount,
       activeEmployeeCount,
+      userCount,
+      activeUserCount,
       presentTodayCount,
       employeesOnLeaveCount,
       pendingLeaveCount,
       newHireCount,
+      newUserCount,
       exitCount,
       monthlyPayroll,
       unreadNotifications,
@@ -157,6 +159,15 @@ dashboardRouter.get(
           status: {
             in: ["ONBOARDING", "ACTIVE", "PROBATION"]
           }
+        }
+      }),
+      prisma.user.count({
+        where: userWhere
+      }),
+      prisma.user.count({
+        where: {
+          ...userWhere,
+          status: "ACTIVE"
         }
       }),
       prisma.attendance.count({
@@ -190,6 +201,15 @@ dashboardRouter.get(
         where: {
           ...employeeWhere,
           dateOfJoining: {
+            gte: monthStart,
+            lte: monthEnd
+          }
+        }
+      }),
+      prisma.user.count({
+        where: {
+          ...userWhere,
+          createdAt: {
             gte: monthStart,
             lte: monthEnd
           }
@@ -242,16 +262,24 @@ dashboardRouter.get(
         take: 5
       })
     ]);
+    const useUserMetrics = employeeCount === 0 && userCount > 0;
+    const totalPeopleCount = useUserMetrics ? userCount : employeeCount;
+    const activePeopleCount = useUserMetrics ? activeUserCount : activeEmployeeCount;
+    const monthlyJoinCount = useUserMetrics ? newUserCount : newHireCount;
     const attritionRate =
-      canSeeOrgMetrics && activeEmployeeCount + exitCount > 0
+      canSeeOrgMetrics && !useUserMetrics && activeEmployeeCount + exitCount > 0
         ? `${((exitCount / (activeEmployeeCount + exitCount)) * 100).toFixed(1)}%`
         : "0.0%";
     const cards: DashboardCard[] = [
       {
         key: "employees",
-        label: canSeeOrgMetrics ? "Total Employees" : "Team Members",
-        value: String(employeeCount),
-        detail: `${activeEmployeeCount} active records`,
+        label: useUserMetrics
+          ? "Total Users"
+          : canSeeOrgMetrics
+            ? "Total Employees"
+            : "Team Members",
+        value: String(totalPeopleCount),
+        detail: `${activePeopleCount} active ${useUserMetrics ? "users" : "records"}`,
         tone: "brand"
       },
       {
@@ -284,9 +312,9 @@ dashboardRouter.get(
       },
       {
         key: "new_hires",
-        label: "New Hires",
-        value: String(newHireCount),
-        detail: "Joined this month",
+        label: useUserMetrics ? "New Users" : "New Hires",
+        value: String(monthlyJoinCount),
+        detail: useUserMetrics ? "Created this month" : "Joined this month",
         tone: "blue"
       },
       {

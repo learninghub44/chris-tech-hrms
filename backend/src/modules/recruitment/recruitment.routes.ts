@@ -712,7 +712,7 @@ recruitmentRouter.post(
         };
       });
 
-      transactionResult.notifications.forEach(emitNotificationCreated);
+      await Promise.all(transactionResult.notifications.map(emitNotificationCreated));
       res.status(201).json(ok({ interview: transactionResult.interview }));
     } catch (error) {
       handlePrismaMutationError(error);

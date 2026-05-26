@@ -26,7 +26,7 @@ import {
   X
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import darkModeIcon from "@/assets/dark-mode.png";
 import { HrAssistantWidget } from "@/components/hr-assistant-widget";
 import { RealtimeNotifications } from "@/components/realtime-notifications";
-import { logout } from "@/lib/api";
+import { listNotifications, logout } from "@/lib/api";
 import { clearAuthSession } from "@/lib/auth";
 import { prefetchNavData } from "@/lib/nav-prefetch";
 import { hasEveryPermission, roleLabels } from "@/lib/permissions";
@@ -273,6 +273,7 @@ const navSectionOrder = [
 
 const navDataPrefetchKeys = new Set<string>();
 const navScrollStorageKey = "hrms-nav-scroll-top";
+const notificationBadgePageSize = 25;
 
 function getNavDataPrefetchKey(token: string, href: string): string {
   return `${token}:${href}`;
@@ -304,10 +305,27 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
   const primaryRole = user.roles[0];
+  const canReadNotifications = hasEveryPermission(user, ["notifications:read"]);
   const visibleNavItems = useMemo(
     () => navItems.filter((item) => hasEveryPermission(user, item.permissions)),
     [user]
   );
+  const notificationsQuery = useQuery({
+    queryKey: ["notifications", token, 1],
+    queryFn: () =>
+      listNotifications(token, {
+        page: 1,
+        pageSize: notificationBadgePageSize
+      }),
+    enabled: canReadNotifications,
+    retry: false,
+    staleTime: 30_000
+  });
+  const unreadNotificationCount = notificationsQuery.data?.success
+    ? notificationsQuery.data.data.unreadCount
+    : 0;
+  const unreadNotificationLabel =
+    unreadNotificationCount > 99 ? "99+" : String(unreadNotificationCount);
   const visibleNavSections = useMemo<NavSection[]>(
     () =>
       navSectionOrder
@@ -651,8 +669,12 @@ export function AppShell({ user, token, children }: AppShellProps) {
               </button>
               <Link
                 href="/notifications"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
-                aria-label="Notifications"
+                className="relative grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                aria-label={
+                  unreadNotificationCount > 0
+                    ? `${unreadNotificationCount} unread notifications`
+                    : "Notifications"
+                }
                 prefetch={true}
                 onFocus={() => prefetchRoute("/notifications")}
                 onPointerDown={() => prefetchRoute("/notifications")}
@@ -663,6 +685,11 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 }}
               >
                 <Bell size={18} aria-hidden="true" />
+                {unreadNotificationCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm">
+                    {unreadNotificationLabel}
+                  </span>
+                ) : null}
               </Link>
               <button
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:px-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
