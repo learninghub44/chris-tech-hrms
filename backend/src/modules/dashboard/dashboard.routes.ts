@@ -168,7 +168,7 @@ dashboardRouter.get(
       exitCount,
       monthlyPayroll,
       unreadNotifications,
-      notifications,
+      notificationCandidates,
       announcements
     ] = await Promise.all([
       prisma.employee.count({
@@ -263,17 +263,12 @@ dashboardRouter.get(
       }),
       prisma.notification.findMany({
         where: {
-          userId: auth.id,
-          category: {
-            not: {
-              startsWith: announcementNotificationCategoryPrefix
-            }
-          }
+          userId: auth.id
         },
         orderBy: {
           createdAt: "desc"
         },
-        take: 5
+        take: 20
       }),
       prisma.announcement.findMany({
         where: announcementWhere,
@@ -283,6 +278,12 @@ dashboardRouter.get(
         take: 5
       })
     ]);
+    const notifications = notificationCandidates
+      .filter(
+        (notification) =>
+          !notification.category.startsWith(announcementNotificationCategoryPrefix)
+      )
+      .slice(0, 5);
     const useUserMetrics = employeeCount === 0 && userCount > 0;
     const totalPeopleCount = useUserMetrics ? userCount : employeeCount;
     const activePeopleCount = useUserMetrics ? activeUserCount : activeEmployeeCount;
