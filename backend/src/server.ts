@@ -1,6 +1,8 @@
 import { createServer } from "http";
 import { createApp } from "./app";
 import { env } from "./config/env";
+import { getAllowedCorsOrigins } from "./config/cors";
+import { getDatabaseTarget } from "./lib/database-status";
 import { prisma } from "./lib/prisma";
 import { initializeRealtime } from "./lib/realtime";
 
@@ -14,7 +16,13 @@ httpServer.requestTimeout = 120_000;
 initializeRealtime(httpServer);
 
 const server = httpServer.listen(env.PORT, () => {
+  const databaseTarget = getDatabaseTarget(env.DATABASE_URL);
+
   console.log(`HRMS API listening on http://localhost:${env.PORT}`);
+  console.log("HRMS deployment target", {
+    database: databaseTarget,
+    corsOrigins: getAllowedCorsOrigins()
+  });
 });
 
 async function shutdown(signal: string) {

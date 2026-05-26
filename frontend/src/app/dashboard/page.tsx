@@ -96,6 +96,12 @@ function DashboardContent({ user, token }: DashboardContentProps) {
   const cards = summary?.cards ?? [];
   const notifications = summary?.notifications ?? [];
   const announcements = summary?.announcements ?? [];
+  const summaryError =
+    summaryQuery.data && !summaryQuery.data.success
+      ? getApiErrorMessage(summaryQuery.data)
+      : summaryQuery.isError
+        ? "Unable to reach the API. Check the deployed backend URL and Render service status."
+        : null;
   const scopeLabel =
     summary?.scope === "organization" ? "Organization" : "Self-service";
 
@@ -205,6 +211,11 @@ function DashboardContent({ user, token }: DashboardContentProps) {
           </div>
 
           <section className="grid sm:grid-cols-2 xl:grid-cols-4">
+            {summaryError ? (
+              <div className="col-span-full border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
+                {summaryError}
+              </div>
+            ) : null}
             {dashboardError ? (
               <div className="col-span-full border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
                 {dashboardError}

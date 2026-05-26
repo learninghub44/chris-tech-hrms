@@ -7,7 +7,7 @@ import {
   type QueryKey
 } from "@tanstack/react-query";
 import { io, type Socket } from "socket.io-client";
-import type { ApiResponse } from "@/lib/api";
+import { getApiBaseUrl, type ApiResponse } from "@/lib/api";
 import type { DashboardSummary, NotificationRecord } from "@/types";
 
 type RealtimeNotificationsProps = {
@@ -37,10 +37,7 @@ const dashboardNotificationLimit = 5;
 const announcementNotificationCategoryPrefix = "announcement:";
 
 function getRealtimeUrl(): string {
-  const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(
-    /\/+$/,
-    ""
-  );
+  const apiUrl = getApiBaseUrl();
 
   return apiUrl.endsWith("/api") ? apiUrl.slice(0, -4) : apiUrl;
 }

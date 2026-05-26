@@ -66,6 +66,12 @@ if (env.NODE_ENV === "production") {
     throw new Error("DATABASE_URL must be set explicitly in production");
   }
 
+  const databaseUrl = new URL(env.DATABASE_URL);
+
+  if (databaseUrl.hostname === "localhost" || databaseUrl.hostname === "127.0.0.1") {
+    throw new Error("DATABASE_URL must point to the deployed Neon database in production");
+  }
+
   if (env.JWT_SECRET === defaultJwtSecret || env.JWT_SECRET === exampleJwtSecret) {
     throw new Error("JWT_SECRET must be changed from the development/example value in production");
   }

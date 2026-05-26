@@ -46,10 +46,41 @@ import type {
   Shift
 } from "@/types";
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api").replace(
-  /\/+$/,
-  ""
-);
+const localApiUrl = "http://localhost:5000/api";
+const deployedApiUrl = "https://hrms-backend.onrender.com/api";
+const configuredApiUrl =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production" ? deployedApiUrl : localApiUrl);
+
+function trimTrailingSlashes(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+function isLocalhostUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+function isBrowserOnHostedOrigin(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  );
+}
+
+export function getApiBaseUrl(): string {
+  if (isBrowserOnHostedOrigin() && isLocalhostUrl(configuredApiUrl)) {
+    return deployedApiUrl;
+  }
+
+  return trimTrailingSlashes(configuredApiUrl);
+}
 
 type ApiSuccess<T> = {
   success: true;
@@ -160,7 +191,7 @@ async function readApiResponse<T>(
       "UNEXPECTED_API_RESPONSE",
       "The frontend did not receive JSON from the API. Check NEXT_PUBLIC_API_URL and backend routing.",
       {
-        apiUrl: API_URL,
+        apiUrl: getApiBaseUrl(),
         path,
         status: response.status,
         statusText: response.statusText,
@@ -176,7 +207,7 @@ async function readApiResponse<T>(
       "UNEXPECTED_API_RESPONSE",
       "The API returned an unexpected response shape.",
       {
-        apiUrl: API_URL,
+        apiUrl: getApiBaseUrl(),
         path,
         status: response.status,
         statusText: response.statusText
@@ -451,7 +482,7 @@ async function request<T>(
     headers.set("Authorization", `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method: options.method,
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined
