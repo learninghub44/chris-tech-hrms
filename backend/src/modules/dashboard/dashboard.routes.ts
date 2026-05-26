@@ -135,6 +135,13 @@ function shouldBypassDashboardCache(value: unknown): boolean {
   return refreshValue === "true" || refreshValue === "1";
 }
 
+function isAnnouncementNotificationCategory(category: unknown): boolean {
+  return (
+    typeof category === "string" &&
+    category.startsWith(announcementNotificationCategoryPrefix)
+  );
+}
+
 async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
   const auth = assertAuthenticated(req);
 
@@ -420,7 +427,7 @@ dashboardRouter.get(
     const notifications = notificationCandidates
       .filter(
         (notification) =>
-          !notification.category.startsWith(announcementNotificationCategoryPrefix)
+          !isAnnouncementNotificationCategory(notification.category)
       )
       .slice(0, 5);
     const useUserMetrics = employeeCount === 0 && userCount > 0;

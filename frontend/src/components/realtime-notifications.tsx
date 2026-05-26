@@ -47,7 +47,10 @@ function nextUnreadCount(currentCount: number, unreadDelta: number): number {
 }
 
 function isAnnouncementNotification(notification: NotificationRecord): boolean {
-  return notification.category.startsWith(announcementNotificationCategoryPrefix);
+  return (
+    typeof notification.category === "string" &&
+    notification.category.startsWith(announcementNotificationCategoryPrefix)
+  );
 }
 
 function notificationExists(

@@ -81,7 +81,7 @@ function toRealtimeNotification(notification: Notification): RealtimeNotificatio
     userId: notification.userId,
     title: notification.title,
     message: notification.message,
-    category: notification.category,
+    category: notification.category ?? "GENERAL",
     isRead: notification.isRead,
     readAt: notification.readAt ? notification.readAt.toISOString() : null,
     createdAt: notification.createdAt.toISOString()

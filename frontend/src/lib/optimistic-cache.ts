@@ -48,6 +48,25 @@ function applyDashboardUnreadDelta(
   };
 }
 
+function setDashboardUnreadCount(
+  summary: DashboardSummary,
+  unreadCount: number
+): DashboardSummary {
+  return {
+    ...summary,
+    cards: summary.cards.map((card) => {
+      if (card.key !== "unread_notifications") {
+        return card;
+      }
+
+      return {
+        ...card,
+        value: String(Math.max(0, unreadCount))
+      };
+    })
+  };
+}
+
 function markNotificationRead(
   notification: NotificationRecord,
   notificationId: string,
@@ -263,6 +282,51 @@ export function replaceNotificationInCache(
           ...current.data,
           notifications: replaceNotification(current.data.notifications, notification)
         }
+      };
+    }
+  );
+}
+
+export function syncNotificationUnreadCountInCache(
+  queryClient: QueryClient,
+  token: string,
+  unreadCount: number
+): void {
+  const nextUnreadCount = Math.max(0, unreadCount);
+  const notificationQueries = queryClient.getQueryCache().findAll({
+    queryKey: ["notifications", token],
+    exact: false
+  });
+
+  notificationQueries.forEach((query) => {
+    queryClient.setQueryData<ApiResponse<NotificationsResponse>>(
+      query.queryKey,
+      (current) => {
+        if (!current?.success) {
+          return current;
+        }
+
+        return {
+          ...current,
+          data: {
+            ...current.data,
+            unreadCount: nextUnreadCount
+          }
+        };
+      }
+    );
+  });
+
+  queryClient.setQueryData<ApiResponse<DashboardSummary>>(
+    ["dashboard-summary", token],
+    (current) => {
+      if (!current?.success) {
+        return current;
+      }
+
+      return {
+        ...current,
+        data: setDashboardUnreadCount(current.data, nextUnreadCount)
       };
     }
   );

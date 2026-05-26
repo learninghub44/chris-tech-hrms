@@ -24,7 +24,8 @@ import {
   markNotificationReadInCache,
   replaceNotificationInCache,
   restoreQuerySnapshots,
-  snapshotNotificationState
+  snapshotNotificationState,
+  syncNotificationUnreadCountInCache
 } from "@/lib/optimistic-cache";
 import { formatDate } from "@/lib/employee-format";
 import { formatMoney } from "@/lib/payroll-format";
@@ -159,6 +160,11 @@ function DashboardContent({ user, token }: DashboardContentProps) {
     }
 
     replaceNotificationInCache(queryClient, token, response.data.notification);
+    syncNotificationUnreadCountInCache(
+      queryClient,
+      token,
+      response.data.unreadCount
+    );
     void queryClient.invalidateQueries({
       queryKey: ["notifications", token],
       exact: false

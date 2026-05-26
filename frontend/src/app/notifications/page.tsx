@@ -16,7 +16,8 @@ import {
   markNotificationReadInCache,
   replaceNotificationInCache,
   restoreQuerySnapshots,
-  snapshotNotificationState
+  snapshotNotificationState,
+  syncNotificationUnreadCountInCache
 } from "@/lib/optimistic-cache";
 import { formatDateTime } from "@/lib/time-format";
 import type { AuthUser, NotificationRecord } from "@/types";
@@ -100,6 +101,11 @@ function NotificationsContent({ user, token }: NotificationsContentProps) {
     }
 
     replaceNotificationInCache(queryClient, token, response.data.notification);
+    syncNotificationUnreadCountInCache(
+      queryClient,
+      token,
+      response.data.unreadCount
+    );
     void queryClient.invalidateQueries({
       queryKey: ["notifications", token],
       exact: false

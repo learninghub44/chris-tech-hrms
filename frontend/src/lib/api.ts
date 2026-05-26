@@ -1194,10 +1194,13 @@ export function listNotifications(token: string, pagination?: PaginationInput) {
 }
 
 export function markNotificationRead(token: string, id: string) {
-  return request<{ notification: NotificationRecord }>(`/notifications/${id}/read`, {
-    method: "PUT",
-    token
-  });
+  return request<{ notification: NotificationRecord; unreadCount: number }>(
+    `/notifications/${id}/read`,
+    {
+      method: "PUT",
+      token
+    }
+  );
 }
 
 export function listAnnouncements(token: string, pagination?: PaginationInput) {

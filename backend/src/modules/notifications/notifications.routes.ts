@@ -159,12 +159,18 @@ notificationsRouter.put(
         readAt: notification.readAt ?? new Date()
       }
     });
+    const unreadCount = await prisma.notification.count({
+      where: {
+        userId: auth.id,
+        isRead: false
+      }
+    });
 
     await emitNotificationRead({
       notification: updatedNotification,
       wasUnread
     });
-    res.status(200).json(ok({ notification: updatedNotification }));
+    res.status(200).json(ok({ notification: updatedNotification, unreadCount }));
   })
 );
 
