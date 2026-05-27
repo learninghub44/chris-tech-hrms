@@ -1,11 +1,9 @@
 import cors from "cors";
 import compression from "compression";
 import express from "express";
-import type { Request } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
-import { getAllowedCorsOrigins } from "./config/cors";
 import { errorHandler } from "./middleware/error-handler";
 import { notFoundHandler } from "./middleware/not-found";
 import { authRouter } from "./modules/auth/auth.routes";
@@ -21,6 +19,17 @@ import { performanceRouter } from "./modules/performance/performance.routes";
 import { recruitmentRouter } from "./modules/recruitment/recruitment.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 
+function getAllowedCorsOrigins(): string[] {
+  const origins = new Set([
+    env.CORS_ORIGIN,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://hrms-frontend-tawny.vercel.app"
+  ]);
+
+  return [...origins];
+}
+
 export function createApp() {
   const app = express();
 
@@ -29,17 +38,11 @@ export function createApp() {
   app.use(
     cors({
       origin: getAllowedCorsOrigins(),
-      credentials: true,
-      maxAge: 86_400,
-      optionsSuccessStatus: 204
+      credentials: true
     })
   );
   app.use(express.json({ limit: "5mb" }));
-  app.use(
-    morgan(env.NODE_ENV === "production" ? "tiny" : "dev", {
-      skip: (req: Request) => req.path === "/api/health"
-    })
-  );
+  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
