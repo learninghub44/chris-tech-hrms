@@ -283,7 +283,7 @@ async function main() {
   const employeeRole = getRequiredRole(createdRoles, "EMPLOYEE");
   const user = await upsertSeedUser({
     email: "admin@hrms.local",
-    name: "Phase 3 Admin",
+    name: "Elon Musk",
     password: seedAdminPassword,
     role: superAdmin,
     createdRoles
@@ -384,8 +384,8 @@ async function main() {
     },
     update: {
       userId: user.id,
-      firstName: "Phase",
-      lastName: "Admin",
+      firstName: "Elon",
+      lastName: "Musk",
       workEmail: user.email,
       departmentId: peopleOperations?.id ?? null,
       designationId: hrDirector?.id ?? null,
@@ -395,8 +395,8 @@ async function main() {
     create: {
       employeeCode: "EMP-0001",
       userId: user.id,
-      firstName: "Phase",
-      lastName: "Admin",
+      firstName: "Elon",
+      lastName: "Musk",
       workEmail: user.email,
       dateOfJoining: new Date("2026-05-18T00:00:00.000Z"),
       departmentId: peopleOperations?.id ?? null,

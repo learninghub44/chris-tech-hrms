@@ -180,6 +180,36 @@ function publishNotificationUnreadCount(token: string, unreadCount: number): voi
   );
 }
 
+function getRestoredNotificationUnreadCount(
+  snapshots: QuerySnapshot[]
+): NotificationUnreadCountEventDetail | null {
+  for (const snapshot of snapshots) {
+    const [resource, token] = snapshot.queryKey;
+
+    if (resource !== "notifications" || typeof token !== "string") {
+      continue;
+    }
+
+    const data = snapshot.data as
+      | { success?: unknown; data?: { unreadCount?: unknown } }
+      | null
+      | undefined;
+
+    const unreadCount = data?.data?.unreadCount;
+
+    if (data?.success !== true || !Number.isFinite(unreadCount)) {
+      continue;
+    }
+
+    return {
+      token,
+      unreadCount: Number(unreadCount)
+    };
+  }
+
+  return null;
+}
+
 export function snapshotNotificationState(
   queryClient: QueryClient,
   token: string
@@ -206,6 +236,15 @@ export function restoreQuerySnapshots(
   snapshots.forEach((snapshot) => {
     queryClient.setQueryData(snapshot.queryKey, snapshot.data);
   });
+
+  const restoredUnreadCount = getRestoredNotificationUnreadCount(snapshots);
+
+  if (restoredUnreadCount) {
+    publishNotificationUnreadCount(
+      restoredUnreadCount.token,
+      restoredUnreadCount.unreadCount
+    );
+  }
 }
 
 export function markNotificationReadInCache(

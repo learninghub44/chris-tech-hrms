@@ -121,10 +121,19 @@ notificationsRouter.put(
       }
     });
 
-    await emitNotificationRead({
-      notification: updatedNotification,
-      wasUnread
-    });
+    try {
+      await emitNotificationRead({
+        notification: updatedNotification,
+        wasUnread
+      });
+    } catch (error) {
+      console.warn("Notification read realtime sync failed", {
+        error: error instanceof Error ? error.message : String(error),
+        notificationId: updatedNotification.id,
+        userId: auth.id
+      });
+    }
+
     res.status(200).json(ok({ notification: updatedNotification, unreadCount }));
   })
 );
