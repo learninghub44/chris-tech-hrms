@@ -136,32 +136,33 @@ export function LandingPage() {
           ) : null}
         </div>
 
-        <div className="relative z-20 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-16 px-6 py-14 lg:flex-row lg:items-center lg:gap-10 lg:py-10">
+        <div className="relative z-20 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-8 px-6 py-20 text-center">
           <motion.div
             initial={shouldReduceMotion ? undefined : "hidden"}
             animate={shouldReduceMotion ? undefined : "show"}
             variants={fadeUp}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="flex flex-1 flex-col gap-8"
+            className="flex flex-col items-center gap-8"
           >
             <div className="flex items-center gap-3">
               <span className="h-px w-10 bg-ct-ice/70" />
               <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-ice">
                 HR platform for African enterprise
               </span>
+              <span className="h-px w-10 bg-ct-ice/70" />
             </div>
 
-            <h1 className="font-display max-w-2xl text-[52px] font-normal leading-[1.02] tracking-[-0.01em] sm:text-6xl lg:text-[76px]">
+            <h1 className="font-display max-w-3xl text-[52px] font-normal leading-[1.02] tracking-[-0.01em] sm:text-6xl lg:text-[76px]">
               Modern HR management,{" "}
               <em className="text-ct-ice not-italic font-normal italic">designed for</em>{" "}
               growing African businesses.
             </h1>
-            <p className="font-inter max-w-lg text-lg leading-relaxed text-white/70 sm:text-xl">
+            <p className="font-inter max-w-xl text-lg leading-relaxed text-white/70 sm:text-xl">
               Attendance, leave, payroll, recruitment, and performance — brought
               together in one secure, unmistakably clear platform.
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
               <a
                 href="mailto:support@christech.co.ke?subject=Request%20a%20demo"
                 className="rounded-full bg-ct-blue px-7 py-3.5 text-base font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -184,112 +185,6 @@ export function LandingPage() {
               </p>
             </div>
           </motion.div>
-
-          <motion.div
-            initial={shouldReduceMotion ? undefined : { opacity: 0, y: 32 }}
-            animate={shouldReduceMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.15 }}
-            className="relative flex flex-1 items-center justify-center py-2 lg:py-0"
-          >
-            <div className="relative w-full max-w-md">
-              <div className="absolute -left-10 top-8 h-64 w-64 rounded-full bg-ct-blue/10 blur-3xl" />
-              <div className="absolute -right-8 bottom-10 h-52 w-52 rounded-full bg-ct-ice/10 blur-3xl" />
-
-              <div className="ct-cut relative overflow-hidden rounded-[38px] border border-white/10 bg-white/[0.06] p-6 text-white shadow-[0_40px_120px_-30px_rgba(52,84,209,0.35)] backdrop-blur-xl">
-                <div className="mb-5 flex items-center justify-between">
-                  <span className="font-inter text-xs font-semibold uppercase tracking-[0.15em] text-white/50">
-                    Workforce pulse
-                  </span>
-                  <span className="flex gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-ct-ice/60" />
-                    <span className="h-2 w-2 rounded-full bg-white/20" />
-                    <span className="h-2 w-2 rounded-full bg-white/20" />
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Employees", value: "1,240" },
-                    { label: "On duty", value: "97%" },
-                    { label: "Open roles", value: "14" }
-                  ].map((stat) => (
-                    <div key={stat.label} className="rounded-3xl border border-white/10 bg-white/[0.05] p-4 text-center">
-                      <p className="font-display text-2xl font-medium text-white">{stat.value}</p>
-                      <p className="font-inter mt-1 text-[10px] uppercase tracking-[0.18em] text-white/50">{stat.label}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 rounded-[26px] border border-white/10 bg-white/[0.04] p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="font-inter text-[11px] uppercase tracking-[0.16em] text-white/60">
-                      Payroll forecast
-                    </span>
-                    <span className="font-inter text-[11px] text-ct-ice">On schedule</span>
-                  </div>
-                  <div className="flex h-10 items-end gap-2">
-                    {[50, 72, 58, 90, 66, 85, 74].map((height, index) => (
-                      <div
-                        key={index}
-                        className="flex-1 rounded-full bg-gradient-to-t from-ct-blue/40 to-ct-ice/70"
-                        style={{ height: `${height}%` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-2 rounded-[26px] border border-white/10 bg-white/[0.04] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-inter text-sm text-white/70">Recruitment pipeline</p>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/60">
-                      Live
-                    </span>
-                  </div>
-                  {[
-                    { stage: "Screening", value: 21 },
-                    { stage: "Interview", value: 9 },
-                    { stage: "Offer", value: 3 }
-                  ].map((item) => (
-                    <div key={item.stage} className="flex items-center justify-between text-sm">
-                      <span className="text-white/70">{item.stage}</span>
-                      <span className="font-semibold text-white">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Signature floating accent chip — deliberately singular, not a
-                  duplicate panel, to keep the composition uncluttered */}
-              <motion.div
-                animate={shouldReduceMotion ? undefined : { y: [0, -8, 0] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -bottom-7 -left-6 flex items-center gap-3 rounded-full border border-white/10 bg-ct-graphite/90 px-4 py-3 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-xl"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ct-ice/15">
-                  <span className="h-2 w-2 rounded-full bg-ct-ice" />
-                </span>
-                <div>
-                  <p className="font-inter text-[10px] uppercase tracking-[0.16em] text-white/50">Clocked in</p>
-                  <p className="font-display text-sm font-medium text-white">08:02 AM · on time</p>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="relative z-20 mx-auto w-full max-w-6xl px-6 pb-12">
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 border-t border-white/10 pt-8 sm:justify-between">
-            {[
-              { label: "Faster approvals", value: "2.3x" },
-              { label: "HR tasks automated", value: "92%" },
-              { label: "Employee satisfaction", value: "4.9 / 5" }
-            ].map((item) => (
-              <div key={item.label} className="flex items-baseline gap-3">
-                <p className="font-display text-3xl font-medium text-white">{item.value}</p>
-                <p className="font-inter text-sm uppercase tracking-[0.18em] text-white/50">{item.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ct-graphite to-transparent" />
