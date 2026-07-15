@@ -8,7 +8,6 @@ import ctLogo from "@/assets/brand/chris-tech-logo-icon.png";
 import { TrustedCompanies } from "./sections/trusted-companies";
 import { WhyChoose } from "./sections/why-choose";
 import { CoreFeatures } from "./sections/core-features";
-import { PlatformOverview } from "./sections/platform-overview";
 import { HowItWorks } from "./sections/how-it-works";
 import { Security } from "./sections/security";
 import { Testimonials } from "./sections/testimonials";
@@ -88,10 +87,10 @@ export function LandingPage() {
                 Login
               </Link>
               <Link
-                href="/contact"
+                href="/register"
                 className="rounded-full bg-ct-blue px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep"
               >
-                Contact
+                Register
               </Link>
             </div>
             <button
@@ -121,13 +120,22 @@ export function LandingPage() {
                     {link.label}
                   </Link>
                 ))}
-                <Link
-                  href="/login"
-                  className="block rounded-2xl bg-ct-blue px-4 py-3 text-sm font-semibold text-white transition hover:bg-ct-blueDeep"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Login
-                </Link>
+                <div className="flex gap-3">
+                  <Link
+                    href="/login"
+                    className="flex-1 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-white transition hover:border-ct-ice/60 hover:text-ct-ice"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="flex-1 rounded-2xl bg-ct-blue px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-ct-blueDeep"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </div>
               </div>
             </div>
           ) : null}
@@ -190,7 +198,6 @@ export function LandingPage() {
       <TrustedCompanies />
       <WhyChoose />
       <CoreFeatures />
-      <PlatformOverview />
       <HowItWorks />
       <Security />
       <Testimonials />

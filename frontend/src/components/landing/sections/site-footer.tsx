@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { Globe, Mail, Phone } from "lucide-react";
+import Link from "next/link";
+import { Globe, Mail, MapPin, Phone } from "lucide-react";
 import ctLogo from "@/assets/brand/chris-tech-logo-icon.png";
 
 type FooterLink = { label: string; href?: string };
@@ -32,43 +33,54 @@ const columns: { title: string; links: FooterLink[] }[] = [
   }
 ];
 
+const contactDetails = [
+  { icon: Globe, label: "Website", value: "www.christech.co.ke", href: "https://www.christech.co.ke" },
+  { icon: Mail, label: "Email", value: "support@christech.co.ke", href: "mailto:support@christech.co.ke" },
+  { icon: Phone, label: "Phone", value: "+254 701 059192", href: "tel:+254701059192" },
+  { icon: MapPin, label: "Location", value: "Nairobi, Kenya" }
+];
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-ct-graphite/10 bg-ct-graphite text-white/70">
       <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-12 lg:grid-cols-[1.3fr_repeat(4,1fr)] lg:gap-8">
-          <div>
-            <div className="flex items-center gap-3">
+        <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(4,1fr)] lg:gap-8">
+          <div className="lg:col-span-2">
+            <Link href="/" className="flex items-center gap-3">
               <Image src={ctLogo} alt="Chris Tech" width={32} height={32} className="h-8 w-8" />
               <p className="font-display text-sm font-semibold text-white">
                 Chris Tech / Zetu Business Solutions
               </p>
-            </div>
-            <div className="mt-5 flex flex-col gap-2 text-sm">
-              <a
-                href="https://www.christech.co.ke"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex w-fit items-center gap-2 transition hover:text-ct-ice"
-              >
-                <Globe className="h-4 w-4" aria-hidden />
-                www.christech.co.ke
-              </a>
-              <a
-                href="mailto:support@christech.co.ke"
-                className="inline-flex w-fit items-center gap-2 transition hover:text-ct-ice"
-              >
-                <Mail className="h-4 w-4" aria-hidden />
-                support@christech.co.ke
-              </a>
-              <a
-                href="tel:+254701059192"
-                className="inline-flex w-fit items-center gap-2 transition hover:text-ct-ice"
-              >
-                <Phone className="h-4 w-4" aria-hidden />
-                +254 701 059192
-              </a>
-            </div>
+            </Link>
+            <p className="font-inter mt-4 max-w-sm text-sm leading-relaxed text-white/50">
+              Multi-tenant HR management software built for growing companies
+              across Kenya and East Africa.
+            </p>
+
+            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+              {contactDetails.map((item) => (
+                <div key={item.label} className="flex items-start gap-2.5">
+                  <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-ct-ice" aria-hidden />
+                  <div>
+                    <dt className="font-inter text-[11px] uppercase tracking-[0.12em] text-white/35">
+                      {item.label}
+                    </dt>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        target={item.href.startsWith("http") ? "_blank" : undefined}
+                        rel={item.href.startsWith("http") ? "noreferrer" : undefined}
+                        className="font-inter block text-sm text-white/75 transition hover:text-ct-ice"
+                      >
+                        {item.value}
+                      </a>
+                    ) : (
+                      <dd className="font-inter text-sm text-white/75">{item.value}</dd>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </dl>
           </div>
 
           {columns.map((col) => (
@@ -80,9 +92,9 @@ export function SiteFooter() {
                 {col.links.map((link) =>
                   link.href ? (
                     <li key={link.label}>
-                      <a href={link.href} className="font-inter text-sm transition hover:text-ct-ice">
+                      <Link href={link.href} className="font-inter text-sm transition hover:text-ct-ice">
                         {link.label}
-                      </a>
+                      </Link>
                     </li>
                   ) : (
                     <li key={link.label}>
@@ -95,9 +107,10 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <p className="font-inter mt-12 border-t border-white/10 pt-6 text-xs text-white/40">
-          © {new Date().getFullYear()} Chris Tech. All rights reserved.
-        </p>
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-inter">© {new Date().getFullYear()} Chris Tech. All rights reserved.</p>
+          <p className="font-inter">Registered in Kenya · Nairobi, Kenya</p>
+        </div>
       </div>
     </footer>
   );
