@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -298,7 +299,7 @@ function assertCanReadEmployee(req: Request, employee: EmployeeRecord): void {
   throw new AppError(403, "PERMISSION_DENIED", "This account cannot access this employee record");
 }
 
-async function findEmployeeOrThrow(id: string): Promise<EmployeeRecord> {
+async function findEmployeeOrThrow(id: string, req: Request): Promise<EmployeeRecord> {
   const employee = await prisma.employee.findUnique({
     where: {
       id
@@ -310,10 +311,12 @@ async function findEmployeeOrThrow(id: string): Promise<EmployeeRecord> {
     throw new AppError(404, "EMPLOYEE_NOT_FOUND", "Employee record was not found");
   }
 
+  assertSameCompany(employee.companyId, req);
+
   return employee;
 }
 
-async function findLinkableUserId(workEmail: string): Promise<string | null> {
+async function findLinkableUserId(workEmail: string, companyId: string): Promise<string | null> {
   const user = await prisma.user.findUnique({
     where: {
       email: workEmail
@@ -321,7 +324,8 @@ async function findLinkableUserId(workEmail: string): Promise<string | null> {
     include: {
       employee: {
         select: {
-          id: true
+          id: true,
+          companyId: true
         }
       }
     }
@@ -331,7 +335,9 @@ async function findLinkableUserId(workEmail: string): Promise<string | null> {
     return null;
   }
 
-  if (user.employee) {
+  // A user account can only be linked to one employee record per company —
+  // a match in a different company is not a conflict for this tenant.
+  if (user.employee && user.employee.companyId === companyId) {
     throw new AppError(409, "USER_ALREADY_LINKED", "This user account is already linked to an employee");
   }
 
@@ -354,9 +360,11 @@ function toEmergencyContactCreateMany(
 
 function buildEmployeeCreateData(
   body: z.infer<typeof employeeBodySchema>,
-  userId: string | null
+  userId: string | null,
+  companyId: string
 ): Prisma.EmployeeUncheckedCreateInput {
   return {
+    companyId,
     employeeCode: body.employeeCode,
     userId,
     firstName: body.firstName,
@@ -439,6 +447,51 @@ function buildEmployeeUpdateData(
   return data;
 }
 
+async function assertEmployeeReferencesInCompany(
+  companyId: string,
+  refs: { departmentId?: string | null; designationId?: string | null; managerId?: string | null }
+): Promise<void> {
+  const checks: Promise<void>[] = [];
+
+  if (refs.departmentId) {
+    checks.push(
+      prisma.department
+        .findUnique({ where: { id: refs.departmentId }, select: { companyId: true } })
+        .then((department) => {
+          if (!department || department.companyId !== companyId) {
+            throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+          }
+        })
+    );
+  }
+
+  if (refs.designationId) {
+    checks.push(
+      prisma.designation
+        .findUnique({ where: { id: refs.designationId }, select: { companyId: true } })
+        .then((designation) => {
+          if (!designation || designation.companyId !== companyId) {
+            throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+          }
+        })
+    );
+  }
+
+  if (refs.managerId) {
+    checks.push(
+      prisma.employee
+        .findUnique({ where: { id: refs.managerId }, select: { companyId: true } })
+        .then((manager) => {
+          if (!manager || manager.companyId !== companyId) {
+            throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+          }
+        })
+    );
+  }
+
+  await Promise.all(checks);
+}
+
 function handlePrismaMutationError(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
@@ -458,14 +511,17 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 employeeCoreRouter.use(authenticate);
+employeeCoreRouter.use(requireCompanyContext);
 
 employeeCoreRouter.get(
   "/employees/me",
   asyncHandler(async (req, res) => {
     const auth = assertAuthenticated(req);
-    const employee = await prisma.employee.findUnique({
+    const scope = companyScope(req);
+    const employee = await prisma.employee.findFirst({
       where: {
-        userId: auth.id
+        userId: auth.id,
+        companyId: scope.companyId
       },
       include: employeeInclude
     });
@@ -479,7 +535,10 @@ employeeCoreRouter.get(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(listEmployeesQuerySchema, req.query);
-    const where: Prisma.EmployeeWhereInput = {};
+    const scope = companyScope(req);
+    const where: Prisma.EmployeeWhereInput = {
+      companyId: scope.companyId
+    };
 
     if (query.status) {
       where.status = query.status;
@@ -552,12 +611,14 @@ employeeCoreRouter.post(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(employeeBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
-      const userId = await findLinkableUserId(body.workEmail);
+      await assertEmployeeReferencesInCompany(scope.companyId, body);
+      const userId = await findLinkableUserId(body.workEmail, scope.companyId);
       const employee = await prisma.$transaction(async (transaction) => {
         const createdEmployee = await transaction.employee.create({
-          data: buildEmployeeCreateData(body, userId)
+          data: buildEmployeeCreateData(body, userId, scope.companyId)
         });
 
         await initializeLeaveBalancesForEmployee({
@@ -591,7 +652,7 @@ employeeCoreRouter.get(
   "/employees/:id",
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
-    const employee = await findEmployeeOrThrow(params.id);
+    const employee = await findEmployeeOrThrow(params.id, req);
     assertCanReadEmployee(req, employee);
 
     res.status(200).json(ok({ employee }));
@@ -609,7 +670,11 @@ employeeCoreRouter.put(
       throw new AppError(400, "INVALID_MANAGER", "Employee cannot be their own manager");
     }
 
+    await findEmployeeOrThrow(params.id, req);
+    const scope = companyScope(req);
+
     try {
+      await assertEmployeeReferencesInCompany(scope.companyId, body);
       const employee = await prisma.$transaction(async (transaction) => {
         const data = buildEmployeeUpdateData(body);
 
@@ -669,6 +734,8 @@ employeeCoreRouter.delete(
           throw new AppError(404, "EMPLOYEE_NOT_FOUND", "Employee record was not found");
         }
 
+        assertSameCompany(existingEmployee.companyId, req);
+
         const updatedEmployee = await transaction.employee.update({
           where: {
             id: params.id
@@ -706,7 +773,7 @@ employeeCoreRouter.post(
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
     const body = parseInput(documentBodySchema, req.body);
-    const employee = await findEmployeeOrThrow(params.id);
+    const employee = await findEmployeeOrThrow(params.id, req);
     assertCanReadEmployee(req, employee);
     const auth = assertAuthenticated(req);
 
@@ -743,8 +810,12 @@ employeeCoreRouter.post(
 employeeCoreRouter.get(
   "/departments",
   requireAnyPermission(["employees:manage", "attendance:read", "leave:approve"]),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const scope = companyScope(req);
     const departments = await prisma.department.findMany({
+      where: {
+        companyId: scope.companyId
+      },
       include: {
         _count: {
           select: {
@@ -767,10 +838,12 @@ employeeCoreRouter.post(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(departmentBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const department = await prisma.department.create({
         data: {
+          companyId: scope.companyId,
           name: body.name,
           description: body.description
         },
@@ -796,11 +869,25 @@ employeeCoreRouter.delete(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
+    const scope = companyScope(req);
+
+    const existingDepartment = await prisma.department.findUnique({
+      where: {
+        id: params.id
+      }
+    });
+
+    if (!existingDepartment) {
+      throw new AppError(404, "RECORD_NOT_FOUND", "The requested record was not found");
+    }
+
+    assertSameCompany(existingDepartment.companyId, req);
 
     try {
       const department = await prisma.department.delete({
         where: {
-          id: params.id
+          id: params.id,
+          companyId: scope.companyId
         },
         include: {
           _count: {
@@ -822,8 +909,12 @@ employeeCoreRouter.delete(
 employeeCoreRouter.get(
   "/designations",
   requirePermissions(["employees:manage"]),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const scope = companyScope(req);
     const designations = await prisma.designation.findMany({
+      where: {
+        companyId: scope.companyId
+      },
       include: {
         department: true,
         _count: {
@@ -851,10 +942,27 @@ employeeCoreRouter.post(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(designationBodySchema, req.body);
+    const scope = companyScope(req);
+
+    if (body.departmentId) {
+      const department = await prisma.department.findUnique({
+        where: {
+          id: body.departmentId
+        },
+        select: {
+          companyId: true
+        }
+      });
+
+      if (!department || department.companyId !== scope.companyId) {
+        throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+      }
+    }
 
     try {
       const designation = await prisma.designation.create({
         data: {
+          companyId: scope.companyId,
           title: body.title,
           description: body.description,
           departmentId: body.departmentId
@@ -881,11 +989,25 @@ employeeCoreRouter.delete(
   requirePermissions(["employees:manage"]),
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
+    const scope = companyScope(req);
+
+    const existingDesignation = await prisma.designation.findUnique({
+      where: {
+        id: params.id
+      }
+    });
+
+    if (!existingDesignation) {
+      throw new AppError(404, "RECORD_NOT_FOUND", "The requested record was not found");
+    }
+
+    assertSameCompany(existingDesignation.companyId, req);
 
     try {
       const designation = await prisma.designation.delete({
         where: {
-          id: params.id
+          id: params.id,
+          companyId: scope.companyId
         },
         include: {
           department: true,

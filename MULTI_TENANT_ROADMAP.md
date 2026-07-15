@@ -155,9 +155,10 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 ## Summary Checklist (top-level tracking)
 
 - [x] Phase 0 — Design decisions documented and approved — see `docs/multi-tenant-design.md`
-- [x] Phase 1 — Schema + migration script written — see `phase-1-schema-migration` branch, PR pending merge to `main`
-- [x] Phase 2 — Auth/middleware carries and enforces companyId — see `phase-2-auth-middleware` branch (based on `phase-1-schema-migration`), PR pending merge
-- [ ] Phase 3 — Employees module scoped (proof of concept)
+- [x] Phase 1 — Schema + migration merged to `main`
+- [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
+- [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
+- [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
 - [ ] Phase 4 — Remaining 10 modules scoped
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
@@ -193,4 +194,52 @@ Each unchecked box above is a valid unit of work for another agent or engineer t
 
 **Also still not run in this environment:** same Prisma-engine sandbox limitation as Phase 1 — `prisma generate` could not execute here. `tsc --noEmit` was run and manually filtered; the only errors touching Phase 2's changed files were pre-existing "missing generated client export" noise (e.g. `AccountStatus` not found on `@prisma/client`), not new bugs. Confirm with a real `prisma generate` before merging.
 
-### Phase 3 onward — not started
+### Phase 1 & 2 — status correction
+
+The entries above previously said these branches had "PR pending merge." That
+was stale: `git log` on `main` confirms `phase-1-schema-migration` and
+`phase-2-auth-middleware` were both merged (see merge commits for PR #1 and
+the schema/auth commits preceding it). Checklist corrected above.
+
+### Phase 3 — complete
+
+- **Files:** `backend/src/modules/employees/employees.routes.ts`,
+  `backend/src/modules/employees/onboarding.ts` (reviewed, not modified —
+  its `LeaveType` query is explicitly out of scope until Phase 4's leaves
+  module), `backend/scripts/smoke-test.ts`.
+- Every Prisma call in the employees, departments, and designations routes
+  (all live in `employees.routes.ts`) now filters/sets `companyId` via the
+  shared `companyScope(req)` / `assertSameCompany(...)` / `requireCompanyContext`
+  helpers from `middleware/tenant.ts` (Phase 2).
+- `POST /employees`, `POST /departments`, `POST /designations`: `companyId`
+  is always taken from `req.auth.companyId`, never from the request body.
+- Cross-tenant FK references are rejected: creating/updating an employee with
+  a `departmentId`, `designationId`, or `managerId` belonging to a different
+  company now fails with `400 INVALID_REFERENCE` instead of silently linking
+  across tenants.
+- `GET/PUT/DELETE /employees/:id` and the document-upload route now 404
+  (not 403) when the id belongs to another company, per the "don't confirm
+  the id exists elsewhere" rule in `middleware/tenant.ts`.
+- `backend/scripts/smoke-test.ts`: new check
+  `"cross-tenant isolation: employees module (Phase 3)"` logs in as the
+  seeded second company (`Northwind Demo Co`, `admin@northwind-demo.local`)
+  and asserts: (1) Company A's employee list never contains Company B's
+  seeded employee code and vice versa, (2) Company B fetching Company A's
+  employee id directly returns `404 EMPLOYEE_NOT_FOUND`, (3) same for a
+  cross-tenant `PUT` update attempt.
+- **Not yet verified in this environment:** same limitation as Phase 1/2 —
+  `prisma generate` cannot run here (no network access to
+  `binaries.prisma.sh`), so `npm run test:smoke` itself could not be
+  executed against a real database. `tsc --noEmit` was run and filtered;
+  the only errors in the touched files are the same pre-existing
+  "missing generated client export" class already flagged in the Phase 2
+  log (stale local `@prisma/client` build predating the Phase 1 schema
+  changes), not new bugs from this change. Before merging: run
+  `npx prisma generate`, `npm run db:seed`, then `npm run test:smoke` with
+  real network/database access to confirm the new isolation checks pass.
+
+**Reference pattern for Phase 4:** the `companyScope` / `assertSameCompany`
+/ FK-cross-check pattern in `employees.routes.ts` is the template — repeat
+for each module in the Phase 4 order list below.
+
+### Phase 4 onward — not started

@@ -77,6 +77,14 @@ const smokeLeaveTypeName = "Smoke Unpaid Leave";
 const smokePayrollMonth = 12;
 const smokePayrollYear = 2099;
 
+// Second-company credentials, seeded in prisma/seed.ts specifically to give
+// Phase 3 (MULTI_TENANT_ROADMAP.md) cross-tenant isolation checks a real
+// second tenant's rows to assert against.
+const secondCompanyAdminEmail = "admin@northwind-demo.local";
+const secondCompanyAdminPassword =
+  process.env.SEED_SECOND_COMPANY_ADMIN_PASSWORD ?? "Admin@12345";
+const secondCompanyEmployeeCode = "EMP-N001";
+
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {
     throw new Error(message);
@@ -503,6 +511,71 @@ async function runSmoke(baseUrl: string): Promise<void> {
       Boolean(detail.employee.documents?.some((document) => document.fileName === "phase10-smoke.txt")),
       "Uploaded smoke document was not returned on employee detail"
     );
+  });
+
+  await check("cross-tenant isolation: employees module (Phase 3)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Company A (primary) admin lists employees — must never see Company B's
+    // (Northwind) seeded employee codes.
+    const primaryList = assertSuccess(
+      await request<{ employees: EmployeeRecord[] }>({
+        baseUrl,
+        path: "/api/employees",
+        token: context.adminToken
+      })
+    );
+
+    assert(
+      !primaryList.employees.some((record) => record.employeeCode === secondCompanyEmployeeCode),
+      "Company A employee list leaked a Company B employee"
+    );
+
+    // Company B (Northwind) admin lists employees — must never see Company
+    // A's smoke employee, and must only see its own seeded employees.
+    const secondCompanyList = assertSuccess(
+      await request<{ employees: EmployeeRecord[] }>({
+        baseUrl,
+        path: "/api/employees",
+        token: secondCompanyLogin.token
+      })
+    );
+
+    assert(
+      !secondCompanyList.employees.some((record) => record.employeeCode === smokeEmployeeCode),
+      "Company B employee list leaked Company A's smoke employee"
+    );
+    assert(
+      secondCompanyList.employees.some((record) => record.employeeCode === secondCompanyEmployeeCode),
+      "Company B employee list did not return its own seeded employee"
+    );
+
+    // Company B admin fetching Company A's employee by id directly must be
+    // rejected as not found, not forbidden — a 403 would confirm the id
+    // exists in another tenant, which is itself a leak.
+    const crossTenantDetail = await request<unknown>({
+      baseUrl,
+      path: `/api/employees/${context.employeeId}`,
+      token: secondCompanyLogin.token,
+      expectedStatus: 404
+    });
+
+    assertFailure(crossTenantDetail, "EMPLOYEE_NOT_FOUND");
+
+    // Company B admin attempting to update Company A's employee directly
+    // must also be rejected as not found.
+    const crossTenantUpdate = await request<unknown>({
+      baseUrl,
+      path: `/api/employees/${context.employeeId}`,
+      method: "PUT",
+      token: secondCompanyLogin.token,
+      expectedStatus: 404,
+      body: {
+        location: "Should not be applied"
+      }
+    });
+
+    assertFailure(crossTenantUpdate, "EMPLOYEE_NOT_FOUND");
   });
 
   await check("attendance clock-in and clock-out", async () => {
