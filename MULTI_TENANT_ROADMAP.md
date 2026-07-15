@@ -694,11 +694,12 @@ suite, docs, tagged release) is next.
   `backend/.env.example`. `render.yaml` never listed `GEMINI_API_KEY`/
   `GROQ_API_KEY` in the first place (it's an optional var Render prompts
   for separately, per the README), so no change needed there either.
+- **README.md/plan.md rewrite (roadmap item 5) — done.** Both now describe
+  the multi-tenant architecture end-to-end (dedicated "Multi-Tenant
+  Architecture" section in `README.md`, updated status table and role list
+  in `plan.md`), landed as part of the rebrand commit alongside the
+  proprietary license and company metadata changes.
 - **Not done yet:**
-  - `README.md`/`plan.md` full rewrite to describe the multi-tenant
-    architecture end-to-end (roadmap item 5) — still describe the
-    original single-tenant feature set; needs a pass once Phase 6's other
-    items are closed out.
   - Tagged release (`v2.0.0-multitenant`) — deliberately not cut yet.
     Every phase so far has been unable to run `npx prisma generate` /
     `npm run db:seed` / `npm run test:smoke` against a real database in
