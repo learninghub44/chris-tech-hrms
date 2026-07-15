@@ -156,7 +156,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 
 - [x] Phase 0 — Design decisions documented and approved — see `docs/multi-tenant-design.md`
 - [x] Phase 1 — Schema + migration script written — see `phase-1-schema-migration` branch, PR pending merge to `main`
-- [ ] Phase 2 — Auth/middleware carries and enforces companyId
+- [x] Phase 2 — Auth/middleware carries and enforces companyId — see `phase-2-auth-middleware` branch (based on `phase-1-schema-migration`), PR pending merge
 - [ ] Phase 3 — Employees module scoped (proof of concept)
 - [ ] Phase 4 — Remaining 10 modules scoped
 - [ ] Phase 5 — Frontend company context
@@ -181,4 +181,16 @@ Each unchecked box above is a valid unit of work for another agent or engineer t
   3. Follow the 3-step process in `backfill-default-company.ts` against a copy of the real dev database (or run a fresh `prisma migrate dev` against an empty database)
   4. Merge to `main` once confirmed working
 
-### Phase 2 onward — not started
+### Phase 2 — auth/middleware done, not yet merged
+- Branch: `phase-2-auth-middleware`, based on `phase-1-schema-migration` (not on `main` — it depends on the `Company` model and `companyId` fields from Phase 1, which aren't merged yet).
+- `jwt.ts`: JWT payload now carries `companyId` (nullable, for `PLATFORM_OWNER`).
+- `auth.service.ts`: `AuthUser` now includes `companyId`.
+- `auth.routes.ts`: registration now requires a pre-existing `Employee` invite record to resolve which company the new user belongs to (per the admin-provisioned-signup decision) — returns `NO_COMPANY_INVITE` (403) if none exists in any company.
+- `onboarding.ts`: employee-linking lookup switched from a bare `workEmail` unique lookup to the `companyId_workEmail` composite key, since `workEmail` is no longer globally unique after Phase 1.
+- New `src/middleware/tenant.ts`: `requireCompanyContext` middleware, `companyScope(req)`, and `assertSameCompany(resourceCompanyId, req)` — the shared pattern Phase 3/4 modules should use. Mismatches return **404, not 403**, to avoid confirming a resource exists in another tenant.
+
+**Blocking item before Phase 3 starts:** `backend/prisma/seed.ts` (~1000 lines) does not set `companyId` anywhere and will need a full pass to create a seed `Company` and attach every seeded row to it — otherwise no local dev database can be seeded against the new schema at all. This wasn't done as part of Phase 2 (out of scope — auth/middleware only) but needs to happen before Phase 3's cross-tenant isolation smoke tests can run (those tests need *two* seeded companies). Whoever picks up Phase 3 should do the seed.ts rewrite first, or as part of the same PR.
+
+**Also still not run in this environment:** same Prisma-engine sandbox limitation as Phase 1 — `prisma generate` could not execute here. `tsc --noEmit` was run and manually filtered; the only errors touching Phase 2's changed files were pre-existing "missing generated client export" noise (e.g. `AccountStatus` not found on `@prisma/client`), not new bugs. Confirm with a real `prisma generate` before merging.
+
+### Phase 3 onward — not started
