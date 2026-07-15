@@ -30,8 +30,8 @@ const config: Config = {
         }
       },
       fontFamily: {
-        display: ["var(--font-display)"],
-        body: ["var(--font-body)"],
+        display: ["var(--font-geist)", "var(--font-inter)", "sans-serif"],
+        body: ["var(--font-geist)", "var(--font-inter)", "sans-serif"],
         mono: ["var(--font-mono)"]
       },
       boxShadow: {

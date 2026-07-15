@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter, Space_Grotesk } from "next/font/google";
+import { Geist, IBM_Plex_Mono, Inter } from "next/font/google";
 import hrmsIcon from "@/assets/hrms-icon.png";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+// Geist is the primary typeface for both headings and body copy, with Inter
+// as an explicit fallback in the CSS font stack (see tailwind.config.ts).
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-geist",
   display: "swap"
 });
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-body",
+  variable: "--font-inter",
   display: "swap"
 });
 
@@ -74,7 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${spaceGrotesk.variable} ${inter.variable} ${plexMono.variable}`}
+        className={`${geist.variable} ${inter.variable} ${plexMono.variable}`}
         suppressHydrationWarning={true}
       >
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />

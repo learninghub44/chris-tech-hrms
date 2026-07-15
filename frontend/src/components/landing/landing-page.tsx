@@ -119,7 +119,7 @@ export function LandingPage() {
         </div>
         <Link
           href="/login"
-          className="rounded-full border border-ct-graphite/15 px-5 py-2 text-sm font-medium transition hover:border-ct-blue hover:text-ct-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ct-blue"
+          className="rounded-full border border-ct-graphite/15 px-5 py-2 text-base font-semibold transition hover:border-ct-blue hover:text-ct-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ct-blue"
         >
           Sign in
         </Link>
@@ -143,14 +143,14 @@ export function LandingPage() {
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               Multi-tenant HR platform
             </span>
-            <h1 className="font-display max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+            <h1 className="font-display max-w-3xl text-4xl font-bold leading-[1.05] tracking-[-0.02em] sm:text-5xl lg:text-7xl">
               One HR platform.
               <br />
               <span className="bg-gradient-to-r from-ct-blue via-ct-ice to-ct-blue bg-clip-text text-transparent">
                 Every company, isolated.
               </span>
             </h1>
-            <p className="max-w-xl text-base text-white/70 sm:text-lg">
+            <p className="max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
               Chris Tech HRMS brings employees, attendance, leave, payroll,
               recruitment, and performance into one role-based platform —
               architected so each company&apos;s data stays fully separate
@@ -159,13 +159,13 @@ export function LandingPage() {
             <div className="flex flex-wrap items-center gap-4">
               <Link
                 href="/login"
-                className="rounded-full bg-ct-blue px-7 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-full bg-ct-blue px-7 py-3 text-base font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Sign in
               </Link>
               <a
                 href="#modules"
-                className="rounded-full border border-white/20 px-7 py-3 text-sm font-medium text-white transition hover:border-ct-ice hover:text-ct-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="rounded-full border border-white/20 px-7 py-3 text-base font-semibold text-white transition hover:border-ct-ice hover:text-ct-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 See what&apos;s inside
               </a>
@@ -189,7 +189,7 @@ export function LandingPage() {
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
             Everything HR touches
           </span>
-          <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h2 className="font-display mt-3 text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
             Nine modules, one login.
           </h2>
         </div>
@@ -200,8 +200,8 @@ export function LandingPage() {
               className="ct-cut-sm border border-ct-graphite/10 bg-white p-6 transition hover:border-ct-blue/40 hover:shadow-soft"
             >
               <mod.icon className="h-6 w-6 text-ct-blue" aria-hidden />
-              <h3 className="font-display mt-4 text-lg font-semibold">{mod.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-ct-graphite/70">{mod.copy}</p>
+              <h3 className="font-display mt-4 text-xl font-bold sm:text-2xl">{mod.title}</h3>
+              <p className="mt-2 text-base leading-relaxed text-ct-graphite/70">{mod.copy}</p>
             </div>
           ))}
         </div>
@@ -214,7 +214,7 @@ export function LandingPage() {
             <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-ice">
               Built for many companies, one deployment
             </span>
-            <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h2 className="font-display mt-3 text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               Tenant isolation isn&apos;t a setting. It&apos;s the architecture.
             </h2>
           </div>
@@ -222,8 +222,8 @@ export function LandingPage() {
             {isolationPoints.map((point) => (
               <div key={point.title} className="ct-cut border border-white/10 bg-ct-slate/60 p-7">
                 <point.icon className="h-6 w-6 text-ct-ice" aria-hidden />
-                <h3 className="font-display mt-4 text-lg font-semibold">{point.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/70">{point.copy}</p>
+                <h3 className="font-display mt-4 text-xl font-bold sm:text-2xl">{point.title}</h3>
+                <p className="mt-2 text-base leading-relaxed text-white/70">{point.copy}</p>
               </div>
             ))}
           </div>
@@ -246,13 +246,13 @@ export function LandingPage() {
 
       {/* CTA */}
       <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-        <h2 className="font-display mx-auto max-w-xl text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="font-display mx-auto max-w-xl text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
           Bring your HR operations into one place.
         </h2>
         <div className="mt-8 flex justify-center">
           <Link
             href="/login"
-            className="rounded-full bg-ct-graphite px-8 py-3 text-sm font-semibold text-white transition hover:bg-ct-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ct-blue"
+            className="rounded-full bg-ct-graphite px-8 py-3 text-base font-semibold text-white transition hover:bg-ct-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ct-blue"
           >
             Sign in to your workspace
           </Link>
