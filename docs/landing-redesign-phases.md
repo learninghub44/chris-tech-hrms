@@ -7,7 +7,7 @@ not started — needs a real `next build` on a machine with internet access.
 - `8c721fa` — Phase 1: tokens (palette + Fraunces/Inter typography)
 - `6208361` — Phase 2: cinematic hero rebuild (custom video, glass nav, serif headline)
 - `2862633` — doc: status header + commit log
-- *(pending)* — Phase 3: section pass
+- `9a96d4d` — Phase 3: section pass
 
 Design reference: visual quality/UX of jrmhd.tech (cinematic hero, premium
 enterprise aesthetic, glassmorphism, elegant typography, generous whitespace).
