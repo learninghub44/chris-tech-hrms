@@ -59,6 +59,42 @@ svg {
   flex-shrink: 0;
 }
 
+/* Angular clipped-corner motif, echoing the diagonal cuts in the Chris Tech
+   mark (the flat-cut top of the C, the blade-cut foot of the T). Used on
+   landing-page cards and panels instead of plain rounded rectangles. */
+.ct-cut {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 28px) 0,
+    100% 28px,
+    100% 100%,
+    28px 100%,
+    0 calc(100% - 28px)
+  );
+}
+
+.ct-cut-sm {
+  clip-path: polygon(
+    0 0,
+    calc(100% - 16px) 0,
+    100% 16px,
+    100% 100%,
+    16px 100%,
+    0 calc(100% - 16px)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 input,
 textarea,
 select,
