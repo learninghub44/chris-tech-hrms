@@ -1,6 +1,6 @@
 import { env } from "./env";
 
-const knownHostedOrigins = ["https://hrms-frontend-tawny.vercel.app"];
+const knownHostedOrigins: string[] = [];
 
 function toOrigin(value: string): string {
   return new URL(value).origin;
