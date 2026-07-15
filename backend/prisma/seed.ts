@@ -1299,6 +1299,29 @@ async function main() {
     }
   });
 
+  await prisma.leaveType.upsert({
+    where: {
+      companyId_name: {
+        companyId: secondCompany.id,
+        name: "Northwind Compassionate Leave"
+      }
+    },
+    update: {
+      description: "Northwind demo tenant-only leave type used for isolation checks",
+      defaultAnnualAllowance: 5,
+      isPaid: true,
+      requiresApproval: true
+    },
+    create: {
+      companyId: secondCompany.id,
+      name: "Northwind Compassionate Leave",
+      description: "Northwind demo tenant-only leave type used for isolation checks",
+      defaultAnnualAllowance: 5,
+      isPaid: true,
+      requiresApproval: true
+    }
+  });
+
   await Promise.all(
     [secondCompanyAdminEmployee, secondCompanyEmployee].map((seedEmployee) =>
       prisma.leaveBalance.upsert({

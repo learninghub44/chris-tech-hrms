@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -168,12 +169,14 @@ async function getEmployeeForAuth(req: Request) {
 }
 
 async function calculateLeaveDays(input: {
+  companyId: string;
   startDate: Date;
   endDate: Date;
   dayType: LeaveDayType;
 }): Promise<number> {
   const holidays = await prisma.holiday.findMany({
     where: {
+      companyId: input.companyId,
       date: {
         gte: input.startDate,
         lte: input.endDate
@@ -219,6 +222,7 @@ function calculateAvailableBalance(balance: {
 
 async function getOrCreateLeaveBalance(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   employeeId: string;
   leaveTypeId: string;
   year: number;
@@ -234,6 +238,7 @@ async function getOrCreateLeaveBalance(input: {
     },
     update: {},
     create: {
+      companyId: input.companyId,
       employeeId: input.employeeId,
       leaveTypeId: input.leaveTypeId,
       year: input.year,
@@ -245,6 +250,7 @@ async function getOrCreateLeaveBalance(input: {
 
 async function createNotificationsForPermission(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   permission: string;
   title: string;
   message: string;
@@ -252,6 +258,7 @@ async function createNotificationsForPermission(input: {
 }): Promise<Notification[]> {
   const users = await input.transaction.user.findMany({
     where: {
+      companyId: input.companyId,
       status: "ACTIVE",
       roles: {
         some: {
@@ -280,6 +287,7 @@ async function createNotificationsForPermission(input: {
     users.map((user) =>
       input.transaction.notification.create({
         data: {
+          companyId: input.companyId,
           userId: user.id,
           title: input.title,
           message: input.message,
@@ -292,6 +300,7 @@ async function createNotificationsForPermission(input: {
 
 async function createNotificationForUser(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   userId: string | null;
   title: string;
   message: string;
@@ -303,6 +312,7 @@ async function createNotificationForUser(input: {
 
   return input.transaction.notification.create({
     data: {
+      companyId: input.companyId,
       userId: input.userId,
       title: input.title,
       message: input.message,
@@ -330,12 +340,17 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 leaveRouter.use(authenticate);
+leaveRouter.use(requireCompanyContext);
 
 leaveRouter.get(
   "/leave-types",
   requireAnyPermission(["leave:request", "leave:approve", "leave:manage"]),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const scope = companyScope(req);
     const leaveTypes = await prisma.leaveType.findMany({
+      where: {
+        companyId: scope.companyId
+      },
       orderBy: [
         {
           isActive: "desc"
@@ -355,10 +370,14 @@ leaveRouter.post(
   requirePermissions(["leave:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(leaveTypeBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const leaveType = await prisma.leaveType.create({
-        data: body
+        data: {
+          ...body,
+          companyId: scope.companyId
+        }
       });
 
       res.status(201).json(ok({ leaveType }));
@@ -373,6 +392,7 @@ leaveRouter.post(
   requirePermissions(["leave:request"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(createLeaveSchema, req.body);
+    const scope = companyScope(req);
     const employee = await getEmployeeForAuth(req);
     const leaveType = await prisma.leaveType.findUnique({
       where: {
@@ -380,7 +400,11 @@ leaveRouter.post(
       }
     });
 
-    if (!leaveType?.isActive) {
+    if (!leaveType || leaveType.companyId !== scope.companyId) {
+      throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+    }
+
+    if (!leaveType.isActive) {
       throw new AppError(400, "LEAVE_TYPE_UNAVAILABLE", "Selected leave type is not active");
     }
 
@@ -400,6 +424,7 @@ leaveRouter.post(
     }
 
     const totalDays = await calculateLeaveDays({
+      companyId: scope.companyId,
       startDate,
       endDate,
       dayType: body.dayType
@@ -413,6 +438,7 @@ leaveRouter.post(
       const transactionResult = await prisma.$transaction(async (transaction) => {
         const balance = await getOrCreateLeaveBalance({
           transaction,
+          companyId: scope.companyId,
           employeeId: employee.id,
           leaveTypeId: leaveType.id,
           year: getDateYear(startDate),
@@ -444,6 +470,7 @@ leaveRouter.post(
 
         const createdLeaveRequest = await transaction.leaveRequest.create({
           data: {
+            companyId: scope.companyId,
             employeeId: employee.id,
             leaveTypeId: leaveType.id,
             startDate,
@@ -461,6 +488,7 @@ leaveRouter.post(
         if (requestIsApproved) {
           const notification = await createNotificationForUser({
             transaction,
+            companyId: scope.companyId,
             userId: createdLeaveRequest.employee.userId,
             title: "Leave approved",
             message: "Your leave request was approved automatically",
@@ -473,6 +501,7 @@ leaveRouter.post(
         } else {
           const permissionNotifications = await createNotificationsForPermission({
             transaction,
+            companyId: scope.companyId,
             permission: "leave:approve",
             title: "Leave request pending",
             message: `${employee.firstName} ${employee.lastName} requested ${totalDays} day(s) of leave`,
@@ -502,8 +531,10 @@ leaveRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const scope = companyScope(req);
     const employee = await getEmployeeForAuth(req);
     const where: Prisma.LeaveRequestWhereInput = {
+      companyId: scope.companyId,
       employeeId: employee.id
     };
     const [total, leaveRequests] = await prisma.$transaction([
@@ -530,6 +561,7 @@ leaveRouter.get(
   requireAnyPermission(["leave:request", "leave:approve", "leave:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(leaveBalanceQuerySchema, req.query);
+    const scope = companyScope(req);
     const year = query.year ?? new Date().getFullYear();
     const canViewAll = hasPermission(req, "leave:approve") || hasPermission(req, "leave:manage");
     const ownEmployee = await prisma.employee.findUnique({
@@ -545,6 +577,7 @@ leaveRouter.get(
     const employeeId = canViewAll ? query.employeeId : ownEmployee?.id;
     const pagination = getPagination(query);
     const where: Prisma.LeaveBalanceWhereInput = {
+      companyId: scope.companyId,
       year,
       ...(employeeId ? { employeeId } : {})
     };
@@ -582,8 +615,13 @@ leaveRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(leaveListQuerySchema, req.query);
     const auth = assertAuthenticated(req);
-    const where: Prisma.LeaveRequestWhereInput = {};
-    const employeeWhere: Prisma.EmployeeWhereInput = {};
+    const scope = companyScope(req);
+    const where: Prisma.LeaveRequestWhereInput = {
+      companyId: scope.companyId
+    };
+    const employeeWhere: Prisma.EmployeeWhereInput = {
+      companyId: scope.companyId
+    };
 
     if (query.status) {
       where.status = query.status;
@@ -664,6 +702,7 @@ leaveRouter.put(
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
     const body = parseInput(leaveDecisionSchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const transactionResult = await prisma.$transaction(async (transaction) => {
@@ -677,6 +716,8 @@ leaveRouter.put(
         if (!existingLeaveRequest) {
           throw new AppError(404, "LEAVE_NOT_FOUND", "Leave request was not found");
         }
+
+        assertSameCompany(existingLeaveRequest.companyId, req);
 
         if (existingLeaveRequest.status !== "PENDING") {
           throw new AppError(409, "LEAVE_ALREADY_REVIEWED", "Leave request has already been reviewed");
@@ -733,6 +774,7 @@ leaveRouter.put(
 
         const notification = await createNotificationForUser({
           transaction,
+          companyId: scope.companyId,
           userId: existingLeaveRequest.employee.userId,
           title: "Leave approved",
           message: "Your leave request has been approved",
@@ -759,6 +801,7 @@ leaveRouter.put(
   asyncHandler(async (req, res) => {
     const params = parseInput(paramsSchema, req.params);
     const body = parseInput(leaveDecisionSchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const transactionResult = await prisma.$transaction(async (transaction) => {
@@ -772,6 +815,8 @@ leaveRouter.put(
         if (!existingLeaveRequest) {
           throw new AppError(404, "LEAVE_NOT_FOUND", "Leave request was not found");
         }
+
+        assertSameCompany(existingLeaveRequest.companyId, req);
 
         if (existingLeaveRequest.status !== "PENDING") {
           throw new AppError(409, "LEAVE_ALREADY_REVIEWED", "Leave request has already been reviewed");
@@ -825,6 +870,7 @@ leaveRouter.put(
 
         const notification = await createNotificationForUser({
           transaction,
+          companyId: scope.companyId,
           userId: existingLeaveRequest.employee.userId,
           title: "Leave rejected",
           message: "Your leave request has been rejected",
