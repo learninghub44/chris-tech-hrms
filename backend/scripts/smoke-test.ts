@@ -727,6 +727,67 @@ async function runSmoke(baseUrl: string): Promise<void> {
     }
   });
 
+  await check("cross-tenant isolation: notifications module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Announcements: each company's announcements must be invisible to the other.
+    const primaryAnnouncements = assertSuccess(
+      await request<{ announcements: Array<{ title: string }> }>({
+        baseUrl,
+        path: "/api/announcements",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryAnnouncements.announcements.some(
+        (announcement) => announcement.title === "Northwind demo tenant-only announcement"
+      ),
+      "Company A announcement list leaked Company B's announcement"
+    );
+
+    const secondCompanyAnnouncements = assertSuccess(
+      await request<{ announcements: Array<{ title: string }> }>({
+        baseUrl,
+        path: "/api/announcements",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyAnnouncements.announcements.some(
+        (announcement) => announcement.title === "Phase 7 dashboard and reports are available"
+      ),
+      "Company B announcement list leaked Company A's announcement"
+    );
+    assert(
+      secondCompanyAnnouncements.announcements.some(
+        (announcement) => announcement.title === "Northwind demo tenant-only announcement"
+      ),
+      "Company B announcement list did not return its own seeded announcement"
+    );
+
+    // Notifications: Company B's notification list must never include Company
+    // A's seeded notifications, and the unread count must reflect only its own.
+    const secondCompanyNotifications = assertSuccess(
+      await request<{ notifications: Array<{ title: string }>; unreadCount: number }>({
+        baseUrl,
+        path: "/api/notifications",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyNotifications.notifications.some(
+        (notification) => notification.title === "HR workspace ready"
+      ),
+      "Company B notification list leaked Company A's notification"
+    );
+    assert(
+      secondCompanyNotifications.notifications.some(
+        (notification) => notification.title === "Northwind workspace ready"
+      ),
+      "Company B notification list did not return its own seeded notification"
+    );
+  });
+
   await check("attendance clock-in and clock-out", async () => {
     await request<unknown>({
       baseUrl,

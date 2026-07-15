@@ -6,7 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated, emitNotificationRead } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
-import { companyScope } from "../../middleware/tenant";
+import { companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -53,16 +53,19 @@ function getAuth(req: Request) {
 }
 
 notificationsRouter.use(authenticate);
+notificationsRouter.use(requireCompanyContext);
 
 notificationsRouter.get(
   "/notifications",
   requirePermissions(["notifications:read"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
+    const scope = companyScope(req);
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
     const where: Prisma.NotificationWhereInput = {
-      userId: auth.id
+      userId: auth.id,
+      companyId: scope.companyId
     };
     const [total, unreadCount, notifications] = await prisma.$transaction([
       prisma.notification.count({
@@ -93,11 +96,13 @@ notificationsRouter.put(
   requirePermissions(["notifications:read"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
+    const scope = companyScope(req);
     const params = parseInput(paramsSchema, req.params);
     const notification = await prisma.notification.findFirst({
       where: {
         id: params.id,
-        userId: auth.id
+        userId: auth.id,
+        companyId: scope.companyId
       }
     });
 
@@ -118,6 +123,7 @@ notificationsRouter.put(
     const unreadCount = await prisma.notification.count({
       where: {
         userId: auth.id,
+        companyId: scope.companyId,
         isRead: false
       }
     });
@@ -144,12 +150,16 @@ notificationsRouter.get(
   requirePermissions(["announcements:read"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
+    const scope = companyScope(req);
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
     const canManage = auth.permissions.includes("announcements:manage");
     const where: Prisma.AnnouncementWhereInput = canManage
-      ? {}
+      ? {
+          companyId: scope.companyId
+        }
       : {
+          companyId: scope.companyId,
           isPublished: true,
           audience: {
             in: getAnnouncementAudienceValues(auth.roles)

@@ -1391,6 +1391,50 @@ async function main() {
       description: "Northwind demo tenant-only holiday used for isolation checks"
     }
   });
+
+  await prisma.announcement.upsert({
+    where: {
+      id: "northwind-demo-announcement"
+    },
+    update: {
+      title: "Northwind demo tenant-only announcement",
+      message: "This announcement exists only for cross-tenant isolation checks.",
+      audience: "ALL",
+      isPublished: true,
+      createdById: secondCompanyAdminUser.id
+    },
+    create: {
+      id: "northwind-demo-announcement",
+      companyId: secondCompany.id,
+      title: "Northwind demo tenant-only announcement",
+      message: "This announcement exists only for cross-tenant isolation checks.",
+      audience: "ALL",
+      isPublished: true,
+      createdById: secondCompanyAdminUser.id
+    }
+  });
+
+  await prisma.notification.upsert({
+    where: {
+      id: "northwind-demo-notification"
+    },
+    update: {
+      userId: secondCompanyAdminUser.id,
+      title: "Northwind workspace ready",
+      message: "Northwind demo tenant-only notification used for isolation checks.",
+      category: "SYSTEM",
+      isRead: false
+    },
+    create: {
+      id: "northwind-demo-notification",
+      companyId: secondCompany.id,
+      userId: secondCompanyAdminUser.id,
+      title: "Northwind workspace ready",
+      message: "Northwind demo tenant-only notification used for isolation checks.",
+      category: "SYSTEM",
+      isRead: false
+    }
+  });
 }
 
 main()
