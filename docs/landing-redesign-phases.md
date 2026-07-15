@@ -29,11 +29,15 @@ work mid-stream has full context without re-deriving the plan.
 
 ## Phases
 
-- [x] **Phase 1 — Tokens.** Palette + typography swap (this commit).
-- [ ] **Phase 2 — Hero.** Rebuild `landing-page.tsx` hero: cinematic
-  full-bleed video background, floating glass nav, oversized serif
-  headline, refined button styles, signature glass metrics card with
-  serif numerals (the one "memorable" element per the design brief).
+- [x] **Phase 1 — Tokens.** Palette + typography swap.
+- [x] **Phase 2 — Hero.** Rebuilt `landing-page.tsx` hero: cinematic
+  full-bleed video background (local asset `public/videos/hero-workforce.mp4`,
+  compressed from a 4K source to 1080p/~1.3Mbps h264 for web delivery, with
+  `hero-poster.jpg` as the paint-before-load poster), floating glass pill nav,
+  oversized Fraunces serif headline with a single italic gold accent phrase,
+  refined pill buttons, and a signature glass "workforce pulse" card with one
+  small floating accent chip (intentionally singular — the old hero had two
+  overlapping panels, which read as cluttered).
 - [ ] **Phase 3 — Section pass.** Reduce the repeated "dark card with
   border-white/10 mockup" pattern across `why-choose`, `platform-overview`,
   and `security` so each reads as distinct rather than templated; refresh
@@ -46,10 +50,19 @@ work mid-stream has full context without re-deriving the plan.
 
 ## Notes for the next agent
 
+- `next/font/google` Fraunces must use `weight: "variable"` when `axes` is
+  set — combining a fixed weight array with axes throws a build error.
+  Control weight per-element with normal Tailwind `font-*` utilities; the
+  variable font interpolates.
+- Google Fonts CSS couldn't be fetched in the sandbox used to build this
+  (network allowlist doesn't include `fonts.googleapis.com`) — `tsc --noEmit`
+  passes clean, but `next build` needs to be re-verified once deployed
+  somewhere with open internet (Vercel/Cloudflare/CI).
 - Don't touch `ink` / `surface` / `line` / `brand.*` tokens — those are used
   by the authenticated app shell (dashboard etc.), out of scope here.
 - Keep `.ct-cut` / `.ct-cut-sm` clip-path motif — it's the brand's diagonal-cut
   signature (echoes the logo), don't replace with plain rounded corners.
 - No stock photography is used (licensing risk for a client deliverable);
-  the "professional photography" feel is carried by the video hero +
-  glass dashboard mockups instead.
+  the hero uses a user-supplied video (compressed 4K→1080p) instead, and the
+  "professional photography" feel elsewhere is carried by the glass
+  dashboard mockups.
