@@ -473,7 +473,7 @@ async function request<T>(
   if (isHostedFrontendPointingToLocalApi()) {
     return failResponse(
       "API_URL_NOT_CONFIGURED",
-      "The deployed frontend is still pointing at a local API URL. Set NEXT_PUBLIC_API_URL in Vercel to your Render backend API URL.",
+      "The deployed frontend is still pointing at a local API URL. Set NEXT_PUBLIC_API_URL in your hosting provider's environment variables to your Render backend API URL.",
       {
         configuredApiUrl,
         expectedFormat: "https://<your-render-service>.onrender.com/api",
