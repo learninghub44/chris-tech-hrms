@@ -1,20 +1,38 @@
-# HRMS - Full-Stack Human Resource Management System
+# Chris Tech HRMS
 
-HRMS is a full-stack human resource management platform built with Next.js, Express, Prisma, PostgreSQL, Socket.IO, and Groq AI. It brings core HR workflows into one role-based web application: employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant.
+**A multi-tenant, full-stack Human Resource Management platform.**
 
-The project is designed as a portfolio-grade HR product. It demonstrates typed API development, relational data modeling, role-based access control, real-time event delivery, LLM tool use, responsive frontend work, and practical validation tooling.
+Built and maintained by [Chris Tech / Zetu Business Solutions](https://www.christeck.co.ke).
+
+Chris Tech HRMS brings core HR workflows into one role-based web application — employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant — architected as a company-scoped SaaS product so multiple organizations can each manage their own isolated HR data inside a single deployment.
+
+It's built with Next.js, Express, Prisma, PostgreSQL, Socket.IO, and Groq AI, and demonstrates typed API development, relational data modeling with tenant isolation, role-based access control, real-time event delivery, LLM tool use, responsive frontend work, and practical validation tooling.
+
+**Proprietary software.** © Chris Tech / Zetu Business Solutions. See [LICENSE](LICENSE) for terms and third-party attribution, or the [Multi-Tenant Architecture](#multi-tenant-architecture) section below for how tenant isolation is implemented.
 
 ## Dashboard Screen
 
 ![Dashboard screen](frontend/src/assets/dashboard.png)
+
+## Multi-Tenant Architecture
+
+Chris Tech HRMS is built so a single deployment can serve many companies, each with fully isolated HR data.
+
+- **Tenant identification:** company selection is resolved at login — each user account belongs to exactly one company, so sign-in is a single step with no extra UX compared to a single-tenant app.
+- **Data isolation:** every company-scoped table (employees, attendance, leave, payroll, recruitment, performance, notifications, and more) carries a `companyId`. Every query is scoped to the authenticated user's company at the middleware and query level — list/create/update/delete all go through a shared `companyScope()` / `assertSameCompany()` pattern, and a request for another company's resource by ID returns `404`, not `403`, so it never confirms that resource even exists elsewhere.
+- **Platform vs. company administration:** a `PLATFORM_OWNER` role (Chris Tech) manages the list of companies on the platform without automatic access to any company's HR or payroll data — a deliberate privacy boundary, not just a technical one. `SUPER_ADMIN` remains the top role within a single company, functionally identical to a standalone HRMS admin.
+- **Company provisioning:** new companies are admin-provisioned — Chris Tech creates the company and its first admin, who then invites their own team through the existing employee-creation flow.
+- **Isolation testing:** dedicated cross-tenant isolation checks run as part of the smoke test suite for every company-scoped module, seeded against two distinct demo companies.
+
+Full design rationale lives in [`docs/multi-tenant-design.md`](docs/multi-tenant-design.md); the phase-by-phase migration record is in [`MULTI_TENANT_ROADMAP.md`](MULTI_TENANT_ROADMAP.md).
 
 ## Current Feature Set
 
 ### Authentication And Permissions
 
 - Login, registration, logout, forgot password, and reset password
-- JWT-based API sessions
-- Role and permission support for Super Admin, HR Admin, Manager, and Employee
+- JWT-based API sessions, carrying company context for tenant scoping
+- Role and permission support for Platform Owner, Super Admin, HR Admin, Manager, and Employee
 - Backend authorization middleware and frontend protected pages
 - Role-aware sidebar navigation and route access
 
@@ -228,6 +246,8 @@ Suggested demo flow:
 5. Sign in as `employee@hrms.local` or `ankit@hrms.local` to compare self-service access and test the HR assistant.
 
 These credentials are for local development only. Replace demo users and secrets before any production deployment.
+
+A second seeded company (`Northwind Demo Co`, admin login `admin@northwind-demo.local` / `Admin@12345` by default) exists specifically for verifying tenant isolation — logging in as each company's admin should never surface the other company's employees, payroll, or announcements anywhere in the app.
 
 ## Getting Started
 
@@ -546,12 +566,22 @@ Render CORS_ORIGIN=https://<frontend-domain>
 - Hosted demo URL and updated screenshots
 - Production email delivery for password reset and HR notifications
 - File storage integration for employee documents and generated files
-- Audit logs for HR, payroll, and permission-sensitive actions
+- Broader audit logs for HR, payroll, and permission-sensitive actions (cross-tenant boundary violations are already logged — see `MULTI_TENANT_ROADMAP.md` Phase 6)
 - Charts and exports for reports
 - CI workflow for typecheck, lint, build, and smoke tests
 - WebSocket scaling with a Socket.IO Redis adapter
 - Rate limiting and observability for production API usage
 
+## License
+
+This project is proprietary software owned by Chris Tech / Zetu Business Solutions. See [LICENSE](LICENSE) for full terms, including third-party attribution for the original open-source template this project was built on top of.
+
 ## Author
 
-Ankit Kumar
+**Chris Tech / Zetu Business Solutions**
+
+- Website: [www.christeck.co.ke](https://www.christeck.co.ke)
+- GitHub: [@learninghub44](https://github.com/learninghub44)
+- Email: chrisodhiambo958@gmail.com
+
+For licensing inquiries, custom deployments, or support, reach out through the channels above.

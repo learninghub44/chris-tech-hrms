@@ -1,3 +1,44 @@
+Copyright (c) 2026 Chris Tech / Zetu Business Solutions
+Website: https://www.christeck.co.ke
+Contact: chrisodhiambo958@gmail.com
+
+All Rights Reserved.
+
+This repository and its contents (the "Software") are the proprietary
+property of Chris Tech (operating as Zetu Business Solutions). Except
+where noted in the Third-Party Attribution section below, no part of
+this Software may be copied, modified, merged, published, distributed,
+sublicensed, sold, or otherwise used, in whole or in part, without the
+prior written permission of the copyright holder.
+
+No license, express or implied, to any patent, trademark, copyright, or
+other intellectual property right is granted by this document, other
+than the limited rights explicitly stated above.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For licensing inquiries, custom deployments, or commercial use, contact
+Chris Tech / Zetu Business Solutions at the details above.
+
+-------------------------------------------------------------------------
+Third-Party Attribution
+-------------------------------------------------------------------------
+
+This project originated from an open-source HRMS starter authored by
+Ankit Kumar and released under the MIT License. That original codebase
+has since been substantially rebuilt and extended by Chris Tech
+(Zetu Business Solutions) — including the migration to a multi-tenant
+SaaS architecture, company-scoped data isolation, the Groq-powered HR
+assistant, and ongoing feature work — and that work is proprietary as
+described above. The original MIT notice is preserved below, as required
+by its terms, for the portions of the code that trace back to it.
+
 MIT License
 
 Copyright (c) 2026 Ankit Kumar

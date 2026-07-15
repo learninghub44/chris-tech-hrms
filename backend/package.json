@@ -1,7 +1,13 @@
 {
-  "name": "@hrms/backend",
-  "version": "0.1.0",
+  "name": "@chris-tech-hrms/backend",
+  "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
+  "author": {
+    "name": "Chris Tech / Zetu Business Solutions",
+    "url": "https://www.christeck.co.ke",
+    "email": "chrisodhiambo958@gmail.com"
+  },
   "main": "dist/src/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

@@ -1,7 +1,19 @@
 {
-  "name": "hr-management-system",
-  "version": "0.1.0",
+  "name": "chris-tech-hrms",
+  "version": "1.0.0",
+  "description": "Chris Tech HRMS — a multi-tenant HR management platform built by Chris Tech (Zetu Business Solutions).",
   "private": true,
+  "license": "UNLICENSED",
+  "author": {
+    "name": "Chris Tech / Zetu Business Solutions",
+    "url": "https://www.christeck.co.ke",
+    "email": "chrisodhiambo958@gmail.com"
+  },
+  "homepage": "https://www.christeck.co.ke",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/learninghub44/chris-tech-hrms.git"
+  },
   "workspaces": [
     "frontend",
     "backend"

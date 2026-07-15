@@ -1,7 +1,13 @@
 {
-  "name": "@hrms/frontend",
-  "version": "0.1.0",
+  "name": "@chris-tech-hrms/frontend",
+  "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
+  "author": {
+    "name": "Chris Tech / Zetu Business Solutions",
+    "url": "https://www.christeck.co.ke",
+    "email": "chrisodhiambo958@gmail.com"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

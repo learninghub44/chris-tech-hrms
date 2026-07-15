@@ -1,19 +1,22 @@
-# HRMS Implementation Plan And Project Status
+# Chris Tech HRMS — Implementation Plan And Project Status
+
+**Owner:** Chris Tech / Zetu Business Solutions ([www.christeck.co.ke](https://www.christeck.co.ke))
 
 ## 1. Product Goal
 
 Build a full-stack HR Management System where a company can manage employee operations, attendance, leave, payroll, recruitment, performance, notifications, announcements, reports, and employee self-service from one role-based web application.
 
-The current project has moved beyond the original MVP. Recruitment, performance management, real-time notifications, responsive UI improvements, PostgreSQL persistence, and a Groq-powered HR assistant are now part of the implemented scope.
+The current project has moved beyond the original MVP and beyond single-tenant. Recruitment, performance management, real-time notifications, responsive UI improvements, PostgreSQL persistence, and a Groq-powered HR assistant are implemented, and the platform has been migrated to multi-tenant SaaS architecture so multiple companies can each manage isolated HR data inside one deployment. See `MULTI_TENANT_ROADMAP.md` for the full phase-by-phase migration record and `docs/multi-tenant-design.md` for the underlying design decisions.
 
 ## 2. Current User Roles
 
 | Role | Responsibility | Access Level |
 | --- | --- | --- |
-| Super Admin | System-wide HRMS access, permissions, and organization-level workflows | Full system access |
-| HR Admin | Employees, attendance, leave, payroll, recruitment, performance, reports, announcements | HR operations access |
-| Manager | Team visibility, leave approvals, performance workflows | Team-level access |
-| Employee | Own profile, attendance, leave, payslips, notifications, HR assistant | Self-service access |
+| Platform Owner | Cross-company platform administration (create/suspend companies, view basic usage) — no automatic access to any company's HR data | Platform-level access, deliberately excluded from tenant HR/payroll data |
+| Super Admin | Company-wide HRMS access, permissions, and organization-level workflows | Full access within one company |
+| HR Admin | Employees, attendance, leave, payroll, recruitment, performance, reports, announcements | HR operations access within one company |
+| Manager | Team visibility, leave approvals, performance workflows | Team-level access within one company |
+| Employee | Own profile, attendance, leave, payslips, notifications, HR assistant | Self-service access within one company |
 
 ## 3. Current Implementation Status
 
@@ -34,7 +37,8 @@ The current project has moved beyond the original MVP. Recruitment, performance 
 | Performance | Implemented | Goals, reviews, feedback, appraisal history |
 | HR assistant | Implemented | Groq-backed assistant with HR data tools |
 | Responsive UI | Implemented | Mobile navbar/sidebar and page-level responsive fixes |
-| Smoke validation | Implemented | Backend smoke test covers key workflows |
+| Multi-tenant SaaS migration | Implemented (pending live-DB verification) | Company-scoped schema, auth/middleware, all 11 modules, frontend company context, and audit logging for boundary violations — see `MULTI_TENANT_ROADMAP.md` |
+| Smoke validation | Implemented | Backend smoke test covers key workflows plus per-module cross-tenant isolation checks |
 | Production hardening | Future | CI, deployment, audit logs, email delivery, storage, monitoring |
 
 ## 4. Current Tech Stack
