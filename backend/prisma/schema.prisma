@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum CompanyPlan {
+  FREE
+  STANDARD
+  PREMIUM
+}
+
+enum CompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum AccountStatus {
   ACTIVE
   INACTIVE
@@ -119,8 +130,54 @@ enum FeedbackCategory {
   IMPROVEMENT
 }
 
+/// Platform-level tenant. Every company-scoped model below carries a companyId
+/// pointing here. See docs/multi-tenant-design.md for the design decisions
+/// behind this model (Phase 0 of MULTI_TENANT_ROADMAP.md).
+model Company {
+  id        String        @id @default(uuid())
+  name      String
+  slug      String        @unique
+  plan      CompanyPlan   @default(FREE)
+  status    CompanyStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  users              User[]
+  employees          Employee[]
+  departments        Department[]
+  designations       Designation[]
+  emergencyContacts  EmergencyContact[]
+  employeeDocuments  EmployeeDocument[]
+  shifts             Shift[]
+  holidays           Holiday[]
+  attendanceRecords  Attendance[]
+  leaveTypes         LeaveType[]
+  leaveRequests      LeaveRequest[]
+  leaveBalances      LeaveBalance[]
+  notifications      Notification[]
+  salaries           Salary[]
+  payrolls           Payroll[]
+  payrollItems       PayrollItem[]
+  payslips           Payslip[]
+  announcements      Announcement[]
+  jobs               Job[]
+  candidates         Candidate[]
+  jobApplications    JobApplication[]
+  interviews         Interview[]
+  offers             Offer[]
+  goals              Goal[]
+  performanceReviews PerformanceReview[]
+  feedback           Feedback[]
+
+  @@map("companies")
+}
+
 model User {
   id                  String               @id @default(uuid())
+  /// Nullable: PLATFORM_OWNER users are cross-company and have no single company.
+  /// Every other role requires a non-null companyId, enforced at the application layer.
+  companyId           String?
+  company             Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   email               String               @unique
   name                String
   passwordHash        String?
@@ -137,9 +194,12 @@ model User {
   createdJobs         Job[]                @relation("CreatedJobs")
   createdGoals        Goal[]               @relation("CreatedGoals")
 
+  @@index([companyId])
   @@map("users")
 }
 
+/// Platform-wide RBAC catalog. Shared across all companies by design — see
+/// docs/multi-tenant-design.md, decision area "Confirmed model scoping list".
 model Role {
   id          String           @id @default(uuid())
   name        String           @unique
@@ -183,6 +243,7 @@ model RolePermission {
   @@map("role_permissions")
 }
 
+/// Scoped indirectly through its User relation — no direct companyId needed.
 model PasswordResetToken {
   id        String    @id @default(uuid())
   tokenHash String    @unique
@@ -198,7 +259,9 @@ model PasswordResetToken {
 
 model Department {
   id           String        @id @default(uuid())
-  name         String        @unique
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name         String
   description  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -206,11 +269,15 @@ model Department {
   designations Designation[]
   jobs         Job[]
 
+  @@unique([companyId, name])
+  @@index([companyId])
   @@map("departments")
 }
 
 model Designation {
   id           String      @id @default(uuid())
+  companyId    String
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   title        String
   description  String?
   departmentId String?
@@ -220,19 +287,22 @@ model Designation {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  @@unique([title, departmentId])
+  @@unique([companyId, title, departmentId])
+  @@index([companyId])
   @@index([departmentId])
   @@map("designations")
 }
 
 model Employee {
   id                 String              @id @default(uuid())
-  employeeCode       String              @unique
+  companyId          String
+  company            Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeCode       String
   userId             String?             @unique
   user               User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   firstName          String
   lastName           String
-  workEmail          String              @unique
+  workEmail          String
   personalEmail      String?
   phone              String?
   dateOfBirth        DateTime?
@@ -265,6 +335,9 @@ model Employee {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
+  @@unique([companyId, employeeCode])
+  @@unique([companyId, workEmail])
+  @@index([companyId])
   @@index([departmentId])
   @@index([designationId])
   @@index([managerId])
@@ -276,6 +349,8 @@ model Employee {
 
 model EmergencyContact {
   id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId   String
   employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   name         String
@@ -286,12 +361,15 @@ model EmergencyContact {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@index([companyId])
   @@index([employeeId])
   @@map("emergency_contacts")
 }
 
 model EmployeeDocument {
   id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId   String
   employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   documentType String
@@ -304,6 +382,7 @@ model EmployeeDocument {
   uploadedBy   User?    @relation("UploadedEmployeeDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([uploadedById])
   @@map("employee_documents")
@@ -311,7 +390,9 @@ model EmployeeDocument {
 
 model Shift {
   id                  String       @id @default(uuid())
-  name                String       @unique
+  companyId           String
+  company             Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name                String
   startTime           String
   endTime             String
   lateAfterMinutes    Int          @default(15)
@@ -322,23 +403,31 @@ model Shift {
   updatedAt           DateTime     @updatedAt
   attendanceRecords   Attendance[]
 
+  @@unique([companyId, name])
+  @@index([companyId])
   @@map("shifts")
 }
 
 model Holiday {
   id          String      @id @default(uuid())
+  companyId   String
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name        String
-  date        DateTime    @unique @db.Date
+  date        DateTime    @db.Date
   type        HolidayType @default(PUBLIC)
   description String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
+  @@unique([companyId, date])
+  @@index([companyId])
   @@map("holidays")
 }
 
 model Attendance {
   id         String             @id @default(uuid())
+  companyId  String
+  company    Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   shiftId    String?
@@ -353,6 +442,7 @@ model Attendance {
   updatedAt  DateTime           @updatedAt
 
   @@unique([employeeId, date])
+  @@index([companyId])
   @@index([employeeId])
   @@index([shiftId])
   @@index([date])
@@ -362,7 +452,9 @@ model Attendance {
 
 model LeaveType {
   id                     String         @id @default(uuid())
-  name                   String         @unique
+  companyId              String
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name                   String
   description            String?
   defaultAnnualAllowance Float          @default(0)
   isPaid                 Boolean        @default(true)
@@ -373,11 +465,15 @@ model LeaveType {
   leaveRequests          LeaveRequest[]
   leaveBalances          LeaveBalance[]
 
+  @@unique([companyId, name])
+  @@index([companyId])
   @@map("leave_types")
 }
 
 model LeaveRequest {
   id           String             @id @default(uuid())
+  companyId    String
+  company      Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId   String
   employee     Employee           @relation("EmployeeLeaveRequests", fields: [employeeId], references: [id], onDelete: Cascade)
   leaveTypeId  String
@@ -395,6 +491,7 @@ model LeaveRequest {
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([leaveTypeId])
   @@index([reviewerId])
@@ -408,6 +505,8 @@ model LeaveRequest {
 
 model LeaveBalance {
   id             String    @id @default(uuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId     String
   employee       Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveTypeId    String
@@ -422,6 +521,7 @@ model LeaveBalance {
   updatedAt      DateTime  @updatedAt
 
   @@unique([employeeId, leaveTypeId, year])
+  @@index([companyId])
   @@index([employeeId])
   @@index([leaveTypeId])
   @@index([year])
@@ -431,6 +531,8 @@ model LeaveBalance {
 
 model Notification {
   id        String    @id @default(uuid())
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
@@ -440,6 +542,7 @@ model Notification {
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
+  @@index([companyId])
   @@index([userId])
   @@index([isRead])
   @@index([userId, createdAt])
@@ -450,6 +553,8 @@ model Notification {
 
 model Salary {
   id            String        @id @default(uuid())
+  companyId     String
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId    String        @unique
   employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   baseSalary    Float
@@ -461,6 +566,7 @@ model Salary {
   updatedAt     DateTime      @updatedAt
   payrollItems  PayrollItem[]
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([isActive])
   @@map("salaries")
@@ -468,6 +574,8 @@ model Salary {
 
 model Payroll {
   id              String        @id @default(uuid())
+  companyId       String
+  company         Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   month           Int
   year            Int
   status          PayrollStatus @default(GENERATED)
@@ -483,7 +591,8 @@ model Payroll {
   items           PayrollItem[]
   payslips        Payslip[]
 
-  @@unique([month, year])
+  @@unique([companyId, month, year])
+  @@index([companyId])
   @@index([generatedById])
   @@index([year, month])
   @@map("payrolls")
@@ -491,6 +600,8 @@ model Payroll {
 
 model PayrollItem {
   id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payrollId       String
   payroll         Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
   employeeId      String
@@ -508,6 +619,7 @@ model PayrollItem {
   payslip         Payslip?
 
   @@unique([payrollId, employeeId])
+  @@index([companyId])
   @@index([payrollId])
   @@index([employeeId])
   @@index([salaryId])
@@ -516,20 +628,24 @@ model PayrollItem {
 
 model Payslip {
   id              String      @id @default(uuid())
+  companyId       String
+  company         Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payrollId       String
   payroll         Payroll     @relation(fields: [payrollId], references: [id], onDelete: Cascade)
   payrollItemId   String      @unique
   payrollItem     PayrollItem @relation(fields: [payrollItemId], references: [id], onDelete: Cascade)
   employeeId      String
   employee        Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  payslipNumber   String      @unique
+  payslipNumber   String
   grossPay        Float
   totalDeductions Float
   netPay          Float
   issuedAt        DateTime    @default(now())
   createdAt       DateTime    @default(now())
 
+  @@unique([companyId, payslipNumber])
   @@unique([payrollId, employeeId])
+  @@index([companyId])
   @@index([payrollId])
   @@index([employeeId])
   @@map("payslips")
@@ -537,6 +653,8 @@ model Payslip {
 
 model Announcement {
   id          String               @id @default(uuid())
+  companyId   String
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   title       String
   message     String               @db.Text
   audience    AnnouncementAudience @default(ALL)
@@ -547,6 +665,7 @@ model Announcement {
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
 
+  @@index([companyId])
   @@index([audience])
   @@index([isPublished])
   @@index([createdById])
@@ -557,6 +676,8 @@ model Announcement {
 
 model Job {
   id             String           @id @default(uuid())
+  companyId      String
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   title          String
   description    String           @db.Text
   departmentId   String?
@@ -573,6 +694,7 @@ model Job {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@index([companyId])
   @@index([departmentId])
   @@index([designationId])
   @@index([createdById])
@@ -583,9 +705,11 @@ model Job {
 
 model Candidate {
   id             String           @id @default(uuid())
+  companyId      String
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   firstName      String
   lastName       String
-  email          String           @unique
+  email          String
   phone          String?
   source         String?
   resumeUrl      String?          @db.Text
@@ -597,6 +721,8 @@ model Candidate {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 
+  @@unique([companyId, email])
+  @@index([companyId])
   @@index([email])
   @@index([createdAt])
   @@map("candidates")
@@ -604,6 +730,8 @@ model Candidate {
 
 model JobApplication {
   id          String            @id @default(uuid())
+  companyId   String
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   jobId       String
   job         Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
   candidateId String
@@ -617,6 +745,7 @@ model JobApplication {
   updatedAt   DateTime          @updatedAt
 
   @@unique([jobId, candidateId])
+  @@index([companyId])
   @@index([jobId])
   @@index([candidateId])
   @@index([status])
@@ -627,6 +756,8 @@ model JobApplication {
 
 model Interview {
   id            String          @id @default(uuid())
+  companyId     String
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   applicationId String
   application   JobApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   candidateId   String
@@ -641,6 +772,7 @@ model Interview {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
+  @@index([companyId])
   @@index([applicationId])
   @@index([candidateId])
   @@index([interviewerId])
@@ -652,6 +784,8 @@ model Interview {
 
 model Offer {
   id            String         @id @default(uuid())
+  companyId     String
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   applicationId String         @unique
   application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   candidateId   String
@@ -665,6 +799,7 @@ model Offer {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  @@index([companyId])
   @@index([candidateId])
   @@index([jobId])
   @@index([status])
@@ -674,6 +809,8 @@ model Offer {
 
 model Goal {
   id          String     @id @default(uuid())
+  companyId   String
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId  String
   employee    Employee   @relation("EmployeeGoals", fields: [employeeId], references: [id], onDelete: Cascade)
   title       String
@@ -687,6 +824,7 @@ model Goal {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([createdById])
   @@index([status])
@@ -697,6 +835,8 @@ model Goal {
 
 model PerformanceReview {
   id                String                  @id @default(uuid())
+  companyId         String
+  company           Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId        String
   employee          Employee                @relation("EmployeePerformanceReviews", fields: [employeeId], references: [id], onDelete: Cascade)
   reviewerId        String?
@@ -713,6 +853,7 @@ model PerformanceReview {
   createdAt         DateTime                @default(now())
   updatedAt         DateTime                @updatedAt
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([reviewerId])
   @@index([status])
@@ -724,6 +865,8 @@ model PerformanceReview {
 
 model Feedback {
   id         String           @id @default(uuid())
+  companyId  String
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employeeId String
   employee   Employee         @relation("EmployeeFeedbackReceived", fields: [employeeId], references: [id], onDelete: Cascade)
   authorId   String?
@@ -734,6 +877,7 @@ model Feedback {
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
+  @@index([companyId])
   @@index([employeeId])
   @@index([authorId])
   @@index([category])

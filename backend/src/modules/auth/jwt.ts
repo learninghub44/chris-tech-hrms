@@ -5,6 +5,8 @@ type AccessTokenPayload = {
   sub: string;
   email: string;
   roles: string[];
+  // Nullable: PLATFORM_OWNER accounts are cross-company and carry no companyId.
+  companyId: string | null;
   iat: number;
   exp: number;
 };
@@ -13,6 +15,7 @@ type RawAccessTokenPayload = {
   sub?: unknown;
   email?: unknown;
   roles?: unknown;
+  companyId?: unknown;
   iat?: unknown;
   exp?: unknown;
 };
@@ -33,6 +36,7 @@ function isTokenPayload(payload: RawAccessTokenPayload): payload is AccessTokenP
     typeof payload.email === "string" &&
     Array.isArray(payload.roles) &&
     payload.roles.every((role) => typeof role === "string") &&
+    (payload.companyId === null || typeof payload.companyId === "string") &&
     typeof payload.iat === "number" &&
     typeof payload.exp === "number"
   );
@@ -42,12 +46,14 @@ export function signAccessToken(input: {
   id: string;
   email: string;
   roles: string[];
+  companyId: string | null;
 }): string {
   const issuedAt = Math.floor(Date.now() / 1000);
   const payload: AccessTokenPayload = {
     sub: input.id,
     email: input.email,
     roles: input.roles,
+    companyId: input.companyId,
     iat: issuedAt,
     exp: issuedAt + env.JWT_EXPIRES_IN_SECONDS
   };
