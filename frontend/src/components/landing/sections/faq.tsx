@@ -27,33 +27,29 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="bg-ct-paper py-24">
+    <section id="faq" className="bg-white py-24">
       <div className="mx-auto max-w-3xl px-6">
         <div className="mb-12 text-center">
-          <div className="flex items-center justify-center gap-3">
-            <span className="h-px w-10 bg-ct-blue/60" />
-            <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-blue">
-              Resources
-            </span>
-            <span className="h-px w-10 bg-ct-blue/60" />
-          </div>
-          <h2 className="font-display mt-4 text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ct-blue">
+            Resources
+          </p>
+          <h2 className="font-display mt-3 text-3xl font-semibold tracking-tight text-ct-graphite sm:text-4xl">
             Frequently asked questions
           </h2>
         </div>
-        <div className="divide-y divide-ct-graphite/10 border-y border-ct-graphite/10">
+        <div className="divide-y divide-slate-200 border-y border-slate-200">
           {faqs.map((item) => (
             <details key={item.q} className="group py-5">
-              <summary className="font-display flex cursor-pointer list-none items-center justify-between text-lg font-medium marker:content-none">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-base font-semibold text-ct-graphite marker:content-none">
                 {item.q}
                 <span
                   aria-hidden
-                  className="font-display ml-4 shrink-0 text-2xl text-ct-ice transition group-open:rotate-45"
+                  className="ml-4 shrink-0 text-xl font-medium text-ct-blue transition group-open:rotate-45"
                 >
                   +
                 </span>
               </summary>
-              <p className="font-inter mt-3 max-w-2xl text-base leading-relaxed text-ct-graphite/70">
+              <p className="font-inter mt-3 max-w-2xl text-base leading-relaxed text-ink/60">
                 {item.a}
               </p>
             </details>

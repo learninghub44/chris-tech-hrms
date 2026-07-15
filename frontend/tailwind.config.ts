@@ -20,13 +20,14 @@ const config: Config = {
           700: "#126340"
         },
         ct: {
-          paper: "#f6f3ec",
-          graphite: "#0b0e14",
-          steel: "#11151f",
-          slate: "#1b2130",
-          blue: "#2954eb",
-          blueDeep: "#1c3bb8",
-          ice: "#c9a567"
+          paper: "#ffffff",
+          mist: "#f6f8fb",
+          graphite: "#0f1f3d",
+          steel: "#132a52",
+          slate: "#1e3a66",
+          blue: "#1d5bd6",
+          blueDeep: "#123f9e",
+          ice: "#1d5bd6"
         }
       },
       fontFamily: {
@@ -36,9 +37,10 @@ const config: Config = {
         mono: ["var(--font-poppins)", "system-ui", "sans-serif"]
       },
       boxShadow: {
-        soft: "0 12px 30px rgba(11, 14, 20, 0.08)",
-        glow: "0 0 60px rgba(52, 84, 209, 0.35)",
-        gold: "0 0 48px rgba(201, 165, 103, 0.28)"
+        soft: "0 1px 2px rgba(15, 31, 61, 0.04), 0 8px 24px rgba(15, 31, 61, 0.06)",
+        card: "0 1px 3px rgba(15, 31, 61, 0.06)",
+        glow: "0 4px 14px rgba(29, 91, 214, 0.24)",
+        gold: "0 4px 14px rgba(29, 91, 214, 0.24)"
       }
     }
   },

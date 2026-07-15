@@ -12,16 +12,16 @@ const columns: { title: string; links: FooterLink[] }[] = [
       { label: "About", href: "/about" },
       { label: "Founder", href: "/founder" },
       { label: "Portfolio", href: "/portfolio" },
-      { label: "Contact", href: "/contact" }
+      { label: "Services", href: "/services" }
     ]
   },
   {
-    title: "Platform",
+    title: "Resources",
     links: [
-      { label: "Services", href: "/services" },
       { label: "Documentation", href: "/documentation" },
       { label: "Help Center", href: "/help-center" },
-      { label: "Blog", href: "/blog" }
+      { label: "Blog", href: "/blog" },
+      { label: "Pricing", href: "/#pricing" }
     ]
   },
   {
@@ -29,6 +29,14 @@ const columns: { title: string; links: FooterLink[] }[] = [
     links: [
       { label: "Privacy Policy", href: "/privacy-policy" },
       { label: "Terms & Cookie Policy", href: "/terms-cookie-policy" }
+    ]
+  },
+  {
+    title: "Contact",
+    links: [
+      { label: "Contact us", href: "/contact" },
+      { label: "support@christech.co.ke", href: "mailto:support@christech.co.ke" },
+      { label: "+254 701 059192", href: "tel:+254701059192" }
     ]
   }
 ];
@@ -42,10 +50,10 @@ const contactDetails = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-ct-graphite/10 bg-ct-graphite text-white/70">
+    <footer className="border-t border-white/10 bg-ct-graphite text-white/70">
       <div className="mx-auto max-w-6xl px-6 py-16">
         <div className="grid gap-12 lg:grid-cols-[1.4fr_repeat(4,1fr)] lg:gap-8">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-1">
             <Link href="/" className="flex items-center gap-3">
               <Image src={ctLogo} alt="Chris Tech" width={32} height={32} className="h-8 w-8" />
               <p className="font-display text-sm font-semibold text-white">
@@ -57,10 +65,10 @@ export function SiteFooter() {
               across Kenya and East Africa.
             </p>
 
-            <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+            <dl className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {contactDetails.map((item) => (
                 <div key={item.label} className="flex items-start gap-2.5">
-                  <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-ct-ice" aria-hidden />
+                  <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-ct-blue" aria-hidden />
                   <div>
                     <dt className="font-inter text-[11px] uppercase tracking-[0.12em] text-white/35">
                       {item.label}
@@ -70,7 +78,7 @@ export function SiteFooter() {
                         href={item.href}
                         target={item.href.startsWith("http") ? "_blank" : undefined}
                         rel={item.href.startsWith("http") ? "noreferrer" : undefined}
-                        className="font-inter block text-sm text-white/75 transition hover:text-ct-ice"
+                        className="font-inter block text-sm text-white/75 transition hover:text-ct-blue"
                       >
                         {item.value}
                       </a>
@@ -92,7 +100,7 @@ export function SiteFooter() {
                 {col.links.map((link) =>
                   link.href ? (
                     <li key={link.label}>
-                      <Link href={link.href} className="font-inter text-sm transition hover:text-ct-ice">
+                      <Link href={link.href} className="font-inter text-sm transition hover:text-ct-blue">
                         {link.label}
                       </Link>
                     </li>
