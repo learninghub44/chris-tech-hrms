@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
 import ctLogo from "@/assets/brand/chris-tech-logo.png";
 import { TrustedCompanies } from "./sections/trusted-companies";
 import { WhyChoose } from "./sections/why-choose";
@@ -16,11 +17,14 @@ import { FinalCTA } from "./sections/final-cta";
 import { SiteFooter } from "./sections/site-footer";
 
 const navLinks = [
-  { label: "Features", href: "#features" },
-  { label: "Solutions", href: "#platform" },
-  { label: "Customers", href: "#testimonials" },
-  { label: "Resources", href: "#faq" },
-  { label: "Contact", href: "mailto:support@christech.co.ke" }
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Services", href: "/services" },
+  { label: "Portfolio", href: "/portfolio" },
+  { label: "Blog", href: "/blog" },
+  { label: "Docs", href: "/documentation" },
+  { label: "Help Center", href: "/help-center" },
+  { label: "Contact", href: "/contact" }
 ];
 
 const fadeUp = {
@@ -30,6 +34,7 @@ const fadeUp = {
 
 export function LandingPage() {
   const shouldReduceMotion = useReducedMotion();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="font-body bg-ct-paper text-ink">
@@ -41,14 +46,14 @@ export function LandingPage() {
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
           >
             <source
-              src="https://www.pexels.com/video/7643613/download/?force=true"
+              src="https://assets.mixkit.co/videos/preview/mixkit-modern-technology-laptop-638-large.mp4"
               type="video/mp4"
             />
           </video>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(47,111,237,0.24),_transparent_38%),radial-gradient(circle_at_bottom_right,_rgba(125,196,255,0.12),_transparent_28%),linear-gradient(180deg,_rgba(10,14,23,0.92)_0%,_rgba(10,14,23,0.76)_24%,_rgba(10,14,23,0.72)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(8,9,18,0.92)_0%,_rgba(8,9,18,0.6)_45%,_rgba(8,9,18,0.82)_100%)]" />
           <motion.div
             className="absolute -left-24 top-24 h-[520px] w-[520px] rounded-full bg-ct-blue/15 blur-[110px]"
             animate={shouldReduceMotion ? undefined : { x: [0, 24, 0], y: [0, -18, 0] }}
@@ -63,34 +68,73 @@ export function LandingPage() {
         </div>
 
         <header className="relative z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 text-white">
-          <div className="flex items-center gap-3">
-            <Image src={ctLogo} alt="Chris Tech" width={36} height={36} className="h-9 w-9" priority />
-            <span className="font-display text-lg font-semibold tracking-tight">
-              Chris Tech <span className="text-ct-blue">HRMS</span>
-            </span>
+          <div className="flex items-center gap-4">
+            <Image src={ctLogo} alt="Chris Tech" width={44} height={44} className="h-11 w-11" priority />
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/80">Chris Tech HRMS</p>
+              <p className="text-[11px] uppercase tracking-[0.35em] text-ct-ice/90">Built by Chris Odhiambo</p>
+            </div>
           </div>
-          <nav className="hidden items-center gap-8 text-sm text-white/70 lg:flex">
+
+          <nav className="hidden items-center gap-8 text-sm text-white/80 lg:flex">
             {navLinks.map((link) => (
-              <a key={link.label} href={link.href} className="transition hover:text-white">
+              <Link key={link.label} href={link.href} className="transition hover:text-white">
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+
+          <div className="hidden items-center gap-3 lg:flex">
             <Link
               href="/login"
-              className="hidden rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white transition hover:border-ct-ice hover:text-ct-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:inline-flex"
+              className="rounded-full border border-white/15 px-5 py-2 text-sm font-semibold text-white transition hover:border-ct-ice hover:text-ct-ice"
             >
-              Sign in
+              Login
             </Link>
-            <a
-              href="mailto:support@christech.co.ke?subject=Request%20a%20demo"
-              className="rounded-full bg-ct-blue px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            <Link
+              href="/contact"
+              className="rounded-full bg-ct-blue px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-ct-blueDeep"
             >
-              Request demo
-            </a>
+              Contact
+            </Link>
           </div>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 p-2 text-white lg:hidden"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-expanded={mobileOpen}
+          >
+            <span className="sr-only">Toggle navigation</span>
+            <div className="space-y-1.5">
+              <span className="block h-0.5 w-5 bg-white" />
+              <span className="block h-0.5 w-5 bg-white" />
+              <span className="block h-0.5 w-5 bg-white" />
+            </div>
+          </button>
         </header>
+        {mobileOpen ? (
+          <div className="absolute inset-x-0 top-full z-30 rounded-b-[32px] border-t border-white/10 bg-ct-graphite/95 p-5 backdrop-blur-xl lg:hidden">
+            <div className="space-y-3">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className="block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:border-ct-ice hover:text-ct-ice"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <Link
+                href="/login"
+                className="block rounded-2xl bg-ct-blue px-4 py-3 text-sm font-semibold text-white transition hover:bg-ct-blueDeep"
+                onClick={() => setMobileOpen(false)}
+              >
+                Login
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         <div className="relative z-20 mx-auto flex w-full max-w-6xl flex-1 flex-col gap-14 px-6 py-10 lg:flex-row lg:items-center lg:gap-12 lg:py-8">
           <motion.div
@@ -100,16 +144,12 @@ export function LandingPage() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="flex flex-1 flex-col gap-7"
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white/80 backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-ct-ice" aria-hidden />
-              Premium HR for enterprise teams
-            </span>
-            <h1 className="font-display max-w-2xl text-4xl font-bold leading-tight tracking-[-0.03em] sm:text-6xl lg:text-[72px]">
-              The strategic HR platform that makes people operations feel effortless.
+            <h1 className="font-display max-w-2xl text-5xl font-semibold leading-tight tracking-[-0.03em] sm:text-6xl lg:text-[72px]">
+              Modern HR management designed for African businesses.
             </h1>
-            <p className="max-w-xl text-lg leading-relaxed text-white/70 sm:text-xl">
-              Elevate employee experience with a polished system for recruiting, time management,
-              payroll, performance, and workforce analytics — all backed by secure, modern design.
+            <p className="max-w-xl text-lg leading-relaxed text-white/75 sm:text-xl">
+              Chris Tech HRMS brings attendance, leave, payroll, recruitment, and performance together in one secure platform.
+              Built for clarity, speed, and local market needs.
             </p>
             <div className="flex flex-wrap gap-4">
               <a
@@ -125,11 +165,18 @@ export function LandingPage() {
                 Explore features
               </a>
             </div>
+            <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6">
+              <p className="text-sm uppercase tracking-[0.18em] text-white/50">Founder</p>
+              <p className="mt-3 text-lg font-semibold text-white">Chris Odhiambo</p>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70">
+                Founder and product leader. Chris built Chris Tech HRMS to provide modern HR tools that work for local businesses.
+              </p>
+            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               {[
-                { label: "Scale with confidence", value: "Multi-company ready" },
-                { label: "Premium HR workflows", value: "Policy-driven approvals" },
-                { label: "People intelligence", value: "Live workforce data" }
+                { label: "Built for growth", value: "HR workflows" },
+                { label: "Secure operations", value: "Tenant isolation" },
+                { label: "Fast onboarding", value: "Easy setup" }
               ].map((item) => (
                 <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-5">
                   <p className="text-sm uppercase tracking-[0.18em] text-white/50">{item.label}</p>

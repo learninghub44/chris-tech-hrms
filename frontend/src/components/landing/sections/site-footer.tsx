@@ -8,27 +8,26 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Company",
     links: [
-      { label: "About" },
-      { label: "Careers" },
-      { label: "Contact", href: "mailto:support@christech.co.ke" }
+      { label: "About", href: "/about" },
+      { label: "Portfolio", href: "/portfolio" },
+      { label: "Contact", href: "/contact" }
     ]
   },
   {
     title: "Platform",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "Solutions", href: "#platform" },
-      { label: "Pricing", href: "#get-started" },
-      { label: "Security", href: "#security" }
+      { label: "Services", href: "/services" },
+      { label: "Documentation", href: "/documentation" },
+      { label: "Help Center", href: "/help-center" },
+      { label: "Blog", href: "/blog" }
     ]
   },
   {
-    title: "Resources",
-    links: [{ label: "Documentation" }, { label: "Help Center" }, { label: "Blog" }]
-  },
-  {
     title: "Legal",
-    links: [{ label: "Privacy Policy" }, { label: "Terms of Service" }, { label: "Cookie Policy" }]
+    links: [
+      { label: "Privacy Policy", href: "/privacy-policy" },
+      { label: "Terms & Cookie Policy", href: "/terms-cookie-policy" }
+    ]
   }
 ];
 
