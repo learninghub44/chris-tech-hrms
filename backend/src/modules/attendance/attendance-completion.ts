@@ -12,6 +12,7 @@ const absentNote = "Automatically marked absent for missed attendance";
 
 type AttendanceCompletionEmployee = {
   id: string;
+  companyId: string;
   dateOfJoining: Date;
   dateOfExit: Date | null;
 };
@@ -77,6 +78,7 @@ function getApprovedLeaveDates(input: {
 export async function materializeMissingAbsences(input: {
   dateFrom: Date;
   dateTo: Date;
+  companyId: string;
   employeeId?: string;
   employeeWhere?: Prisma.EmployeeWhereInput;
 }): Promise<number> {
@@ -89,6 +91,7 @@ export async function materializeMissingAbsences(input: {
 
   const employeeWhere: Prisma.EmployeeWhereInput = {
     ...input.employeeWhere,
+    companyId: input.companyId,
     ...(input.employeeId ? { id: input.employeeId } : {}),
     status: {
       in: attendanceEligibleStatuses
@@ -111,6 +114,7 @@ export async function materializeMissingAbsences(input: {
     where: employeeWhere,
     select: {
       id: true,
+      companyId: true,
       dateOfJoining: true,
       dateOfExit: true
     }
@@ -124,6 +128,7 @@ export async function materializeMissingAbsences(input: {
   const [holidays, approvedLeaves, existingAttendance] = await prisma.$transaction([
     prisma.holiday.findMany({
       where: {
+        companyId: input.companyId,
         date: {
           gte: input.dateFrom,
           lte: dateTo
@@ -204,6 +209,7 @@ export async function materializeMissingAbsences(input: {
       }
 
       attendance.push({
+        companyId: employee.companyId,
         employeeId: employee.id,
         date,
         status: "ABSENT",

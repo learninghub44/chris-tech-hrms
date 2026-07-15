@@ -578,6 +578,79 @@ async function runSmoke(baseUrl: string): Promise<void> {
     assertFailure(crossTenantUpdate, "EMPLOYEE_NOT_FOUND");
   });
 
+  await check("cross-tenant isolation: attendance module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Shifts: each company's default shift must be invisible to the other.
+    const primaryShifts = assertSuccess(
+      await request<{ shifts: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/shifts",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryShifts.shifts.some((shift) => shift.name === "Northwind Standard Shift"),
+      "Company A shift list leaked Company B's shift"
+    );
+
+    const secondCompanyShifts = assertSuccess(
+      await request<{ shifts: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/shifts",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyShifts.shifts.some((shift) => shift.name === "General Shift"),
+      "Company B shift list leaked Company A's shift"
+    );
+    assert(
+      secondCompanyShifts.shifts.some((shift) => shift.name === "Northwind Standard Shift"),
+      "Company B shift list did not return its own seeded shift"
+    );
+
+    // Holidays: same isolation expectation, scoped by year.
+    const primaryHolidays = assertSuccess(
+      await request<{ holidays: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/holidays?year=2026",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryHolidays.holidays.some((holiday) => holiday.name === "Northwind Founders Day"),
+      "Company A holiday list leaked Company B's holiday"
+    );
+
+    const secondCompanyHolidays = assertSuccess(
+      await request<{ holidays: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/holidays?year=2026",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      secondCompanyHolidays.holidays.some((holiday) => holiday.name === "Northwind Founders Day"),
+      "Company B holiday list did not return its own seeded holiday"
+    );
+
+    // Attendance report: Company B must never see Company A's smoke employee.
+    const secondCompanyReport = assertSuccess(
+      await request<{ attendance: Array<{ employee: { employeeCode: string } }> }>({
+        baseUrl,
+        path: "/api/attendance/report",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyReport.attendance.some(
+        (record) => record.employee.employeeCode === smokeEmployeeCode
+      ),
+      "Company B attendance report leaked Company A's smoke employee"
+    );
+  });
+
   await check("attendance clock-in and clock-out", async () => {
     await request<unknown>({
       baseUrl,

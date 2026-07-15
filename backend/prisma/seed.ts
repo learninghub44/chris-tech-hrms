@@ -1321,6 +1321,53 @@ async function main() {
       })
     )
   );
+  await prisma.shift.upsert({
+    where: {
+      companyId_name: {
+        companyId: secondCompany.id,
+        name: "Northwind Standard Shift"
+      }
+    },
+    update: {
+      startTime: "08:00",
+      endTime: "17:00",
+      lateAfterMinutes: 10,
+      halfDayAfterMinutes: 240,
+      isDefault: true,
+      isActive: true
+    },
+    create: {
+      companyId: secondCompany.id,
+      name: "Northwind Standard Shift",
+      startTime: "08:00",
+      endTime: "17:00",
+      lateAfterMinutes: 10,
+      halfDayAfterMinutes: 240,
+      isDefault: true,
+      isActive: true
+    }
+  });
+
+  await prisma.holiday.upsert({
+    where: {
+      companyId_date: {
+        companyId: secondCompany.id,
+        date: new Date("2026-11-11T00:00:00.000Z")
+      }
+    },
+    update: {
+      name: "Northwind Founders Day",
+      type: "COMPANY",
+      description: "Northwind demo tenant-only holiday used for isolation checks"
+    },
+    create: {
+      companyId: secondCompany.id,
+      name: "Northwind Founders Day",
+      date: new Date("2026-11-11T00:00:00.000Z"),
+      type: "COMPANY",
+      description: "Northwind demo tenant-only holiday used for isolation checks"
+    }
+  });
 }
 
 main()

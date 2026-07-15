@@ -8,6 +8,7 @@ export function getAnnouncementAudienceValues(
 
 export async function createAnnouncementNotifications(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   announcementId: string;
   title: string;
   message: string;
@@ -15,6 +16,7 @@ export async function createAnnouncementNotifications(input: {
 }): Promise<Notification[]> {
   const users = await input.transaction.user.findMany({
     where: {
+      companyId: input.companyId,
       status: "ACTIVE",
       ...(input.audience === "ALL"
         ? {}
@@ -41,6 +43,7 @@ export async function createAnnouncementNotifications(input: {
     users.map((user) =>
       input.transaction.notification.create({
         data: {
+          companyId: input.companyId,
           userId: user.id,
           title: input.title,
           message: input.message,

@@ -12,6 +12,7 @@ import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -216,9 +217,10 @@ async function getEmployeeForAuth(req: Request) {
   return employee;
 }
 
-async function getDefaultShift() {
+async function getDefaultShift(companyId: string) {
   const shift = await prisma.shift.findFirst({
     where: {
+      companyId,
       isActive: true
     },
     orderBy: [
@@ -253,14 +255,16 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 attendanceRouter.use(authenticate);
+attendanceRouter.use(requireCompanyContext);
 
 attendanceRouter.post(
   "/attendance/clock-in",
   requirePermissions(["attendance:write"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(clockInSchema, req.body);
+    const scope = companyScope(req);
     const employee = await getEmployeeForAuth(req);
-    const shift = await getDefaultShift();
+    const shift = await getDefaultShift(scope.companyId);
     const now = new Date();
     const today = toDateOnlyFromDate(now);
 
@@ -293,6 +297,7 @@ attendanceRouter.post(
           notes: body.notes
         },
         create: {
+          companyId: scope.companyId,
           employeeId: employee.id,
           shiftId: shift.id,
           date: today,
@@ -367,6 +372,7 @@ attendanceRouter.get(
   requirePermissions(["attendance:write"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(attendanceQuerySchema, req.query);
+    const scope = companyScope(req);
     const employee = await getEmployeeForAuth(req);
     const defaultRange = getDefaultDateRange();
     const dateFrom = query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom;
@@ -374,6 +380,7 @@ attendanceRouter.get(
     const today = toDateOnlyFromDate(new Date());
     const pagination = getPagination(query);
     const where: Prisma.AttendanceWhereInput = {
+      companyId: scope.companyId,
       employeeId: employee.id,
       date: {
         gte: dateFrom,
@@ -384,6 +391,7 @@ attendanceRouter.get(
     await materializeMissingAbsences({
       dateFrom,
       dateTo,
+      companyId: scope.companyId,
       employeeId: employee.id
     });
 
@@ -421,16 +429,20 @@ attendanceRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(attendanceReportQuerySchema, req.query);
     const auth = assertAuthenticated(req);
+    const scope = companyScope(req);
     const defaultRange = getDefaultDateRange();
     const dateFrom = query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom;
     const dateTo = query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo;
     const where: Prisma.AttendanceWhereInput = {
+      companyId: scope.companyId,
       date: {
         gte: dateFrom,
         lte: dateTo
       }
     };
-    const employeeWhere: Prisma.EmployeeWhereInput = {};
+    const employeeWhere: Prisma.EmployeeWhereInput = {
+      companyId: scope.companyId
+    };
 
     if (query.employeeId) {
       where.employeeId = query.employeeId;
@@ -465,6 +477,7 @@ attendanceRouter.get(
     await materializeMissingAbsences({
       dateFrom,
       dateTo,
+      companyId: scope.companyId,
       employeeId: query.employeeId,
       employeeWhere
     });
@@ -497,8 +510,12 @@ attendanceRouter.get(
 attendanceRouter.get(
   "/shifts",
   requireAnyPermission(["attendance:manage", "attendance:read", "attendance:write"]),
-  asyncHandler(async (_req, res) => {
+  asyncHandler(async (req, res) => {
+    const scope = companyScope(req);
     const shifts = await prisma.shift.findMany({
+      where: {
+        companyId: scope.companyId
+      },
       orderBy: [
         {
           isDefault: "desc"
@@ -518,12 +535,14 @@ attendanceRouter.post(
   requirePermissions(["attendance:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(shiftBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const shift = await prisma.$transaction(async (transaction) => {
         if (body.isDefault) {
           await transaction.shift.updateMany({
             where: {
+              companyId: scope.companyId,
               isDefault: true
             },
             data: {
@@ -533,7 +552,10 @@ attendanceRouter.post(
         }
 
         return transaction.shift.create({
-          data: body
+          data: {
+            ...body,
+            companyId: scope.companyId
+          }
         });
       });
 
@@ -556,11 +578,13 @@ attendanceRouter.get(
   ]),
   asyncHandler(async (req, res) => {
     const query = parseInput(holidayQuerySchema, req.query);
+    const scope = companyScope(req);
     const year = query.year ?? toDateOnlyFromDate(new Date()).getUTCFullYear();
     const dateFrom = new Date(Date.UTC(year, 0, 1));
     const dateTo = new Date(Date.UTC(year, 11, 31));
     const holidays = await prisma.holiday.findMany({
       where: {
+        companyId: scope.companyId,
         date: {
           gte: dateFrom,
           lte: dateTo
@@ -580,12 +604,14 @@ attendanceRouter.post(
   requireAnyPermission(["attendance:manage", "leave:manage"]),
   asyncHandler(async (req, res) => {
     const auth = assertAuthenticated(req);
+    const scope = companyScope(req);
     const body = parseInput(holidayBodySchema, req.body);
 
     try {
       const transactionResult = await prisma.$transaction(async (transaction) => {
         const holiday = await transaction.holiday.create({
           data: {
+            companyId: scope.companyId,
             name: body.name,
             date: toDateOnlyFromInput(body.date),
             type: body.type,
@@ -596,6 +622,7 @@ attendanceRouter.post(
         const message = getHolidayAnnouncementMessage(holiday);
         const announcement = await transaction.announcement.create({
           data: {
+            companyId: scope.companyId,
             title,
             message,
             audience: AnnouncementAudience.ALL,
@@ -615,6 +642,7 @@ attendanceRouter.post(
         });
         const notifications = await createAnnouncementNotifications({
           transaction,
+          companyId: scope.companyId,
           announcementId: announcement.id,
           title: announcement.title,
           message: announcement.message,

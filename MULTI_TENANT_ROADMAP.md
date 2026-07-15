@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped
+- [ ] Phase 4 — Remaining 10 modules scoped (attendance done, see log below; 9 remain)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -243,3 +243,55 @@ the schema/auth commits preceding it). Checklist corrected above.
 for each module in the Phase 4 order list below.
 
 ### Phase 4 onward — not started
+
+### Phase 4 — attendance module scoped (1 of 11 remaining modules)
+
+- **Branch:** `phase-4-attendance-scoping`, pushed to `origin`, not yet
+  merged to `main` (PR not yet opened).
+- **Files:** `backend/src/modules/attendance/attendance.routes.ts`,
+  `backend/src/modules/attendance/attendance-completion.ts`,
+  `backend/src/modules/notifications/announcement-notifications.ts`,
+  `backend/src/modules/notifications/notifications.routes.ts`,
+  `backend/prisma/seed.ts`, `backend/scripts/smoke-test.ts`.
+- `attendance.routes.ts`: `requireCompanyContext` mounted alongside
+  `authenticate`; clock-in/out, `attendance/me`, `attendance/report`,
+  `shifts`, and `holidays` all scoped via `companyScope(req)` following
+  the Phase 3 pattern. The default-shift lookup used at clock-in and the
+  "unset previous default shift" update were previously global — both are
+  now company-scoped.
+- `attendance-completion.ts`: `materializeMissingAbsences` now requires a
+  `companyId` and scopes its holiday lookup by it. This also fixed a real
+  bug, not just a tenant-isolation gap: auto-created `ABSENT` rows had no
+  `companyId` at all, which would fail outright against the Phase 1
+  schema (the field is required, no default).
+- `announcement-notifications.ts`: the holiday-creation route creates an
+  `Announcement` and fans out `Notification` rows to all `"ALL"`-audience
+  users. This lookup had no company filter — a holiday added in Company A
+  would have notified every active user in every tenant. Fixed by
+  requiring `companyId` on `createAnnouncementNotifications` and scoping
+  both the user lookup and the created notifications by it.
+- `notifications.routes.ts`: the `POST /announcements` route was touched
+  only because it shares the helper above — it's now also company-scoped
+  for `companyId` on `Announcement.create`, but the rest of the
+  notifications/announcements module (`GET /notifications`,
+  `GET /announcements`, read-state, etc.) is **not** scoped yet. That
+  remains its own Phase 4 item (see order list above, items 4–5).
+- `seed.ts`: added a distinct shift ("Northwind Standard Shift") and
+  holiday ("Northwind Founders Day") for the second seeded company so
+  isolation smoke tests have real cross-tenant rows.
+- `smoke-test.ts`: new check
+  `"cross-tenant isolation: attendance module (Phase 4)"` asserts shifts,
+  holidays, and the attendance report endpoint never leak across the two
+  seeded companies.
+- **Not yet verified in this environment:** same Prisma-engine sandbox
+  limitation as every prior phase — `prisma generate` cannot reach
+  `binaries.prisma.sh` (403 Forbidden), so `npm run test:smoke` could not
+  be run against a real database. `tsc --noEmit` error count in every
+  touched file was identical before and after this change (36), which
+  confirms no new type errors were introduced — only the same
+  pre-existing "stale generated client" noise already flagged in the
+  Phase 1–3 logs. Before merging: run `npx prisma generate`,
+  `npm run db:seed`, then `npm run test:smoke` with real network/database
+  access.
+
+**Next up per the Phase 4 order list:** `leaves`.

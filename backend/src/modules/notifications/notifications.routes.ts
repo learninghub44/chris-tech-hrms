@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated, emitNotificationRead } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { companyScope } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -186,11 +187,13 @@ notificationsRouter.post(
   requireAnyPermission(["announcements:manage"]),
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
+    const scope = companyScope(req);
     const body = parseInput(announcementBodySchema, req.body);
 
     const transactionResult = await prisma.$transaction(async (transaction) => {
       const createdAnnouncement = await transaction.announcement.create({
         data: {
+          companyId: scope.companyId,
           title: body.title,
           message: body.message,
           audience: body.audience,
@@ -211,6 +214,7 @@ notificationsRouter.post(
       const notifications = body.isPublished
         ? await createAnnouncementNotifications({
             transaction,
+            companyId: scope.companyId,
             announcementId: createdAnnouncement.id,
             title: createdAnnouncement.title,
             message: createdAnnouncement.message,
