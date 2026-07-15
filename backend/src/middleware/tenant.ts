@@ -57,6 +57,20 @@ export function assertSameCompany(
   const scope = companyScope(req);
 
   if (resourceCompanyId !== scope.companyId) {
+    // Phase 6 hardening (see MULTI_TENANT_ROADMAP.md): this branch only
+    // fires when an authenticated user's request resolves to a resource
+    // owned by a *different* company than their own — either a bug in a
+    // module's scoping, or a deliberate attempt to guess/enumerate another
+    // tenant's resource ids. Either way it's worth a durable signal, since
+    // this is exactly the kind of thing that's silent until it leaks data.
+    console.warn("tenant boundary violation blocked", {
+      event: "CROSS_TENANT_ACCESS_ATTEMPT",
+      requestingUserId: req.auth?.id ?? null,
+      requestingCompanyId: scope.companyId,
+      attemptedResourceCompanyId: resourceCompanyId ?? null,
+      timestamp: new Date().toISOString()
+    });
+
     throw new AppError(404, "NOT_FOUND", "The requested resource was not found");
   }
 }

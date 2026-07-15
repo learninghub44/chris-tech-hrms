@@ -655,6 +655,59 @@ complete and Phase 5 (frontend company context) can start.
 **Phase 5 is now complete.** Phase 6 (hardening, full isolation test
 suite, docs, tagged release) is next.
 
+### Phase 6 — hardening (partial, this session)
+
+- **Files:** `backend/src/middleware/tenant.ts`.
+- **Audit logging (roadmap item 2) — done.** `assertSameCompany` now logs
+  a structured `console.warn` (`event: "CROSS_TENANT_ACCESS_ATTEMPT"`)
+  whenever a fetched resource's `companyId` doesn't match the caller's,
+  before throwing the existing `404`. This is the shared choke point used
+  by employees, attendance, leaves, payroll, performance, and recruitment
+  — every module that does fetch-then-check on a resource id gets this
+  signal automatically, no per-module changes needed. Logged fields:
+  requesting user id, requesting company id, the attempted resource's
+  company id, and a timestamp. This is a `console.warn` for now (matches
+  the rest of the codebase's logging style — no structured logger like
+  winston/pino is in use anywhere yet); wiring it to a real log
+  aggregator/alerting is future work once one is chosen.
+- **Full cross-tenant isolation test suite (roadmap item 1) — 9 of 10
+  modules covered, `hr-assistant` deliberately skipped.** Every module
+  with an id-based attack surface (employees, attendance, leaves,
+  notifications, performance, recruitment, payroll, dashboard, reports)
+  already has a dedicated `cross-tenant isolation: <module> (Phase X)`
+  check in `smoke-test.ts`. `hr-assistant` doesn't get one: its three
+  tools (`get_leave_balance`, `get_next_payroll`, `get_manager`) take no
+  employee/resource id as input at all — they only ever resolve `req.auth`
+  → the caller's own linked employee via `companyScope`, so there's no id
+  a malicious caller could substitute to probe another tenant the way
+  `GET /employees/:id` or `GET /payroll/:id` can be probed. Writing a
+  synthetic test here would mostly be re-testing that JWTs can't be
+  forged, which is already covered by the auth module's tests. Flagging
+  this explicitly rather than silently leaving a gap in the checklist.
+- **Signup abuse prevention (roadmap item 3) — not applicable.** This
+  item only applies "if self-serve signup was chosen in Phase 0" — it
+  wasn't (Phase 0 decision 4: admin-provisioned only). No rate limiting
+  work needed here unless that decision is revisited.
+- **Deployment docs (roadmap item 4) — already current.** No new env vars
+  were introduced by Phase 4/5 work; the Gemini→Groq swap already updated
+  `README.md`'s "Optional backend environment variables" section and
+  `backend/.env.example`. `render.yaml` never listed `GEMINI_API_KEY`/
+  `GROQ_API_KEY` in the first place (it's an optional var Render prompts
+  for separately, per the README), so no change needed there either.
+- **Not done yet:**
+  - `README.md`/`plan.md` full rewrite to describe the multi-tenant
+    architecture end-to-end (roadmap item 5) — still describe the
+    original single-tenant feature set; needs a pass once Phase 6's other
+    items are closed out.
+  - Tagged release (`v2.0.0-multitenant`) — deliberately not cut yet.
+    Every phase so far has been unable to run `npx prisma generate` /
+    `npm run db:seed` / `npm run test:smoke` against a real database in
+    this sandbox (`binaries.prisma.sh` returns 403). Tagging a release
+    before a single real test run against a live database has happened
+    would be premature — **Chris needs to run the full verify sequence
+    (`npm run verify` from repo root) on a machine with real network
+    access before this gets tagged.**
+
 ### AI provider switch: Gemini → Groq (this session, alongside hr-assistant scoping)
 
 - Chris requested swapping the HR assistant's model provider from Gemini
