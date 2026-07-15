@@ -8,6 +8,7 @@ import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
+import { companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
 
@@ -144,14 +145,18 @@ function isAnnouncementNotificationCategory(category: unknown): boolean {
 
 async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
   const auth = assertAuthenticated(req);
+  const scope = companyScope(req);
 
   if (hasPermission(req, "employees:manage") || hasPermission(req, "reports:read")) {
-    return {};
+    return {
+      companyId: scope.companyId
+    };
   }
 
   const employee = await prisma.employee.findUnique({
     where: {
-      userId: auth.id
+      userId: auth.id,
+      companyId: scope.companyId
     }
   });
 
@@ -163,34 +168,42 @@ async function getScopedEmployeeWhere(req: Request): Promise<Prisma.EmployeeWher
 
   if (hasPermission(req, "attendance:read") || hasPermission(req, "leave:approve")) {
     return {
+      companyId: scope.companyId,
       managerId: employee.id
     };
   }
 
   return {
+    companyId: scope.companyId,
     id: employee.id
   };
 }
 
 function getScopedUserWhere(req: Request): Prisma.UserWhereInput {
   const auth = assertAuthenticated(req);
+  const scope = companyScope(req);
 
   if (hasPermission(req, "employees:manage") || hasPermission(req, "reports:read")) {
-    return {};
+    return {
+      companyId: scope.companyId
+    };
   }
 
   return {
+    companyId: scope.companyId,
     id: auth.id
   };
 }
 
 dashboardRouter.use(authenticate);
+dashboardRouter.use(requireCompanyContext);
 
 dashboardRouter.get(
   "/dashboard/summary",
   requirePermissions(["dashboard:read"]),
   asyncHandler(async (req, res) => {
     const auth = assertAuthenticated(req);
+    const scope = companyScope(req);
     const now = new Date();
     const today = toDateOnlyFromDate(now);
     const { monthStart, monthEnd } = getMonthRange(now);
@@ -222,6 +235,7 @@ dashboardRouter.get(
       hasPermission(req, "payroll:manage") || hasPermission(req, "reports:read");
     const userWhere = getScopedUserWhere(req);
     const announcementWhere: Prisma.AnnouncementWhereInput = {
+      companyId: scope.companyId,
       isPublished: true,
       ...(hasPermission(req, "announcements:manage") || canSeeOrgMetrics
         ? {}
@@ -378,7 +392,8 @@ dashboardRouter.get(
         task: () => canSeePayroll
           ? prisma.payroll.findUnique({
               where: {
-                month_year: {
+                companyId_month_year: {
+                  companyId: scope.companyId,
                   month: now.getMonth() + 1,
                   year: now.getFullYear()
                 }
@@ -392,6 +407,7 @@ dashboardRouter.get(
         failures: failedSections,
         task: () => prisma.notification.count({
           where: {
+            companyId: scope.companyId,
             userId: auth.id,
             isRead: false
           }
@@ -403,6 +419,7 @@ dashboardRouter.get(
         failures: failedSections,
         task: () => prisma.notification.findMany({
           where: {
+            companyId: scope.companyId,
             userId: auth.id
           },
           orderBy: {

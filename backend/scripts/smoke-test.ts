@@ -1158,6 +1158,88 @@ async function runSmoke(baseUrl: string): Promise<void> {
     assertFailure(crossTenantPayslip, "PAYSLIP_NOT_FOUND");
   });
 
+  await check("cross-tenant isolation: dashboard module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    type DashboardSummaryResponse = {
+      cards: Array<{ key: string; value: string }>;
+    };
+
+    const primarySummary = assertSuccess(
+      await request<DashboardSummaryResponse>({
+        baseUrl,
+        path: "/api/dashboard/summary?refresh=true",
+        token: context.adminToken
+      })
+    );
+    const secondCompanySummary = assertSuccess(
+      await request<DashboardSummaryResponse>({
+        baseUrl,
+        path: "/api/dashboard/summary?refresh=true",
+        token: secondCompanyLogin.token
+      })
+    );
+    const primaryEmployeesCard = primarySummary.cards.find((card) => card.key === "employees");
+    const secondCompanyEmployeesCard = secondCompanySummary.cards.find((card) => card.key === "employees");
+
+    assert(primaryEmployeesCard !== undefined, "Company A dashboard summary was missing the employees card");
+    assert(
+      secondCompanyEmployeesCard !== undefined,
+      "Company B dashboard summary was missing the employees card"
+    );
+
+    const primaryEmployees = assertSuccess(
+      await request<{ employees: Array<{ id: string }> }>({
+        baseUrl,
+        path: "/api/employees?pageSize=100",
+        token: context.adminToken
+      })
+    );
+    const secondCompanyEmployees = assertSuccess(
+      await request<{ employees: Array<{ id: string }> }>({
+        baseUrl,
+        path: "/api/employees?pageSize=100",
+        token: secondCompanyLogin.token
+      })
+    );
+
+    assert(
+      primaryEmployeesCard!.value === String(primaryEmployees.employees.length),
+      `Company A dashboard employee count (${primaryEmployeesCard!.value}) leaked or omitted employees relative to the scoped employees list (${primaryEmployees.employees.length})`
+    );
+    assert(
+      secondCompanyEmployeesCard!.value === String(secondCompanyEmployees.employees.length),
+      `Company B dashboard employee count (${secondCompanyEmployeesCard!.value}) leaked or omitted employees relative to the scoped employees list (${secondCompanyEmployees.employees.length})`
+    );
+    assert(
+      primaryEmployeesCard!.value !== secondCompanyEmployeesCard!.value ||
+        primaryEmployees.employees.length !== secondCompanyEmployees.employees.length,
+      "Company A and Company B dashboard employee counts were suspiciously identical - check seed data still differs"
+    );
+
+    // Announcements surfaced on the dashboard must never cross tenants.
+    const secondCompanyAnnouncementTitles = new Set(
+      (
+        assertSuccess(
+          await request<{ announcements: Array<{ title: string }> }>({
+            baseUrl,
+            path: "/api/announcements",
+            token: secondCompanyLogin.token
+          })
+        )
+      ).announcements.map((announcement) => announcement.title)
+    );
+
+    assert(
+      !secondCompanyAnnouncementTitles.has("Phase 7 dashboard and reports are available"),
+      "Company B announcements list leaked Company A's seeded announcement"
+    );
+    assert(
+      secondCompanyAnnouncementTitles.has("Northwind demo tenant-only announcement"),
+      "Company B announcements list did not return its own seeded announcement"
+    );
+  });
+
   await check("dashboard, notifications, announcements, and reports", async () => {
     await request<unknown>({
       baseUrl,

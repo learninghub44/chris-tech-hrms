@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll done; 3 remain: dashboard, reports, hr-assistant)
+- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard done; 2 remain: reports, hr-assistant)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -466,3 +466,59 @@ partial touch covered them.
 queries need to confirm every summary count is per-company, not global —
 followed by `reports` (item 10, same concern) and `hr-assistant` (item 11,
 the Gemini tool functions must never answer with another company's data).
+
+### Phase 4 — dashboard module scoped (7 of 10 remaining modules)
+
+- **Branch:** `phase-4-dashboard-scoping` (this session).
+- **Files:** `backend/src/modules/dashboard/dashboard.routes.ts`,
+  `backend/scripts/smoke-test.ts`.
+- `dashboard.routes.ts` had no company scoping at all — every aggregation
+  query (employee/user counts, attendance, leave, payroll, notifications,
+  announcements) ran globally across every tenant. Flagged in this
+  document as a specific risk area ("aggregation queries — make sure
+  summary counts are per-company, not global").
+- `requireCompanyContext` mounted on the router.
+- `getScopedEmployeeWhere` / `getScopedUserWhere`: `companyId` now included
+  in every branch (org-wide, manager/team, and self-only), plus the
+  `Employee` lookup used to resolve "am I a manager" now also filters by
+  `companyId` for defense in depth.
+- `announcementWhere`: now filters by `companyId` — previously any
+  authenticated user's dashboard would surface every tenant's published
+  announcements.
+- `monthlyPayroll`: same stale compound-key issue as the payroll module —
+  the lookup used the old `month_year` key, updated to
+  `companyId_month_year`. This would not have compiled once a real Prisma
+  client is generated against the Phase 1 schema.
+- `unreadNotifications` count and `notificationCandidates` list: both now
+  also filter by `companyId` alongside the existing `userId` filter.
+- Did **not** add `companyId` to the dashboard cache key
+  (`getDashboardCacheKey` in `lib/dashboard-cache.ts`) — the key is already
+  keyed by `userId`, and a user belongs to exactly one company (the
+  `PLATFORM_OWNER` cross-company role, which has a null `companyId`, is
+  already blocked from this route entirely by `requireCompanyContext`), so
+  no two tenants can ever collide on the same cache key. Left the shared
+  cache-key helper's signature unchanged rather than adding a redundant
+  parameter.
+- `smoke-test.ts`: new check `"cross-tenant isolation: dashboard module
+  (Phase 4)"` — cross-checks each company's dashboard "employees" card
+  value against that company's own scoped `/api/employees` list length
+  (so a leak would show up as a mismatched count, not just a "looks about
+  right" eyeball check), asserts the two companies' counts genuinely
+  differ (catches a future seed change silently making this test
+  meaningless), and confirms Company B's `/api/announcements` list
+  contains its own seeded announcement but not Company A's.
+- **Not yet verified in this environment:** same `prisma generate` /
+  `binaries.prisma.sh` sandbox limitation as every prior phase (still 403
+  Forbidden). Diffed `tsc --noEmit` output for `dashboard.routes.ts`
+  before and after this change: **identical** error set (10 errors, all
+  pre-existing stale-generated-client noise) — zero new errors introduced,
+  unlike the payroll change which added one expected new stale-client
+  entry. `smoke-test.ts` has zero new type errors either. Before merging:
+  run `npx prisma generate`, `npm run db:seed`, then `npm run test:smoke`
+  with real network/database access to confirm the new isolation checks
+  actually pass against a live database.
+
+**Next up per the Phase 4 order list:** `reports` (item 10) — same
+aggregation-query concern as dashboard, every report query needs the
+company filter — followed by `hr-assistant` (item 11, the Gemini tool
+functions must never answer with another company's data).
