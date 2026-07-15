@@ -12,6 +12,7 @@ export type AuthUser = {
   // Every other role must have a non-null companyId — enforced via
   // requireCompanyContext() in src/middleware/tenant.ts on company-scoped routes.
   companyId: string | null;
+  companyName: string | null;
   roles: string[];
   permissions: string[];
 };
@@ -22,6 +23,7 @@ type UserAccessRecord = {
   email: string;
   status: AccountStatus;
   companyId: string | null;
+  company: { name: string } | null;
   roles: Array<{
     role: {
       name: string;
@@ -50,6 +52,7 @@ function toAuthUser(user: UserAccessRecord): AuthUser {
     email: user.email,
     status: user.status,
     companyId: user.companyId,
+    companyName: user.company?.name ?? null,
     roles,
     permissions: Array.from(permissions).sort()
   };
@@ -61,6 +64,11 @@ export async function getAuthUserById(userId: string): Promise<AuthUser | null> 
       id: userId
     },
     include: {
+      company: {
+        select: {
+          name: true
+        }
+      },
       roles: {
         include: {
           role: {

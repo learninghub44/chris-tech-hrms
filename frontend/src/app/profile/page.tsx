@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, ShieldCheck, UserCircle } from "lucide-react";
+import { Building2, Mail, ShieldCheck, UserCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { ProtectedPage } from "@/components/protected-page";
@@ -51,6 +51,12 @@ function ProfileContent({ user, token }: ProfileContentProps) {
             </div>
 
             <div className="mt-6 space-y-3 text-sm">
+              {user.companyName ? (
+                <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
+                  <Building2 size={17} className="text-slate-500" aria-hidden="true" />
+                  <span>{user.companyName}</span>
+                </div>
+              ) : null}
               <div className="flex min-w-0 items-center gap-3 rounded-md bg-surface px-4 py-3">
                 <Mail size={17} className="text-slate-500" aria-hidden="true" />
                 <span>{user.email}</span>

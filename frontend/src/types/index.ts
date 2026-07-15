@@ -60,6 +60,8 @@ export type AuthUser = {
   name: string;
   email: string;
   status: AccountStatus;
+  companyId: string | null;
+  companyName: string | null;
   roles: RoleName[];
   permissions: string[];
 };

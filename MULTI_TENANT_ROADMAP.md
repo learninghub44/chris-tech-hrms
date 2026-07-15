@@ -160,7 +160,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
 - [x] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard, reports, hr-assistant all done)
-- [ ] Phase 5 — Frontend company context
+- [x] Phase 5 — Frontend company context (auth context carries companyId/companyName; no company switcher needed per the one-user-one-company Phase 0 decision)
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
 Each unchecked box above is a valid unit of work for another agent or engineer to pick up independently, as long as prior phases are merged to `main` first.
@@ -610,6 +610,50 @@ complete and Phase 5 (frontend company context) can start.
   `npm run test:smoke` with real network/database access.
 
 **Phase 4 is now complete.** Phase 5 (frontend company context) can start.
+
+### Phase 5 — frontend company context (this session)
+
+- **Files:** `backend/src/modules/auth/auth.service.ts`,
+  `frontend/src/types/index.ts`, `frontend/src/components/app-shell.tsx`,
+  `frontend/src/app/profile/page.tsx`.
+- Per the confirmed Phase 0 decision (one user = one company, no
+  multi-company-per-user for v1), a company switcher is explicitly **not**
+  needed — this matches `docs/multi-tenant-design.md` decision 2.
+- `auth.service.ts`: `AuthUser` now carries `companyName` alongside the
+  existing `companyId`. `getAuthUserById`'s `User` query now includes the
+  `company` relation (`select: { name: true }`) so this doesn't require an
+  extra round trip. This is the single construction site for `AuthUser`
+  (used by login, register, and `/api/auth/me`), so all three flows pick
+  this up automatically with no route-level changes needed.
+- Frontend `AuthUser` type (`types/index.ts`) updated to match
+  (`companyId: string | null`, `companyName: string | null`). The session
+  storage layer (`lib/auth.ts`) needed no changes — it already stores
+  whatever shape `AuthUser` is.
+- `app-shell.tsx`: the header (desktop) and mobile-nav sidebar previously
+  showed a hardcoded "Company Workspace" / "Organization" placeholder —
+  both now render `user.companyName`, falling back to the old placeholder
+  text if it's ever null (e.g. a `PLATFORM_OWNER` account with no
+  company).
+- `profile/page.tsx`: added a company row (with a `Building2` icon,
+  matching the existing email/role row style) that only renders when
+  `companyName` is present.
+- No signup-page changes were needed: the admin-provisioned-only signup
+  flow (Phase 0 decision 4) was already implemented in the Phase 2 auth
+  work (`NO_COMPANY_INVITE` 403 with a clear message), and the frontend's
+  generic `getApiErrorMessage` already surfaces that message correctly
+  without any special-casing.
+- **Verified in this environment:** unlike prior phases, this change
+  didn't touch anything requiring a generated Prisma client for new type
+  errors — `npx tsc --noEmit` on `frontend` came back with **zero**
+  errors, and the backend's error count was unchanged (233, same
+  pre-existing stale-client noise as every prior phase) before and after.
+- **Manual QA still needed from Chris:** log in as users from two
+  different seeded companies (e.g. the default company and `Northwind
+  Demo Co`) and confirm each one's header/sidebar/profile page shows
+  their own company name, not the other's.
+
+**Phase 5 is now complete.** Phase 6 (hardening, full isolation test
+suite, docs, tagged release) is next.
 
 ### AI provider switch: Gemini → Groq (this session, alongside hr-assistant scoping)
 

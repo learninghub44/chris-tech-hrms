@@ -593,7 +593,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 </div>
                 <div>
                   <p className="text-sm font-semibold">HRMS</p>
-                  <p className="text-xs text-slate-500">Organization</p>
+                  <p className="text-xs text-slate-500">{user.companyName ?? "Organization"}</p>
                 </div>
               </Link>
               <button
@@ -625,7 +625,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-950">
                   <span className="sm:hidden">HRMS</span>
-                  <span className="hidden sm:inline">Company Workspace</span>
+                  <span className="hidden sm:inline">{user.companyName ?? "Company Workspace"}</span>
                 </p>
                 <p className="hidden break-all text-xs text-slate-500 sm:block sm:truncate">
                   {primaryRole ? roleLabels[primaryRole] : "User"} | {user.email}
