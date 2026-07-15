@@ -13,6 +13,7 @@ export function getCurrentLeaveBalanceYear(): number {
 
 export async function initializeLeaveBalancesForEmployee(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   employeeId: string;
   year: number;
 }): Promise<void> {
@@ -44,6 +45,7 @@ export async function initializeLeaveBalancesForEmployee(input: {
         },
         update: {},
         create: {
+          companyId: input.companyId,
           employeeId: input.employeeId,
           leaveTypeId: leaveType.id,
           year: input.year,
@@ -108,6 +110,7 @@ export async function linkExistingEmployeeForUser(input: {
 
   await initializeLeaveBalancesForEmployee({
     transaction: input.transaction,
+    companyId: input.companyId,
     employeeId: employee.id,
     year: getCurrentLeaveBalanceYear()
   });

@@ -74,6 +74,9 @@ const smokeEmployeeEmail = "phase10.employee@hrms.local";
 const smokeEmployeePassword = "Employee@12345";
 const smokeEmployeeCode = "SMOKE-EMP-001";
 const smokeLeaveTypeName = "Smoke Unpaid Leave";
+// Must match PRIMARY_COMPANY_SLUG in prisma/seed.ts — the smoke admin/employee
+// accounts belong to this tenant.
+const primaryCompanySlug = "chris-tech-default";
 const smokePayrollMonth = 12;
 const smokePayrollYear = 2099;
 
@@ -231,6 +234,18 @@ async function ensureSmokeData(): Promise<{
     throw new Error("EMPLOYEE role is missing. Run npm run db:seed before smoke testing.");
   }
 
+  const primaryCompany = await prisma.company.findUnique({
+    where: {
+      slug: primaryCompanySlug
+    }
+  });
+
+  if (!primaryCompany) {
+    throw new Error("Primary company is missing. Run npm run db:seed before smoke testing.");
+  }
+
+  const companyId = primaryCompany.id;
+
   const passwordHash = await hashPassword(smokeEmployeePassword);
   const user = await prisma.user.upsert({
     where: {
@@ -284,7 +299,10 @@ async function ensureSmokeData(): Promise<{
 
   const employee = await prisma.employee.upsert({
     where: {
-      employeeCode: smokeEmployeeCode
+      companyId_employeeCode: {
+        companyId,
+        employeeCode: smokeEmployeeCode
+      }
     },
     update: {
       userId: user.id,
@@ -295,6 +313,7 @@ async function ensureSmokeData(): Promise<{
       location: "Smoke Test"
     },
     create: {
+      companyId,
       employeeCode: smokeEmployeeCode,
       userId: user.id,
       firstName: "Phase",
@@ -307,7 +326,10 @@ async function ensureSmokeData(): Promise<{
   });
   const leaveType = await prisma.leaveType.upsert({
     where: {
-      name: smokeLeaveTypeName
+      companyId_name: {
+        companyId,
+        name: smokeLeaveTypeName
+      }
     },
     update: {
       description: "Test-owned unpaid leave type for smoke checks",
@@ -317,6 +339,7 @@ async function ensureSmokeData(): Promise<{
       isActive: true
     },
     create: {
+      companyId,
       name: smokeLeaveTypeName,
       description: "Test-owned unpaid leave type for smoke checks",
       defaultAnnualAllowance: 5,
@@ -350,6 +373,7 @@ async function ensureSmokeData(): Promise<{
       available: 5
     },
     create: {
+      companyId,
       employeeId: employee.id,
       leaveTypeId: leaveType.id,
       year: leaveYear,
@@ -359,7 +383,10 @@ async function ensureSmokeData(): Promise<{
   });
   await prisma.shift.upsert({
     where: {
-      name: "General Shift"
+      companyId_name: {
+        companyId,
+        name: "General Shift"
+      }
     },
     update: {
       startTime: "09:30",
@@ -370,6 +397,7 @@ async function ensureSmokeData(): Promise<{
       isActive: true
     },
     create: {
+      companyId,
       name: "General Shift",
       startTime: "09:30",
       endTime: "18:30",
@@ -397,6 +425,7 @@ async function ensureSmokeData(): Promise<{
       isActive: true
     },
     create: {
+      companyId,
       employeeId: employee.id,
       baseSalary: 5000,
       allowances: 500,

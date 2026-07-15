@@ -345,10 +345,12 @@ async function findLinkableUserId(workEmail: string, companyId: string): Promise
 }
 
 function toEmergencyContactCreateMany(
+  companyId: string,
   employeeId: string,
   contacts: z.infer<typeof emergencyContactSchema>[]
 ): Prisma.EmergencyContactCreateManyInput[] {
   return contacts.map((contact) => ({
+    companyId,
     employeeId,
     name: contact.name,
     relationship: contact.relationship,
@@ -623,13 +625,14 @@ employeeCoreRouter.post(
 
         await initializeLeaveBalancesForEmployee({
           transaction,
+          companyId: scope.companyId,
           employeeId: createdEmployee.id,
           year: getCurrentLeaveBalanceYear()
         });
 
         if (body.emergencyContacts.length > 0) {
           await transaction.emergencyContact.createMany({
-            data: toEmergencyContactCreateMany(createdEmployee.id, body.emergencyContacts)
+            data: toEmergencyContactCreateMany(scope.companyId, createdEmployee.id, body.emergencyContacts)
           });
         }
 
@@ -696,7 +699,7 @@ employeeCoreRouter.put(
 
           if (body.emergencyContacts.length > 0) {
             await transaction.emergencyContact.createMany({
-              data: toEmergencyContactCreateMany(params.id, body.emergencyContacts)
+              data: toEmergencyContactCreateMany(scope.companyId, params.id, body.emergencyContacts)
             });
           }
         }
@@ -780,6 +783,7 @@ employeeCoreRouter.post(
     try {
       const document = await prisma.employeeDocument.create({
         data: {
+          companyId: employee.companyId,
           employeeId: employee.id,
           documentType: body.documentType,
           fileName: body.fileName,

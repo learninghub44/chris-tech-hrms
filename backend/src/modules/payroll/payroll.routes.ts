@@ -209,6 +209,7 @@ async function assertEmployeeInCompany(employeeId: string, companyId: string): P
 
 async function createNotificationForUser(input: {
   transaction: Prisma.TransactionClient;
+  companyId: string;
   userId: string | null;
   title: string;
   message: string;
@@ -220,6 +221,7 @@ async function createNotificationForUser(input: {
 
   return input.transaction.notification.create({
     data: {
+      companyId: input.companyId,
       userId: input.userId,
       title: input.title,
       message: input.message,
@@ -482,6 +484,7 @@ payrollRouter.post(
 
           const notification = await createNotificationForUser({
             transaction,
+            companyId: scope.companyId,
             userId: itemInput.salary.employee.userId,
             title: "Payslip generated",
             message: `Your ${getMonthName(body.month)} ${body.year} payslip is available`,
