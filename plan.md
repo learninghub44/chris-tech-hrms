@@ -4,7 +4,7 @@
 
 Build a full-stack HR Management System where a company can manage employee operations, attendance, leave, payroll, recruitment, performance, notifications, announcements, reports, and employee self-service from one role-based web application.
 
-The current project has moved beyond the original MVP. Recruitment, performance management, real-time notifications, responsive UI improvements, PostgreSQL persistence, and a Gemini-powered HR assistant are now part of the implemented scope.
+The current project has moved beyond the original MVP. Recruitment, performance management, real-time notifications, responsive UI improvements, PostgreSQL persistence, and a Groq-powered HR assistant are now part of the implemented scope.
 
 ## 2. Current User Roles
 
@@ -32,7 +32,7 @@ The current project has moved beyond the original MVP. Recruitment, performance 
 | Real-time updates | Implemented | Socket.IO, JWT socket auth, user rooms, TanStack Query cache sync |
 | Recruitment | Implemented | Jobs, candidates, applications, interviews, offers |
 | Performance | Implemented | Goals, reviews, feedback, appraisal history |
-| HR assistant | Implemented | Gemini-backed assistant with HR data tools |
+| HR assistant | Implemented | Groq-backed assistant with HR data tools |
 | Responsive UI | Implemented | Mobile navbar/sidebar and page-level responsive fixes |
 | Smoke validation | Implemented | Backend smoke test covers key workflows |
 | Production hardening | Future | CI, deployment, audit logs, email delivery, storage, monitoring |
@@ -50,7 +50,7 @@ The current project has moved beyond the original MVP. Recruitment, performance 
 | Database | PostgreSQL | Persistent HRMS data |
 | ORM | Prisma | Schema, migrations, typed queries |
 | Realtime | Socket.IO | User-scoped notification delivery |
-| AI | Gemini API | HR assistant function/tool orchestration |
+| AI | Groq API | HR assistant function/tool orchestration |
 | Validation | Zod | Request validation |
 | Cache | Redis optional | Dashboard summary caching |
 | Local infra | Docker Compose | PostgreSQL container |
@@ -73,7 +73,7 @@ flowchart TD
     SocketServer --> Rooms["Private user rooms"]
 
     Assistant --> AssistantApi["/api/hr-assistant/chat"]
-    AssistantApi --> Gemini["Gemini API"]
+    AssistantApi --> Groq["Groq API"]
     AssistantApi --> Tools["HR Data Tools"]
 
     Modules --> Prisma["Prisma ORM"]
@@ -114,11 +114,11 @@ flowchart TD
 
 1. Employee asks a natural language question in the floating chat widget.
 2. Frontend posts the message and recent history to `/api/hr-assistant/chat`.
-3. Backend sends Gemini a system prompt plus HR tool declarations.
-4. Gemini chooses a tool when factual HR data is needed.
+3. Backend sends Groq a system prompt plus HR tool declarations.
+4. Groq chooses a tool when factual HR data is needed.
 5. Backend executes the selected tool against authenticated employee data.
-6. Backend returns the tool result to Gemini.
-7. Gemini writes a concise answer for the employee.
+6. Backend returns the tool result to Groq.
+7. Groq writes a concise answer for the employee.
 
 Supported assistant tools:
 
@@ -351,7 +351,7 @@ POST /api/feedback
 Implemented capabilities:
 
 - Floating chat widget
-- Gemini model request
+- Groq model request
 - HR tool declarations
 - Tool execution against authenticated employee data
 - Short natural language responses
@@ -450,7 +450,7 @@ This project now demonstrates:
 - PostgreSQL relational modeling with Prisma
 - Role and permission based product workflows
 - Real-time event delivery with Socket.IO
-- LLM orchestration with Gemini tool use
+- LLM orchestration with Groq tool use
 - TanStack Query cache synchronization
 - Responsive operational UI design
 - API validation with Zod

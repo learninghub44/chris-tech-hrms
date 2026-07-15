@@ -112,7 +112,7 @@ Repeat the Phase 3 pattern for the remaining 10 modules, in this order (roughly 
 8. `payroll` (highest risk — financial data, be extra careful with `Salary`, `Payroll`, `PayrollItem`, `Payslip`)
 9. `dashboard` (aggregation queries — make sure summary counts are per-company, not global)
 10. `reports` (same concern as dashboard — every report query needs the company filter)
-11. `hr-assistant` — the Gemini tool functions (`get_leave_balance`, `get_next_payroll`, `get_manager`) must also be scoped so the assistant can never answer with another company's data
+11. `hr-assistant` — the Groq tool functions (`get_leave_balance`, `get_next_payroll`, `get_manager`) must also be scoped so the assistant can never answer with another company's data
 
 Each module gets its own PR following the Phase 3 checklist (scope queries, seed a second company's data, write a cross-tenant isolation smoke test).
 
@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard, reports done; 1 remains: hr-assistant)
+- [x] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard, reports, hr-assistant all done)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -465,7 +465,7 @@ partial touch covered them.
 **Next up per the Phase 4 order list:** `dashboard` (item 9) — aggregation
 queries need to confirm every summary count is per-company, not global —
 followed by `reports` (item 10, same concern) and `hr-assistant` (item 11,
-the Gemini tool functions must never answer with another company's data).
+the Groq tool functions must never answer with another company's data).
 
 ### Phase 4 — dashboard module scoped (7 of 10 remaining modules)
 
@@ -520,7 +520,7 @@ the Gemini tool functions must never answer with another company's data).
 
 **Next up per the Phase 4 order list:** `reports` (item 10) — same
 aggregation-query concern as dashboard, every report query needs the
-company filter — followed by `hr-assistant` (item 11, the Gemini tool
+company filter — followed by `hr-assistant` (item 11, the Groq tool
 functions must never answer with another company's data).
 
 ### Phase 4 — reports module scoped (8 of 10 remaining modules)
@@ -568,7 +568,73 @@ functions must never answer with another company's data).
   actually pass against a live database.
 
 **Next up per the Phase 4 order list:** `hr-assistant` (item 11, the final
-Phase 4 module) — the Gemini tool functions (`get_leave_balance`,
+Phase 4 module) — the Groq tool functions (`get_leave_balance`,
 `get_next_payroll`, `get_manager`) must be scoped so the assistant can
 never answer with another company's data. Once this is done, Phase 4 is
 complete and Phase 5 (frontend company context) can start.
+
+### Phase 4 — hr-assistant module scoped (10 of 10 — Phase 4 complete)
+
+- **Files:** `backend/src/modules/hr-assistant/hr-assistant.routes.ts`.
+- `requireCompanyContext` mounted on the router (was previously missing
+  entirely — the module only relied on `authenticate`).
+- `getEmployeeForAuth` (this module's local copy, same pattern as payroll
+  and dashboard) now scopes the `Employee` lookup by `companyId` in
+  addition to `userId`, switching from `findUnique` to `findFirst` since
+  the lookup is no longer on a single unique key alone.
+- `get_leave_balance` tool: the `LeaveBalance` query now also filters by
+  `companyId` alongside `employeeId` and `year`.
+- `get_next_payroll` tool: the `Payslip` (latest + current-period) and
+  `Salary` queries now filter by `companyId`; the `Salary` lookup switched
+  from `findUnique` to `findFirst` for the same reason as the employee
+  lookup above.
+- `get_manager` tool needed no query change — it only reads fields already
+  returned by the now-scoped `getEmployeeForAuth`.
+- No cross-tenant leak was actually reachable before this change (every
+  query was already implicitly scoped to the authenticated user's own
+  employee record via `userId`/`employeeId`), but this brings the module
+  in line with the defense-in-depth pattern every other Phase 3/4 module
+  follows, per this roadmap's own review checklist ("no raw Prisma query
+  missing a `companyId` filter").
+- **Not yet verified in this environment:** same `prisma generate` /
+  `binaries.prisma.sh` sandbox limitation as every prior phase (confirmed
+  again directly in this session — still 403 Forbidden). Ran `npm install`
+  successfully this session (unlike prior phases, dependency install
+  itself is not blocked, only the Prisma engine download), which let
+  `tsc --noEmit` run against real `express`/`zod` types. Errors touching
+  this file: 3 implicit-`any` errors on the `LeaveBalance` query result,
+  caused by the missing generated `@prisma/client` (no `.prisma/client`
+  directory exists at all in this sandbox) — same "stale/missing generated
+  client" noise class flagged in every prior phase's log, not a new bug.
+  Before merging: run `npx prisma generate`, `npm run db:seed`, then
+  `npm run test:smoke` with real network/database access.
+
+**Phase 4 is now complete.** Phase 5 (frontend company context) can start.
+
+### AI provider switch: Gemini → Groq (this session, alongside hr-assistant scoping)
+
+- Chris requested swapping the HR assistant's model provider from Gemini
+  to Groq. Done as part of the same file touch as the hr-assistant Phase 4
+  scoping above, since both changes land in
+  `backend/src/modules/hr-assistant/hr-assistant.routes.ts`.
+- Replaced the Gemini `generateContent` REST call (`x-goog-api-key` header,
+  `contents`/`functionDeclarations`/`generationConfig` request shape,
+  `candidates`/`parts` response shape) with Groq's OpenAI-compatible
+  `POST https://api.groq.com/openai/v1/chat/completions` endpoint
+  (`Authorization: Bearer` header, `messages`/`tools`/`tool_choice`
+  request shape, `choices[0].message`/`tool_calls` response shape).
+- `backend/src/config/env.ts` and `backend/.env.example`:
+  `GEMINI_API_KEY`/`GEMINI_MODEL`/`GEMINI_MAX_OUTPUT_TOKENS` renamed to
+  `GROQ_API_KEY`/`GROQ_MODEL`/`GROQ_MAX_OUTPUT_TOKENS`.
+  `GROQ_MODEL` defaults to `llama-3.3-70b-versatile`.
+- Error codes renamed to match: `GEMINI_NOT_CONFIGURED` →
+  `GROQ_NOT_CONFIGURED`, `GEMINI_REQUEST_FAILED` → `GROQ_REQUEST_FAILED`,
+  `GEMINI_RESPONSE_INVALID` → `GROQ_RESPONSE_INVALID`.
+- Tool-calling loop logic is preserved 1:1 (up to 3 rounds, same three HR
+  tools, same system prompt), just re-expressed in OpenAI message/tool-call
+  shape instead of Gemini's `parts`/`functionCall` shape.
+- `README.md`, `plan.md`: all Gemini mentions updated to Groq (tech stack
+  table, architecture diagram, setup steps, troubleshooting section).
+- **Action needed from Chris:** get a Groq API key from
+  console.groq.com and set `GROQ_API_KEY` in `backend/.env` — the old
+  Gemini key won't work against the new endpoint.

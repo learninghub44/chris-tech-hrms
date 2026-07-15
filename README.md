@@ -1,6 +1,6 @@
 # HRMS - Full-Stack Human Resource Management System
 
-HRMS is a full-stack human resource management platform built with Next.js, Express, Prisma, PostgreSQL, Socket.IO, and Gemini AI. It brings core HR workflows into one role-based web application: employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant.
+HRMS is a full-stack human resource management platform built with Next.js, Express, Prisma, PostgreSQL, Socket.IO, and Groq AI. It brings core HR workflows into one role-based web application: employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant.
 
 The project is designed as a portfolio-grade HR product. It demonstrates typed API development, relational data modeling, role-based access control, real-time event delivery, LLM tool use, responsive frontend work, and practical validation tooling.
 
@@ -82,13 +82,13 @@ The project is designed as a portfolio-grade HR product. It demonstrates typed A
 ### AI HR Assistant
 
 - Floating HR assistant chat widget
-- Gemini API integration
+- Groq API integration (OpenAI-compatible chat completions)
 - Tool-calling style HR functions backed by real data:
   - `get_leave_balance`
   - `get_next_payroll`
   - `get_manager`
 - Answers are scoped to the authenticated employee
-- If Gemini is not configured, the API returns a clear setup hint
+- If Groq is not configured, the API returns a clear setup hint
 
 ### Frontend Experience
 
@@ -111,7 +111,7 @@ The project is designed as a portfolio-grade HR product. It demonstrates typed A
 | Database | PostgreSQL |
 | ORM | Prisma |
 | Realtime | Socket.IO |
-| AI | Gemini API with function/tool orchestration |
+| AI | Groq API with function/tool orchestration |
 | Validation | Zod |
 | Security | JWT, Helmet, CORS, password hashing |
 | Cache | Optional Redis cache |
@@ -137,7 +137,7 @@ Express API
   |-- Authorization middleware
   |-- Domain route modules
   |-- Socket.IO user rooms
-  |-- Gemini HR assistant tool calls
+  |-- Groq HR assistant tool calls
   |-- Optional Redis cache
   v
 Prisma ORM
@@ -236,7 +236,7 @@ These credentials are for local development only. Replace demo users and secrets
 - Node.js 20+
 - npm 10+
 - Docker Desktop, or a local PostgreSQL instance
-- Optional: Gemini API key for the HR assistant
+- Optional: Groq API key for the HR assistant
 
 ### 1. Install Dependencies
 
@@ -262,9 +262,9 @@ cp frontend/.env.example frontend/.env.local
 
 Review the copied files before starting the app:
 
-- `backend/.env` controls the API port, CORS origin, database URL, JWT settings, optional Redis cache, Gemini settings, Prisma settings, and seeded demo passwords.
+- `backend/.env` controls the API port, CORS origin, database URL, JWT settings, optional Redis cache, Groq settings, Prisma settings, and seeded demo passwords.
 - `frontend/.env.local` points the Next.js app at the backend API through `NEXT_PUBLIC_API_URL`.
-- Add `GEMINI_API_KEY=<your-gemini-key>` to `backend/.env` if you want the HR assistant to answer with Gemini.
+- Add `GROQ_API_KEY=<your-groq-key>` to `backend/.env` if you want the HR assistant to answer with Groq.
 - Keep real API keys out of `.env.example` and out of commits.
 - For local development, leave `REDIS_URL` empty unless you are running Redis.
 - Before production, replace `JWT_SECRET` and all demo seed passwords.
@@ -397,7 +397,7 @@ Realtime events are currently emitted for:
 
 ## HR Assistant
 
-The HR assistant is available as a floating chat widget after login. It uses Gemini and server-side HR tools to answer employee questions from real data.
+The HR assistant is available as a floating chat widget after login. It uses Groq and server-side HR tools to answer employee questions from real data.
 
 Example questions:
 
@@ -409,11 +409,11 @@ Who is my manager?
 
 Setup:
 
-1. Add `GEMINI_API_KEY=<your-gemini-key>` to `backend/.env`.
-2. Keep `GEMINI_MODEL` and `GEMINI_MAX_OUTPUT_TOKENS` from `.env.example`, or adjust them.
+1. Add `GROQ_API_KEY=<your-groq-key>` to `backend/.env`.
+2. Keep `GROQ_MODEL` and `GROQ_MAX_OUTPUT_TOKENS` from `.env.example`, or adjust them.
 3. Restart the backend after changing `.env`.
 
-If the key is missing, the assistant API returns `GEMINI_NOT_CONFIGURED` with a setup hint.
+If the key is missing, the assistant API returns `GROQ_NOT_CONFIGURED` with a setup hint.
 
 ## Useful Local Commands
 
@@ -438,7 +438,7 @@ Stop development servers with `Ctrl+C`. Use `npm run db:down` to stop the Docker
 - If the frontend cannot reach the API, confirm `NEXT_PUBLIC_API_URL` is `http://localhost:5000/api` and the backend is running.
 - If `npm run dev:frontend` fails with `EADDRINUSE` on port `3000`, another Next.js process is already running. Stop it or use the already-running `http://localhost:3000`.
 - If `npm run dev:backend` fails with `EADDRINUSE` on port `5000`, another backend process is already running. Stop it or update `PORT` in `backend/.env`.
-- If the HR assistant says it is not configured, set `GEMINI_API_KEY` in `backend/.env` and restart the backend.
+- If the HR assistant says it is not configured, set `GROQ_API_KEY` in `backend/.env` and restart the backend.
 - If realtime notifications do not update, verify the backend is running on the same origin implied by `NEXT_PUBLIC_API_URL` and that the user is logged in with a valid token.
 
 ## Deployment
@@ -484,7 +484,7 @@ NODE_VERSION=20
 Optional backend environment variables:
 
 ```text
-GEMINI_API_KEY=<your-gemini-key>
+GROQ_API_KEY=<your-groq-key>
 REDIS_URL=<render-key-value-or-redis-url>
 ```
 

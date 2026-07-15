@@ -63,9 +63,9 @@ const envSchema = z.object({
   PRISMA_CONNECTION_LIMIT: z.coerce.number().int().positive().default(10),
   PRISMA_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(20),
   BUSINESS_TIME_ZONE: z.string().min(1).default("Asia/Kolkata").refine(isValidTimeZone),
-  GEMINI_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
-  GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
-  GEMINI_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(65_536).default(700)
+  GROQ_API_KEY: z.preprocess(emptyStringToUndefined, z.string().min(1).optional()),
+  GROQ_MODEL: z.string().min(1).default("llama-3.3-70b-versatile"),
+  GROQ_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(65_536).default(700)
 });
 
 export const env = envSchema.parse(process.env);

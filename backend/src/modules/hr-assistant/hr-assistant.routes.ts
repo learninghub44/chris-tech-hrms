@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
+import { companyScope, requireCompanyContext } from "../../middleware/tenant";
 import type { AuthUser } from "../auth/auth.service";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -17,51 +18,67 @@ type ChatHistoryMessage = {
   content: string;
 };
 
-type GeminiTextPart = {
-  text: string;
-};
-
-type GeminiFunctionCall = {
-  id?: string;
-  name: string;
-  args?: unknown;
-};
-
-type GeminiFunctionCallPart = {
-  functionCall: GeminiFunctionCall;
-};
-
-type GeminiFunctionResponsePart = {
-  functionResponse: {
-    id?: string;
+type GroqToolCall = {
+  id: string;
+  type: "function";
+  function: {
     name: string;
-    response: Record<string, unknown>;
+    arguments: string;
   };
 };
 
-type GeminiPart = GeminiTextPart | GeminiFunctionCallPart | GeminiFunctionResponsePart;
-
-type GeminiContent = {
-  role: "user" | "model";
-  parts: GeminiPart[];
+type GroqAssistantMessage = {
+  role: "assistant";
+  content: string | null;
+  tool_calls?: GroqToolCall[];
 };
 
-type GeminiCandidate = {
-  content?: GeminiContent;
-  finishReason?: string;
+type GroqSystemMessage = {
+  role: "system";
+  content: string;
 };
 
-type GeminiGenerateContentResponse = {
-  candidates: GeminiCandidate[];
+type GroqUserMessage = {
+  role: "user";
+  content: string;
 };
 
-type GeminiFunctionDeclaration = {
+type GroqToolMessage = {
+  role: "tool";
+  tool_call_id: string;
+  content: string;
+};
+
+type GroqChatMessage = GroqSystemMessage | GroqUserMessage | GroqAssistantMessage | GroqToolMessage;
+
+type GroqChoice = {
+  message: GroqAssistantMessage;
+  finish_reason?: string;
+};
+
+type GroqChatCompletionResponse = {
+  choices: GroqChoice[];
+};
+
+type GroqFunctionDeclaration = {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
 };
 
+type GroqTool = {
+  type: "function";
+  function: GroqFunctionDeclaration;
+};
+
+type FunctionCallRequest = {
+  id: string;
+  name: string;
+  args: unknown;
+};
+
 type ToolExecutionResult = {
+  toolCallId: string;
   toolName: string;
   response: Record<string, unknown>;
   isError: boolean;
@@ -106,7 +123,7 @@ const employeeSelect = {
   }
 };
 
-const hrAssistantTools: GeminiFunctionDeclaration[] = [
+const hrAssistantFunctions: GroqFunctionDeclaration[] = [
   {
     name: "get_leave_balance",
     description:
@@ -140,6 +157,11 @@ const hrAssistantTools: GeminiFunctionDeclaration[] = [
     }
   }
 ];
+
+const hrAssistantTools: GroqTool[] = hrAssistantFunctions.map((functionDeclaration) => ({
+  type: "function" as const,
+  function: functionDeclaration
+}));
 
 const systemPrompt = [
   "You are the HR Assistant inside HRMS.",
@@ -193,74 +215,63 @@ function getNextPayrollPeriod(input: {
   };
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isTextPart(part: GeminiPart): part is GeminiTextPart {
-  return "text" in part && typeof part.text === "string";
-}
-
-function isFunctionCallPart(part: GeminiPart): part is GeminiFunctionCallPart {
-  return "functionCall" in part && isObject(part.functionCall) && typeof part.functionCall.name === "string";
-}
-
-function extractAssistantText(response: GeminiGenerateContentResponse): string {
-  return response.candidates
-    .flatMap((candidate) => candidate.content?.parts ?? [])
-    .filter(isTextPart)
-    .map((part) => part.text.trim())
-    .filter((text) => text.length > 0)
-    .join("\n")
-    .trim();
-}
-
-function extractFunctionCalls(response: GeminiGenerateContentResponse): GeminiFunctionCall[] {
-  return response.candidates
-    .flatMap((candidate) => candidate.content?.parts ?? [])
-    .filter(isFunctionCallPart)
-    .map((part) => part.functionCall);
-}
-
-function getFirstCandidateContent(response: GeminiGenerateContentResponse): GeminiContent | null {
-  return response.candidates[0]?.content ?? null;
-}
-
-function isGeminiGenerateContentResponse(payload: unknown): payload is GeminiGenerateContentResponse {
-  if (!isObject(payload) || !Array.isArray(payload.candidates)) {
-    return false;
+function normalizeToolArgs(rawArguments: string): unknown {
+  if (!rawArguments || rawArguments.trim().length === 0) {
+    return {};
   }
 
-  return payload.candidates.every((candidate) => isObject(candidate));
+  try {
+    return JSON.parse(rawArguments) as unknown;
+  } catch {
+    return {};
+  }
 }
 
-function toContents(history: ChatHistoryMessage[], message: string): GeminiContent[] {
+function extractAssistantText(message: GroqAssistantMessage): string {
+  return (message.content ?? "").trim();
+}
+
+function extractFunctionCalls(message: GroqAssistantMessage): FunctionCallRequest[] {
+  return (message.tool_calls ?? []).map((toolCall) => ({
+    id: toolCall.id,
+    name: toolCall.function.name,
+    args: normalizeToolArgs(toolCall.function.arguments)
+  }));
+}
+
+function toMessages(history: ChatHistoryMessage[], message: string): GroqChatMessage[] {
   const trimmedHistory = history.slice(-8);
 
   return [
-    ...trimmedHistory.map((historyMessage) => ({
-      role: historyMessage.role === "assistant" ? "model" as const : "user" as const,
-      parts: [{ text: historyMessage.content }]
+    { role: "system", content: systemPrompt },
+    ...trimmedHistory.map((historyMessage): GroqChatMessage => ({
+      role: historyMessage.role,
+      content: historyMessage.content
     })),
     {
-      role: "user" as const,
-      parts: [{ text: message }]
+      role: "user",
+      content: message
     }
   ];
 }
 
-function getGeminiModelPath(): string {
-  return env.GEMINI_MODEL.startsWith("models/") ? env.GEMINI_MODEL : `models/${env.GEMINI_MODEL}`;
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function normalizeToolArgs(args: unknown): unknown {
-  return args === undefined ? {} : args;
+function isGroqChatCompletionResponse(payload: unknown): payload is GroqChatCompletionResponse {
+  if (!isObject(payload) || !Array.isArray(payload.choices)) {
+    return false;
+  }
+
+  return payload.choices.every((choice) => isObject(choice) && isObject(choice.message));
 }
 
 async function getEmployeeForAuth(auth: AuthUser) {
-  return prisma.employee.findUnique({
+  return prisma.employee.findFirst({
     where: {
-      userId: auth.id
+      userId: auth.id,
+      companyId: companyScope({ auth }).companyId
     },
     select: employeeSelect
   });
@@ -281,6 +292,7 @@ async function getLeaveBalanceToolResult(auth: AuthUser, input: unknown) {
   const leaveBalances = await prisma.leaveBalance.findMany({
     where: {
       employeeId: employee.id,
+      companyId: companyScope({ auth }).companyId,
       year
     },
     include: {
@@ -344,6 +356,7 @@ async function getNextPayrollToolResult(auth: AuthUser, input: unknown) {
     };
   }
 
+  const companyId = companyScope({ auth }).companyId;
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -355,7 +368,8 @@ async function getNextPayrollToolResult(auth: AuthUser, input: unknown) {
   const [latestPayslip, currentPayslip, salary] = await Promise.all([
     prisma.payslip.findFirst({
       where: {
-        employeeId: employee.id
+        employeeId: employee.id,
+        companyId
       },
       include: {
         payroll: true
@@ -367,6 +381,7 @@ async function getNextPayrollToolResult(auth: AuthUser, input: unknown) {
     prisma.payslip.findFirst({
       where: {
         employeeId: employee.id,
+        companyId,
         payroll: {
           month: currentMonth,
           year: currentYear
@@ -376,9 +391,10 @@ async function getNextPayrollToolResult(auth: AuthUser, input: unknown) {
         payroll: true
       }
     }),
-    prisma.salary.findUnique({
+    prisma.salary.findFirst({
       where: {
-        employeeId: employee.id
+        employeeId: employee.id,
+        companyId
       }
     })
   ]);
@@ -450,16 +466,15 @@ async function getManagerToolResult(auth: AuthUser, input: unknown) {
 
 async function executeTool(input: {
   auth: AuthUser;
-  functionCall: GeminiFunctionCall;
+  functionCall: FunctionCallRequest;
 }): Promise<ToolExecutionResult> {
-  const functionArgs = normalizeToolArgs(input.functionCall.args);
-
   try {
     if (input.functionCall.name === "get_leave_balance") {
       return {
+        toolCallId: input.functionCall.id,
         toolName: input.functionCall.name,
         response: {
-          result: await getLeaveBalanceToolResult(input.auth, functionArgs)
+          result: await getLeaveBalanceToolResult(input.auth, input.functionCall.args)
         },
         isError: false
       };
@@ -467,9 +482,10 @@ async function executeTool(input: {
 
     if (input.functionCall.name === "get_next_payroll") {
       return {
+        toolCallId: input.functionCall.id,
         toolName: input.functionCall.name,
         response: {
-          result: await getNextPayrollToolResult(input.auth, functionArgs)
+          result: await getNextPayrollToolResult(input.auth, input.functionCall.args)
         },
         isError: false
       };
@@ -477,15 +493,17 @@ async function executeTool(input: {
 
     if (input.functionCall.name === "get_manager") {
       return {
+        toolCallId: input.functionCall.id,
         toolName: input.functionCall.name,
         response: {
-          result: await getManagerToolResult(input.auth, functionArgs)
+          result: await getManagerToolResult(input.auth, input.functionCall.args)
         },
         isError: false
       };
     }
 
     return {
+      toolCallId: input.functionCall.id,
       toolName: input.functionCall.name,
       response: {
         error: {
@@ -496,6 +514,7 @@ async function executeTool(input: {
     };
   } catch (error) {
     return {
+      toolCallId: input.functionCall.id,
       toolName: input.functionCall.name,
       response: {
         error: {
@@ -507,50 +526,40 @@ async function executeTool(input: {
   }
 }
 
-async function createGeminiContent(contents: GeminiContent[]): Promise<GeminiGenerateContentResponse> {
-  if (!env.GEMINI_API_KEY) {
+async function createGroqChatCompletion(messages: GroqChatMessage[]): Promise<GroqAssistantMessage> {
+  if (!env.GROQ_API_KEY) {
     throw new AppError(
       503,
-      "GEMINI_NOT_CONFIGURED",
+      "GROQ_NOT_CONFIGURED",
       "HR Assistant is not configured",
       {
-        hint: "Set GEMINI_API_KEY in backend/.env, restart the backend, and try again."
+        hint: "Set GROQ_API_KEY in backend/.env, restart the backend, and try again."
       }
     );
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/${getGeminiModelPath()}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": env.GEMINI_API_KEY
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents,
-        tools: [
-          {
-            functionDeclarations: hrAssistantTools
-          }
-        ],
-        generationConfig: {
-          maxOutputTokens: env.GEMINI_MAX_OUTPUT_TOKENS,
-          temperature: 0.2
-        }
-      })
-    }
-  );
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: env.GROQ_MODEL,
+      messages,
+      tools: hrAssistantTools,
+      tool_choice: "auto",
+      max_tokens: env.GROQ_MAX_OUTPUT_TOKENS,
+      temperature: 0.2
+    })
+  });
   const responseText = await response.text();
 
   if (!response.ok) {
     throw new AppError(
       502,
-      "GEMINI_REQUEST_FAILED",
-      "Gemini could not answer the HR Assistant request",
+      "GROQ_REQUEST_FAILED",
+      "Groq could not answer the HR Assistant request",
       {
         status: response.status,
         responseBody: responseText
@@ -565,23 +574,23 @@ async function createGeminiContent(contents: GeminiContent[]): Promise<GeminiGen
   } catch (error) {
     throw new AppError(
       502,
-      "GEMINI_RESPONSE_INVALID",
-      "Gemini returned invalid JSON",
+      "GROQ_RESPONSE_INVALID",
+      "Groq returned invalid JSON",
       {
         message: error instanceof Error ? error.message : "JSON parsing failed"
       }
     );
   }
 
-  if (!isGeminiGenerateContentResponse(payload)) {
+  if (!isGroqChatCompletionResponse(payload) || !payload.choices[0]) {
     throw new AppError(
       502,
-      "GEMINI_RESPONSE_INVALID",
-      "Gemini returned an unexpected response shape"
+      "GROQ_RESPONSE_INVALID",
+      "Groq returned an unexpected response shape"
     );
   }
 
-  return payload;
+  return payload.choices[0].message;
 }
 
 async function runAssistant(input: {
@@ -589,34 +598,24 @@ async function runAssistant(input: {
   message: string;
   history: ChatHistoryMessage[];
 }): Promise<{ reply: string; toolsUsed: string[] }> {
-  const contents = toContents(input.history, input.message);
+  const messages = toMessages(input.history, input.message);
   const toolsUsed: string[] = [];
-  let response = await createGeminiContent(contents);
+  let assistantMessage = await createGroqChatCompletion(messages);
 
   for (let toolRound = 0; toolRound < 3; toolRound += 1) {
-    const functionCalls = extractFunctionCalls(response);
+    const functionCalls = extractFunctionCalls(assistantMessage);
 
     if (functionCalls.length === 0) {
       return {
-        reply: extractAssistantText(response) || "I could not find enough HR data to answer that.",
+        reply: extractAssistantText(assistantMessage) || "I could not find enough HR data to answer that.",
         toolsUsed
       };
     }
 
-    const modelContent = getFirstCandidateContent(response);
+    messages.push(assistantMessage);
 
-    if (!modelContent) {
-      throw new AppError(
-        502,
-        "GEMINI_RESPONSE_INVALID",
-        "Gemini requested a function call without returning model content"
-      );
-    }
-
-    contents.push(modelContent);
-
-    const functionResponseParts = await Promise.all(
-      functionCalls.map(async (functionCall): Promise<GeminiFunctionResponsePart> => {
+    const toolMessages = await Promise.all(
+      functionCalls.map(async (functionCall): Promise<GroqToolMessage> => {
         const result = await executeTool({
           auth: input.auth,
           functionCall
@@ -625,29 +624,25 @@ async function runAssistant(input: {
         toolsUsed.push(result.toolName);
 
         return {
-          functionResponse: {
-            ...(functionCall.id ? { id: functionCall.id } : {}),
-            name: functionCall.name,
-            response: result.response
-          }
+          role: "tool",
+          tool_call_id: result.toolCallId,
+          content: JSON.stringify(result.response)
         };
       })
     );
 
-    contents.push({
-      role: "user",
-      parts: functionResponseParts
-    });
-    response = await createGeminiContent(contents);
+    messages.push(...toolMessages);
+    assistantMessage = await createGroqChatCompletion(messages);
   }
 
   return {
-    reply: extractAssistantText(response) || "I found HR data, but could not produce a final answer.",
+    reply: extractAssistantText(assistantMessage) || "I found HR data, but could not produce a final answer.",
     toolsUsed
   };
 }
 
 hrAssistantRouter.use(authenticate);
+hrAssistantRouter.use(requireCompanyContext);
 
 hrAssistantRouter.post(
   "/hr-assistant/chat",
