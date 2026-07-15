@@ -4,10 +4,13 @@ export function Security() {
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
           <div>
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
-              Security
-            </span>
-            <h2 className="font-display mt-3 max-w-lg text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+            <div className="flex items-center gap-3">
+              <span className="h-px w-10 bg-ct-blue/60" />
+              <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-blue">
+                Security
+              </span>
+            </div>
+            <h2 className="font-display mt-4 max-w-lg text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               Enterprise-grade security
             </h2>
             <p className="font-inter mt-5 max-w-md text-lg leading-relaxed text-ct-graphite/70">

@@ -37,11 +37,14 @@ export function CoreFeatures() {
   return (
     <section id="features" className="bg-ct-paper py-28">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mb-14 max-w-2xl">
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
-            Core features
-          </span>
-          <h2 className="font-display mt-3 text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+        <div className="mb-16 max-w-2xl">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-ct-blue/60" />
+            <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-blue">
+              Core features
+            </span>
+          </div>
+          <h2 className="font-display mt-4 text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
             Enterprise HR tools that keep your team moving.
           </h2>
         </div>
@@ -49,12 +52,12 @@ export function CoreFeatures() {
           {features.map((feature, i) => (
             <div
               key={feature.title}
-              className="rounded-[32px] border border-ct-graphite/10 bg-white p-7 shadow-soft transition hover:-translate-y-1 hover:border-ct-blue/30"
+              className="group rounded-[32px] border border-ct-graphite/10 bg-white p-7 shadow-soft transition hover:-translate-y-1 hover:border-ct-ice/50"
             >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-3xl bg-gradient-to-br from-ct-blue to-ct-ice text-sm font-semibold text-white">
+              <span className="font-display text-3xl font-medium text-ct-ice transition group-hover:text-ct-blue">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <h3 className="font-display mt-5 text-xl font-bold text-ink">{feature.title}</h3>
+              <h3 className="font-display mt-5 text-xl font-medium text-ink">{feature.title}</h3>
               <p className="font-inter mt-3 text-sm leading-relaxed text-ink/70">
                 {feature.copy}
               </p>

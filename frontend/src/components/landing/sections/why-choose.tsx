@@ -3,10 +3,13 @@ export function WhyChoose() {
     <section id="why" className="mx-auto max-w-6xl px-6 py-24">
       <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
         <div>
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
-            Why choose our HRMS
-          </span>
-          <h2 className="font-display mt-3 max-w-lg text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-ct-blue/60" />
+            <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-blue">
+              Why choose our HRMS
+            </span>
+          </div>
+          <h2 className="font-display mt-4 max-w-lg text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
             Everything your HR team needs in one platform
           </h2>
           <p className="font-inter mt-5 max-w-md text-lg leading-relaxed text-ct-graphite/70">
@@ -21,10 +24,9 @@ export function WhyChoose() {
             <span className="font-inter text-xs font-semibold uppercase tracking-[0.15em] text-white/50">
               Employee directory
             </span>
-            <span className="flex gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-ct-ice/60" />
-              <span className="h-2 w-2 rounded-full bg-white/20" />
-              <span className="h-2 w-2 rounded-full bg-white/20" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-ct-ice/10 px-2.5 py-1 text-[11px] font-medium text-ct-ice">
+              <span className="h-1.5 w-1.5 rounded-full bg-ct-ice" />
+              128 active
             </span>
           </div>
           <div className="space-y-2">

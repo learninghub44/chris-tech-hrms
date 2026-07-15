@@ -6,7 +6,7 @@ export function FinalCTA() {
         className="pointer-events-none absolute -top-40 left-1/2 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-ct-blue/25 blur-[150px]"
       />
       <div className="relative mx-auto max-w-3xl px-6 text-center">
-        <h2 className="font-display text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+        <h2 className="font-display text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
           Transform the way you manage your workforce
         </h2>
         <p className="font-inter mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/70">

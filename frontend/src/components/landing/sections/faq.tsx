@@ -30,21 +30,25 @@ export function FAQ() {
     <section id="faq" className="bg-ct-paper py-24">
       <div className="mx-auto max-w-3xl px-6">
         <div className="mb-12 text-center">
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
-            Resources
-          </span>
-          <h2 className="font-display mt-3 text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+          <div className="flex items-center justify-center gap-3">
+            <span className="h-px w-10 bg-ct-blue/60" />
+            <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-blue">
+              Resources
+            </span>
+            <span className="h-px w-10 bg-ct-blue/60" />
+          </div>
+          <h2 className="font-display mt-4 text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
             Frequently asked questions
           </h2>
         </div>
         <div className="divide-y divide-ct-graphite/10 border-y border-ct-graphite/10">
           {faqs.map((item) => (
             <details key={item.q} className="group py-5">
-              <summary className="font-display flex cursor-pointer list-none items-center justify-between text-lg font-bold marker:content-none">
+              <summary className="font-display flex cursor-pointer list-none items-center justify-between text-lg font-medium marker:content-none">
                 {item.q}
                 <span
                   aria-hidden
-                  className="ml-4 shrink-0 font-mono text-xl text-ct-blue/60 transition group-open:rotate-45"
+                  className="font-display ml-4 shrink-0 text-2xl text-ct-ice transition group-open:rotate-45"
                 >
                   +
                 </span>

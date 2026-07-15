@@ -1,13 +1,20 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 export function PlatformOverview() {
   return (
     <section id="platform" className="bg-ct-steel py-28 text-white">
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid items-center gap-16 lg:grid-cols-2">
           <div>
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-ice">
-              Solutions
-            </span>
-            <h2 className="font-display mt-3 max-w-lg text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
+            <div className="flex items-center gap-3">
+              <span className="h-px w-10 bg-ct-ice/70" />
+              <span className="font-mono text-xs uppercase tracking-[0.32em] text-ct-ice">
+                Solutions
+              </span>
+            </div>
+            <h2 className="font-display mt-4 max-w-lg text-3xl font-medium tracking-[-0.02em] sm:text-4xl lg:text-5xl">
               Built for modern enterprise teams
             </h2>
             <p className="font-inter mt-6 max-w-md text-lg leading-relaxed text-white/70">
@@ -35,10 +42,13 @@ export function PlatformOverview() {
               <span className="font-inter text-xs font-semibold uppercase tracking-[0.15em] text-white/50">
                 Organization health
               </span>
-              <span className="flex gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-ct-ice/60" />
-                <span className="h-2 w-2 rounded-full bg-white/20" />
-                <span className="h-2 w-2 rounded-full bg-white/20" />
+              <span className="inline-flex items-center gap-1.5 font-inter text-[11px] text-white/50">
+                <motion.span
+                  className="h-1.5 w-1.5 rounded-full bg-ct-blue"
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+                Synced
               </span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

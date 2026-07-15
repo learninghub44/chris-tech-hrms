@@ -1,11 +1,13 @@
 # Landing Page Redesign — Phase Plan
 
-**Status (2026-07-15):** Phases 1–2 done and pushed to `main`. Phase 3
-(section pass) not started. Next agent should pick up there.
+**Status (2026-07-15):** Phases 1–3 done and pushed to `main`. Phase 4 (QA)
+not started — needs a real `next build` on a machine with internet access.
 
 **Commit log for this effort:**
 - `8c721fa` — Phase 1: tokens (palette + Fraunces/Inter typography)
 - `6208361` — Phase 2: cinematic hero rebuild (custom video, glass nav, serif headline)
+- `2862633` — doc: status header + commit log
+- *(pending)* — Phase 3: section pass
 
 Design reference: visual quality/UX of jrmhd.tech (cinematic hero, premium
 enterprise aesthetic, glassmorphism, elegant typography, generous whitespace).
@@ -45,12 +47,29 @@ work mid-stream has full context without re-deriving the plan.
   refined pill buttons, and a signature glass "workforce pulse" card with one
   small floating accent chip (intentionally singular — the old hero had two
   overlapping panels, which read as cluttered).
-- [ ] **Phase 3 — Section pass.** Reduce the repeated "dark card with
-  border-white/10 mockup" pattern across `why-choose`, `platform-overview`,
-  and `security` so each reads as distinct rather than templated; refresh
-  `core-features` card numerals (serif + gold instead of blue gradient
-  badge); refine `testimonials` (serif quote glyph), `faq`, `final-cta`,
-  `trusted-companies`, `site-footer` spacing/type to match the new tokens.
+- [x] **Phase 3 — Section pass.**
+  - Fixed a real contrast bug: `testimonials` had white text (`text-white/85`)
+    sitting directly on the light `ct-paper` page background (no dark section
+    bg was ever set) — nearly illegible. Moved it onto `bg-ct-graphite` where
+    the `glass-panel` styling was actually designed to sit, and it now reads
+    as the intended dark, glassy section plus improves light/dark rhythm.
+  - De-duplicated the identical "3-dot window chrome" mock header that
+    appeared identically in `why-choose`, `platform-overview`, and the hero
+    card. Hero keeps it (it's the primary signature element); `why-choose`
+    now shows a live-count pill; `platform-overview` shows an animated
+    pulse + "Synced" label instead (needed `"use client"` + framer-motion
+    import, since it's a functional component using `motion.span`).
+  - `core-features` numbered badges switched from a blue→gold gradient
+    circle to bare serif gold numerals (`font-display text-ct-ice`),
+    consistent with the "serif numerals as signature" idea from Phase 2.
+  - `testimonials` cards got a large serif opening-quote glyph in gold as
+    their signature element, replacing the plain `“…”` inline quote marks.
+  - `how-it-works`, `faq`, `security`, `core-features`, `trusted-companies`
+    all standardized on the same eyebrow pattern (thin rule + wide-tracked
+    mono label) and `font-medium` display headings instead of `font-bold`,
+    matching the hero's lighter, more editorial weight.
+  - Verified with `tsc --noEmit` and `eslint` on `src/components/landing` —
+    both clean.
 - [ ] **Phase 4 — QA.** `pnpm typecheck` + `pnpm build` in `frontend/`,
   responsive check (mobile/tablet/desktop), reduced-motion check, visual
   screenshot pass.
