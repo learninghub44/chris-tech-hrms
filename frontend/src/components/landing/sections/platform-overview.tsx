@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 export function PlatformOverview() {
+  const shouldReduceMotion = useReducedMotion();
   return (
     <section id="platform" className="bg-ct-steel py-28 text-white">
       <div className="mx-auto max-w-6xl px-6">
@@ -45,7 +46,7 @@ export function PlatformOverview() {
               <span className="inline-flex items-center gap-1.5 font-inter text-[11px] text-white/50">
                 <motion.span
                   className="h-1.5 w-1.5 rounded-full bg-ct-blue"
-                  animate={{ opacity: [1, 0.3, 1] }}
+                  animate={shouldReduceMotion ? undefined : { opacity: [1, 0.3, 1] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
                 Synced

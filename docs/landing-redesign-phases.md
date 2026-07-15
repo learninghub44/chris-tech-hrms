@@ -1,13 +1,17 @@
 # Landing Page Redesign — Phase Plan
 
-**Status (2026-07-15):** Phases 1–3 done and pushed to `main`. Phase 4 (QA)
-not started — needs a real `next build` on a machine with internet access.
+**Status (2026-07-15):** Phases 1–4 done to the extent verifiable in a
+sandbox with no internet access to Google Fonts. `next build` still needs
+to be run once on a machine with open internet before deploying (see
+Phase 4 notes below).
 
 **Commit log for this effort:**
 - `8c721fa` — Phase 1: tokens (palette + Fraunces/Inter typography)
 - `6208361` — Phase 2: cinematic hero rebuild (custom video, glass nav, serif headline)
 - `2862633` — doc: status header + commit log
 - `9a96d4d` — Phase 3: section pass
+- `bca12d0` — doc: Phase 3 commit hash
+- *(pending)* — Phase 4: reduced-motion fix + QA pass
 
 Design reference: visual quality/UX of jrmhd.tech (cinematic hero, premium
 enterprise aesthetic, glassmorphism, elegant typography, generous whitespace).
@@ -70,9 +74,30 @@ work mid-stream has full context without re-deriving the plan.
     matching the hero's lighter, more editorial weight.
   - Verified with `tsc --noEmit` and `eslint` on `src/components/landing` —
     both clean.
-- [ ] **Phase 4 — QA.** `pnpm typecheck` + `pnpm build` in `frontend/`,
-  responsive check (mobile/tablet/desktop), reduced-motion check, visual
-  screenshot pass.
+- [x] **Phase 4 — QA (partial, sandbox-limited).**
+  - Found and fixed one real accessibility gap: `platform-overview`'s new
+    "Synced" pulse dot (added in Phase 3) animated unconditionally — didn't
+    check `useReducedMotion()` like every other `motion.*` element in the
+    landing page does. Fixed: component is now `"use client"` with the same
+    `shouldReduceMotion ? undefined : {...}` guard used in the hero.
+  - Verified clean: `tsc --noEmit` and `eslint .` across the **whole**
+    frontend (not just `landing/`).
+  - Verified by code review: every other `motion.*` usage in
+    `landing-page.tsx` already respects `useReducedMotion`; hero uses
+    `min-h-[100svh]` (not `min-h-screen`, which jumps on mobile browser
+    chrome show/hide); headline scales `52px → 6xl → 76px` across
+    breakpoints; global `globals.css` has a `prefers-reduced-motion` CSS
+    fallback for anything not driven by framer-motion.
+  - **Not verifiable here:** an actual `next build` and a rendered visual/
+    responsive pass. This sandbox's network allowlist doesn't include
+    `fonts.googleapis.com` / `fonts.gstatic.com`, so `next build` fails at
+    the font-fetch step every time — that's the sandbox, not the code
+    (`tsc` and `eslint` both pass, and the only build failure was the
+    Fraunces `weight`/`axes` conflict fixed in Phase 2). **Next step for
+    whoever has an internet-connected machine:** run `pnpm build` (or
+    `npm run build`) in `frontend/`, then eyeball the hero at 375px/768px/
+    1440px widths and confirm the video/poster load correctly from
+    `/videos/`.
 
 ## Notes for the next agent
 
