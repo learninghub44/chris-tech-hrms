@@ -40,19 +40,16 @@ export function LandingPage() {
     <div className="font-body bg-ct-paper text-ink">
       <section className="relative flex min-h-[100svh] flex-col overflow-hidden bg-ct-graphite text-white">
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          <video
-            className="absolute inset-0 h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            poster="/videos/hero-poster.jpg"
-          >
-            <source src="/videos/hero-workforce.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,_rgba(11,14,20,0.94)_0%,_rgba(11,14,20,0.62)_38%,_rgba(11,14,20,0.55)_62%,_rgba(11,14,20,0.96)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,_rgba(11,14,20,0)_0%,_rgba(11,14,20,0.55)_75%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(160deg,_#0b0e14_0%,_#11151f_45%,_#0b0e14_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,_rgba(52,84,209,0.16)_0%,_rgba(11,14,20,0)_60%)]" />
+          <div
+            className="absolute inset-0 opacity-[0.05]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)",
+              backgroundSize: "56px 56px"
+            }}
+          />
           <motion.div
             className="absolute -left-24 top-24 h-[520px] w-[520px] rounded-full bg-ct-blue/15 blur-[120px]"
             animate={shouldReduceMotion ? undefined : { x: [0, 24, 0], y: [0, -18, 0] }}
