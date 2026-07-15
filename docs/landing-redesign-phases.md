@@ -11,7 +11,7 @@ Phase 4 notes below).
 - `2862633` — doc: status header + commit log
 - `9a96d4d` — Phase 3: section pass
 - `bca12d0` — doc: Phase 3 commit hash
-- *(pending)* — Phase 4: reduced-motion fix + QA pass
+- `9ed163d` — Phase 4: reduced-motion fix + QA pass
 
 Design reference: visual quality/UX of jrmhd.tech (cinematic hero, premium
 enterprise aesthetic, glassmorphism, elegant typography, generous whitespace).
