@@ -437,6 +437,7 @@ async function runSmoke(baseUrl: string): Promise<void> {
   const adminLogin = await login(baseUrl, adminEmail, adminPassword);
   const smokeData = await ensureSmokeData();
   const employeeLogin = await login(baseUrl, smokeEmployeeEmail, smokeEmployeePassword);
+  let smokePayrollId: string | undefined;
   const context: SmokeContext = {
     baseUrl,
     adminToken: adminLogin.token,
@@ -1061,6 +1062,8 @@ async function runSmoke(baseUrl: string): Promise<void> {
       (item) => item.employeeId === context.employeeId
     );
 
+    smokePayrollId = generatedPayroll.payroll.id;
+
     assert(smokeItem !== undefined, "Smoke payroll item was not generated");
     assert(smokeItem.netPay === 5400, `Expected smoke net pay 5400, received ${smokeItem.netPay}`);
     assert(smokeItem.baseSalary + smokeItem.allowances - smokeItem.deductions === smokeItem.netPay, "Payroll item math is invalid");
@@ -1069,6 +1072,90 @@ async function runSmoke(baseUrl: string): Promise<void> {
       path: `/api/payroll/${generatedPayroll.payroll.id}/payslip?employeeId=${context.employeeId}`,
       token: context.adminToken
     });
+  });
+
+  await check("cross-tenant isolation: payroll module (Phase 4)", async () => {
+    assert(Boolean(smokePayrollId), "Smoke payroll id was not captured from the generation check");
+
+    const payrollId = smokePayrollId as string;
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Salaries: each company's salary setups must be invisible to the other.
+    const primarySalaries = assertSuccess(
+      await request<{ salaries: Array<{ employee: { employeeCode: string } }> }>({
+        baseUrl,
+        path: "/api/salaries",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primarySalaries.salaries.some((salary) => salary.employee.employeeCode.startsWith("EMP-N")),
+      "Company A salary list leaked Company B's salary setup"
+    );
+
+    const secondCompanySalaries = assertSuccess(
+      await request<{ salaries: Array<{ employee: { employeeCode: string } }> }>({
+        baseUrl,
+        path: "/api/salaries",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanySalaries.salaries.some((salary) => salary.employee.employeeCode === smokeEmployeeCode),
+      "Company B salary list leaked Company A's salary setup"
+    );
+    assert(
+      secondCompanySalaries.salaries.some((salary) => salary.employee.employeeCode === "EMP-N001"),
+      "Company B salary list did not return its own seeded salary setup"
+    );
+
+    // Payroll runs: Company B's payroll list must never include Company A's
+    // generated run, and fetching Company A's payroll id directly must be
+    // rejected as not found.
+    const primaryPayrolls = assertSuccess(
+      await request<{ payrolls: Array<{ id: string }> }>({
+        baseUrl,
+        path: `/api/payroll?year=${smokePayrollYear}`,
+        token: context.adminToken
+      })
+    );
+    assert(
+      primaryPayrolls.payrolls.some((payroll) => payroll.id === payrollId),
+      "Company A payroll list did not return its own generated payroll run"
+    );
+
+    const secondCompanyPayrolls = assertSuccess(
+      await request<{ payrolls: Array<{ id: string }> }>({
+        baseUrl,
+        path: `/api/payroll?year=${smokePayrollYear}`,
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyPayrolls.payrolls.some((payroll) => payroll.id === payrollId),
+      "Company B payroll list leaked Company A's generated payroll run"
+    );
+
+    const crossTenantPayroll = await request<unknown>({
+      baseUrl,
+      path: `/api/payroll/${payrollId}`,
+      token: secondCompanyLogin.token,
+      expectedStatus: 404
+    });
+
+    assertFailure(crossTenantPayroll, "PAYROLL_NOT_FOUND");
+
+    // Payslips: Company B fetching Company A's payslip by payroll id +
+    // employee id must be rejected as not found, even though the payroll id
+    // and employee id are each individually valid within their own tenant.
+    const crossTenantPayslip = await request<unknown>({
+      baseUrl,
+      path: `/api/payroll/${payrollId}/payslip?employeeId=${context.employeeId}`,
+      token: secondCompanyLogin.token,
+      expectedStatus: 404
+    });
+
+    assertFailure(crossTenantPayslip, "PAYSLIP_NOT_FOUND");
   });
 
   await check("dashboard, notifications, announcements, and reports", async () => {

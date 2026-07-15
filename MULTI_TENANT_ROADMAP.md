@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves done; 8 remain)
+- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll done; 3 remain: dashboard, reports, hr-assistant)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -341,3 +341,128 @@ already picked up company-scoping as a side effect of the attendance PR
 /notifications`, `GET /announcements`, and read-state are still
 unscoped — confirm those explicitly rather than assuming the earlier
 partial touch covered them.
+
+### Phase 4 — notifications and announcements scoped (3 of 10 remaining modules)
+
+- **Branch:** `phase-4-notifications-scoping` — merged to `main` via PR #5.
+- **Files:** `backend/src/modules/notifications/notifications.routes.ts`,
+  `backend/prisma/seed.ts`, `backend/scripts/smoke-test.ts`.
+- `notifications.routes.ts`: `requireCompanyContext` mounted; `GET
+  /notifications` and the unread-count query now also filter by `companyId`
+  (defense in depth alongside the existing `userId` filter); `PUT
+  /notifications/:id/read` scoped the same way.
+- `GET /announcements` had a real cross-tenant leak — no company filter at
+  all, so any authenticated user could see every tenant's announcements.
+  Now scoped by `companyId` in both the manage and read-only branches.
+- `announcement-notifications.ts` was already correctly company-scoped as
+  part of the attendance-module PR; no changes needed there.
+- `seed.ts`: added a Northwind-only announcement and notification for
+  isolation testing.
+- `smoke-test.ts`: new check `"cross-tenant isolation: notifications module
+  (Phase 4)"` covering the announcements list and the notifications
+  list/unread-count.
+- Same Prisma-engine sandbox limitation as every prior phase — `prisma
+  generate` still can't reach `binaries.prisma.sh`. `tsc --noEmit` error
+  count in touched files was unchanged before/after aside from expected
+  stale-client noise.
+
+### Phase 4 — performance module scoped (4 of 10 remaining modules)
+
+- **Branch:** `phase-4-performance-scoping` — merged to `main` via PR #6.
+- **Files:** `backend/src/modules/performance/performance.routes.ts`.
+- `performance.routes.ts` had no company scoping at all previously — every
+  query relied only on employee/manager-hierarchy relations, so a manager
+  or admin in one company could in principle reach `Goal`/
+  `PerformanceReview`/`Feedback` rows in another tenant if an id was known
+  or guessed.
+- `requireCompanyContext` mounted on the router. `buildScopedEmployeeWhere`
+  / `buildScopedPerformanceWhere` now include `companyId` in every branch
+  (full-visibility, own+reports, and self-only).
+- `assertEmployeeInPerformanceScope`: the `SUPER_ADMIN`/`HR_ADMIN`
+  "can view all" branch previously skipped validation entirely; it now
+  confirms the employee actually belongs to the caller's company (400
+  `INVALID_REFERENCE` otherwise). The manager direct-report lookup is now
+  also company-scoped.
+- `POST /goals`, `POST /performance-reviews`, `POST /feedback`: `companyId`
+  is now set explicitly from `req.auth.companyId` on create, never
+  inferred. `PUT /goals/:id`, `PUT /performance-reviews/:id/status`:
+  fetch-then-mutate with `assertSameCompany` before acting.
+
+### Phase 4 — recruitment module scoped (5 of 10 remaining modules)
+
+- **Branch:** `phase-4-recruitment-scoping` — merged to `main` via PR #7.
+- **Files:** `backend/src/modules/recruitment/recruitment.routes.ts`.
+- `recruitment.routes.ts` had no company scoping at all across any of its
+  5 models — every list/create/update query was global.
+- `requireCompanyContext` mounted on the router. `GET /jobs`,
+  `/candidates`, `/applications`, `/interviews`, `/offers`: all now filter
+  by `companyId`. `POST` on each of those: `companyId` set explicitly from
+  `req.auth.companyId`, never inferred from related records.
+- Cross-tenant FK references rejected: creating an application verifies
+  both the job and candidate belong to the caller's company; scheduling an
+  interview verifies the application and (if set) the interviewer belong
+  to the caller's company. Returns `400 INVALID_REFERENCE` /
+  `404 APPLICATION_NOT_FOUND` rather than leaking cross-tenant existence.
+- **Note:** the progress-log entries above for notifications, performance,
+  and recruitment were added retroactively — `git log` on `main` confirmed
+  all three PRs were already merged, but this file's checklist and log had
+  not been updated to reflect it. Corrected here so the log matches
+  reality before starting the next module.
+
+### Phase 4 — payroll module scoped (6 of 10 remaining modules)
+
+- **Branch:** `phase-4-payroll-scoping` (this session).
+- **Files:** `backend/src/modules/payroll/payroll.routes.ts`,
+  `backend/scripts/smoke-test.ts`.
+- `payroll.routes.ts` had no company scoping at all previously across
+  `Salary`, `Payroll`, `PayrollItem`, or `Payslip` — flagged in this
+  document as the highest-risk module since it's financial data.
+- `requireCompanyContext` mounted on the router. `GET /salaries`, `GET
+  /payroll`, `GET /payroll/me` all now filter by `companyId` via
+  `companyScope(req)`.
+- `POST /salaries`: `companyId` set explicitly from `req.auth.companyId`;
+  the target `employeeId` is verified to belong to the caller's company
+  first (`400 INVALID_REFERENCE` otherwise) via a new
+  `assertEmployeeInCompany` helper.
+- `PUT /salaries/:id`: fetch-then-mutate with `assertSameCompany` before
+  updating, so a salary id from another tenant now 404s instead of being
+  editable.
+- `POST /payroll/generate`: the active-salary lookup used to build the
+  run is now company-scoped, so payroll can never be generated across
+  more than one tenant's salaries in a single run. The uniqueness check
+  that used to look up an existing payroll by `month_year` was updated to
+  the new company-scoped compound key (`companyId_month_year`) — this was
+  a required fix, not just a scoping improvement, since the old key name
+  no longer exists on the Phase 1 schema and would have failed to compile
+  once a real Prisma client is generated. `companyId` is now set
+  explicitly on every created `Payroll`, `PayrollItem`, and `Payslip` row.
+- `GET /payroll/:id` and `GET /payroll/:id/payslip`: both fetch-then-check
+  with `assertSameCompany`, returning 404 (not 403) on a cross-tenant id —
+  same pattern as every other Phase 3/4 module.
+- `getEmployeeForAuth` (this module's local copy) now also scopes the
+  `Employee` lookup by `companyId` in addition to `userId`, for defense in
+  depth even though `userId` is already globally unique per user.
+- `smoke-test.ts`: new check `"cross-tenant isolation: payroll module
+  (Phase 4)"` — asserts salary-list isolation both directions, that
+  Company B's payroll list never contains Company A's generated run, that
+  Company B fetching Company A's payroll id directly gets
+  `404 PAYROLL_NOT_FOUND`, and that Company B fetching Company A's payslip
+  by payroll id + employee id (both individually valid ids, just from the
+  wrong tenant pairing) gets `404 PAYSLIP_NOT_FOUND` rather than the real
+  payslip.
+- **Not yet verified in this environment:** same `prisma generate` /
+  `binaries.prisma.sh` sandbox limitation as every prior phase (confirmed
+  again directly in this session — still 403 Forbidden). Compared
+  `tsc --noEmit` output for `payroll.routes.ts` before and after this
+  change line-by-line: the only new error is `Prisma.SalaryWhereInput`
+  not found on the stale generated client — the same noise class as the
+  pre-existing `PayrollWhereInput`/`PayslipWhereInput` errors already in
+  this file, not a new bug. `smoke-test.ts` has zero new type errors.
+  Before merging: run `npx prisma generate`, `npm run db:seed`, then
+  `npm run test:smoke` with real network/database access to confirm the
+  new isolation checks actually pass against a live database.
+
+**Next up per the Phase 4 order list:** `dashboard` (item 9) — aggregation
+queries need to confirm every summary count is per-company, not global —
+followed by `reports` (item 10, same concern) and `hr-assistant` (item 11,
+the Gemini tool functions must never answer with another company's data).

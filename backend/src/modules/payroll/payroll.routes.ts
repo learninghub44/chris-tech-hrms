@@ -7,6 +7,7 @@ import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
 import {
@@ -180,9 +181,11 @@ function buildPayslipContent(payslip: Prisma.PayslipGetPayload<{ include: typeof
 
 async function getEmployeeForAuth(req: Request) {
   const auth = assertAuthenticated(req);
+  const scope = companyScope(req);
   const employee = await prisma.employee.findUnique({
     where: {
-      userId: auth.id
+      userId: auth.id,
+      companyId: scope.companyId
     }
   });
 
@@ -191,6 +194,17 @@ async function getEmployeeForAuth(req: Request) {
   }
 
   return employee;
+}
+
+async function assertEmployeeInCompany(employeeId: string, companyId: string): Promise<void> {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId },
+    select: { companyId: true }
+  });
+
+  if (!employee || employee.companyId !== companyId) {
+    throw new AppError(400, "INVALID_REFERENCE", "One of the selected related records does not exist");
+  }
 }
 
 async function createNotificationForUser(input: {
@@ -233,6 +247,7 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 payrollRouter.use(authenticate);
+payrollRouter.use(requireCompanyContext);
 
 payrollRouter.get(
   "/salaries",
@@ -240,9 +255,14 @@ payrollRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const scope = companyScope(req);
+    const where: Prisma.SalaryWhereInput = {
+      companyId: scope.companyId
+    };
     const [total, salaries] = await prisma.$transaction([
-      prisma.salary.count(),
+      prisma.salary.count({ where }),
       prisma.salary.findMany({
+        where,
         include: salaryInclude,
         orderBy: {
           employee: {
@@ -263,14 +283,18 @@ payrollRouter.post(
   requirePermissions(["payroll:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(salaryBodySchema, req.body);
+    const scope = companyScope(req);
 
     if (body.deductions > body.baseSalary + body.allowances) {
       throw new AppError(400, "INVALID_SALARY_COMPONENTS", "Deductions cannot exceed gross pay");
     }
 
+    await assertEmployeeInCompany(body.employeeId, scope.companyId);
+
     try {
       const salary = await prisma.salary.create({
         data: {
+          companyId: scope.companyId,
           employeeId: body.employeeId,
           baseSalary: body.baseSalary,
           allowances: body.allowances,
@@ -303,6 +327,8 @@ payrollRouter.put(
     if (!existingSalary) {
       throw new AppError(404, "SALARY_NOT_FOUND", "Salary setup was not found");
     }
+
+    assertSameCompany(existingSalary.companyId, req);
 
     const baseSalary = body.baseSalary ?? existingSalary.baseSalary;
     const allowances = body.allowances ?? existingSalary.allowances;
@@ -342,8 +368,10 @@ payrollRouter.post(
   asyncHandler(async (req, res) => {
     const body = parseInput(generatePayrollSchema, req.body);
     const auth = assertAuthenticated(req);
+    const scope = companyScope(req);
     const salaries = await prisma.salary.findMany({
       where: {
+        companyId: scope.companyId,
         isActive: true,
         employee: {
           status: {
@@ -367,7 +395,8 @@ payrollRouter.post(
       const transactionResult = await prisma.$transaction(async (transaction) => {
         const existingPayroll = await transaction.payroll.findUnique({
           where: {
-            month_year: {
+            companyId_month_year: {
+              companyId: scope.companyId,
               month: body.month,
               year: body.year
             }
@@ -405,6 +434,7 @@ payrollRouter.post(
         );
         const createdPayroll = await transaction.payroll.create({
           data: {
+            companyId: scope.companyId,
             month: body.month,
             year: body.year,
             status: "GENERATED",
@@ -420,6 +450,7 @@ payrollRouter.post(
         for (const itemInput of itemInputs) {
           const payrollItem = await transaction.payrollItem.create({
             data: {
+              companyId: scope.companyId,
               payrollId: createdPayroll.id,
               employeeId: itemInput.salary.employeeId,
               salaryId: itemInput.salary.id,
@@ -434,6 +465,7 @@ payrollRouter.post(
 
           await transaction.payslip.create({
             data: {
+              companyId: scope.companyId,
               payrollId: createdPayroll.id,
               payrollItemId: payrollItem.id,
               employeeId: itemInput.salary.employeeId,
@@ -488,8 +520,10 @@ payrollRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const scope = companyScope(req);
     const employee = await getEmployeeForAuth(req);
     const where: Prisma.PayslipWhereInput = {
+      companyId: scope.companyId,
       employeeId: employee.id
     };
     const [total, payslips] = await prisma.$transaction([
@@ -547,6 +581,8 @@ payrollRouter.get(
       throw new AppError(404, "PAYSLIP_NOT_FOUND", "Payslip was not found");
     }
 
+    assertSameCompany(payslip.companyId, req);
+
     res.status(200).json(
       ok({
         payslip,
@@ -564,7 +600,9 @@ payrollRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(payrollListQuerySchema, req.query);
     const pagination = getPagination(query);
+    const scope = companyScope(req);
     const where: Prisma.PayrollWhereInput = {
+      companyId: scope.companyId,
       ...(query.year ? { year: query.year } : {})
     };
     const [total, payrolls] = await prisma.$transaction([
@@ -606,6 +644,8 @@ payrollRouter.get(
     if (!payroll) {
       throw new AppError(404, "PAYROLL_NOT_FOUND", "Payroll was not found");
     }
+
+    assertSameCompany(payroll.companyId, req);
 
     res.status(200).json(ok({ payroll }));
   })
