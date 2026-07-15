@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
 import { AppError } from "../../middleware/error-handler";
+import { companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
 import {
@@ -86,13 +87,18 @@ function getDefaultDateRange(): { dateFrom: Date; dateTo: Date } {
 }
 
 async function getTeamEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereInput> {
+  const scope = companyScope(req);
+
   if (hasPermission(req, "employees:manage") || hasPermission(req, "reports:read")) {
-    return {};
+    return {
+      companyId: scope.companyId
+    };
   }
 
   const employee = await prisma.employee.findUnique({
     where: {
-      userId: assertAuthenticated(req).id
+      userId: assertAuthenticated(req).id,
+      companyId: scope.companyId
     }
   });
 
@@ -101,6 +107,7 @@ async function getTeamEmployeeWhere(req: Request): Promise<Prisma.EmployeeWhereI
   }
 
   return {
+    companyId: scope.companyId,
     managerId: employee.id
   };
 }
@@ -116,13 +123,17 @@ function countBy<T extends string>(values: T[]): Record<T, number> {
 }
 
 reportsRouter.use(authenticate);
+reportsRouter.use(requireCompanyContext);
 
 reportsRouter.get(
   "/reports/employees",
   requirePermissions(["reports:read"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(employeeReportQuerySchema, req.query);
-    const where: Prisma.EmployeeWhereInput = {};
+    const scope = companyScope(req);
+    const where: Prisma.EmployeeWhereInput = {
+      companyId: scope.companyId
+    };
 
     if (query.status) {
       where.status = query.status;
@@ -175,10 +186,12 @@ reportsRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(attendanceReportQuerySchema, req.query);
     const defaultRange = getDefaultDateRange();
+    const scope = companyScope(req);
     const employeeWhere = await getTeamEmployeeWhere(req);
     const dateFrom = query.dateFrom ? toDateOnlyFromInput(query.dateFrom) : defaultRange.dateFrom;
     const dateTo = query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo;
     const where: Prisma.AttendanceWhereInput = {
+      companyId: scope.companyId,
       date: {
         gte: dateFrom,
         lte: dateTo
@@ -204,6 +217,7 @@ reportsRouter.get(
     await materializeMissingAbsences({
       dateFrom,
       dateTo,
+      companyId: scope.companyId,
       employeeId: query.employeeId,
       employeeWhere: where.employee
     });
@@ -244,8 +258,10 @@ reportsRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(leaveReportQuerySchema, req.query);
     const defaultRange = getDefaultDateRange();
+    const scope = companyScope(req);
     const employeeWhere = await getTeamEmployeeWhere(req);
     const where: Prisma.LeaveRequestWhereInput = {
+      companyId: scope.companyId,
       startDate: {
         lte: query.dateTo ? toDateOnlyFromInput(query.dateTo) : defaultRange.dateTo
       },
@@ -312,9 +328,11 @@ reportsRouter.get(
   requireAnyPermission(["reports:read", "payroll:manage"]),
   asyncHandler(async (req, res) => {
     const query = parseInput(payrollReportQuerySchema, req.query);
+    const scope = companyScope(req);
     const year = query.year ?? new Date().getFullYear();
     const payrolls = await prisma.payroll.findMany({
       where: {
+        companyId: scope.companyId,
         year
       },
       include: {

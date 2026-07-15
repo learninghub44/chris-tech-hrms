@@ -1271,6 +1271,96 @@ async function runSmoke(baseUrl: string): Promise<void> {
     }
   });
 
+  await check("cross-tenant isolation: reports module (Phase 4)", async () => {
+    assert(Boolean(smokePayrollId), "Smoke payroll id was not captured from the generation check");
+
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Employees report: Company B must never see Company A's smoke employee,
+    // and its own summary total must match its own seeded headcount only.
+    const primaryEmployeesReport = assertSuccess(
+      await request<{
+        employees: Array<{ employeeCode: string }>;
+        summary: { total: number };
+      }>({
+        baseUrl,
+        path: "/api/reports/employees",
+        token: context.adminToken
+      })
+    );
+    assert(
+      primaryEmployeesReport.employees.some((employee) => employee.employeeCode === smokeEmployeeCode),
+      "Company A employees report did not include its own smoke employee"
+    );
+
+    const secondCompanyEmployeesReport = assertSuccess(
+      await request<{
+        employees: Array<{ employeeCode: string }>;
+        summary: { total: number };
+      }>({
+        baseUrl,
+        path: "/api/reports/employees",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyEmployeesReport.employees.some(
+        (employee) => employee.employeeCode === smokeEmployeeCode
+      ),
+      "Company B employees report leaked Company A's smoke employee"
+    );
+    assert(
+      secondCompanyEmployeesReport.employees.some((employee) => employee.employeeCode === "EMP-N001"),
+      "Company B employees report did not include its own seeded employee"
+    );
+    assert(
+      secondCompanyEmployeesReport.summary.total === secondCompanyEmployeesReport.employees.length,
+      "Company B employees report summary total did not match its own scoped employee list"
+    );
+
+    // Leaves report: Company B must never see Company A's smoke employee's
+    // leave request.
+    const secondCompanyLeavesReport = assertSuccess(
+      await request<{ leaveRequests: Array<{ employee: { employeeCode: string } }> }>({
+        baseUrl,
+        path: "/api/reports/leaves",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyLeavesReport.leaveRequests.some(
+        (leaveRequest) => leaveRequest.employee.employeeCode === smokeEmployeeCode
+      ),
+      "Company B leaves report leaked Company A's smoke employee's leave request"
+    );
+
+    // Payroll report: Company B must never see Company A's generated
+    // payroll run for the smoke month/year, even filtered to the same year.
+    const primaryPayrollReport = assertSuccess(
+      await request<{ payrolls: Array<{ id: string }> }>({
+        baseUrl,
+        path: `/api/reports/payroll?year=${smokePayrollYear}`,
+        token: context.adminToken
+      })
+    );
+    assert(
+      primaryPayrollReport.payrolls.some((payroll) => payroll.id === smokePayrollId),
+      "Company A payroll report did not include its own generated payroll run"
+    );
+
+    const secondCompanyPayrollReport = assertSuccess(
+      await request<{ payrolls: Array<{ id: string }> }>({
+        baseUrl,
+        path: `/api/reports/payroll?year=${smokePayrollYear}`,
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyPayrollReport.payrolls.some((payroll) => payroll.id === smokePayrollId),
+      "Company B payroll report leaked Company A's generated payroll run"
+    );
+  });
+
   await check("password reset development response", async () => {
     const response = assertSuccess(
       await request<{

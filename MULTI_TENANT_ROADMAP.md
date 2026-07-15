@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard done; 2 remain: reports, hr-assistant)
+- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves, notifications/announcements, performance, recruitment, payroll, dashboard, reports done; 1 remains: hr-assistant)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -522,3 +522,53 @@ the Gemini tool functions must never answer with another company's data).
 aggregation-query concern as dashboard, every report query needs the
 company filter — followed by `hr-assistant` (item 11, the Gemini tool
 functions must never answer with another company's data).
+
+### Phase 4 — reports module scoped (8 of 10 remaining modules)
+
+- **Branch:** `phase-4-reports-scoping` (this session).
+- **Files:** `backend/src/modules/reports/reports.routes.ts`,
+  `backend/scripts/smoke-test.ts`.
+- `reports.routes.ts` had **zero** company scoping anywhere — every one of
+  the four report endpoints (employees, attendance, leaves, payroll) ran
+  globally across every tenant, and the payroll report in particular had
+  no company filter at all on `prisma.payroll.findMany`.
+- `requireCompanyContext` mounted on the router.
+- `getTeamEmployeeWhere`: `companyId` now included in both branches
+  (org-wide and manager/team), and the manager-check `Employee` lookup
+  also filters by `companyId`.
+- `/reports/employees`: `companyId` added to the base `where`.
+- `/reports/attendance`: `companyId` added directly to the `Attendance`
+  `where` (in addition to the scoping that flows through
+  `employee: employeeWhere`). Also fixed a real compile-breaker unrelated
+  to scoping style: `materializeMissingAbsences` (from the attendance
+  module, updated in an earlier Phase 4 PR) now requires a `companyId`
+  argument that this route was never passing — it's passed now.
+- `/reports/leaves`: `companyId` added directly to the `LeaveRequest`
+  `where`.
+- `/reports/payroll`: `companyId` added to the `Payroll` `where` — this
+  was the most exposed endpoint in the module since it previously had no
+  scoping mechanism of any kind, not even an indirect one via an employee
+  relation.
+- `smoke-test.ts`: new check `"cross-tenant isolation: reports module
+  (Phase 4)"` — confirms the employees report's summary total actually
+  matches Company B's own scoped list (not just "looks non-empty"), that
+  Company B's leaves report never contains Company A's smoke employee's
+  leave request, and that Company B's payroll report for the same
+  `smokePayrollYear` never contains Company A's generated payroll run
+  (reusing the `smokePayrollId` captured during the payroll-module work).
+- **Not yet verified in this environment:** same `prisma generate` /
+  `binaries.prisma.sh` sandbox limitation as every prior phase (still 403
+  Forbidden). Diffed `tsc --noEmit` output for `reports.routes.ts` line by
+  line before and after: identical error classes (only line numbers
+  shifted from the added code) — zero new errors introduced.
+  `smoke-test.ts` has zero new type errors. Full-repo error count
+  unchanged (260) before and after this change. Before merging: run
+  `npx prisma generate`, `npm run db:seed`, then `npm run test:smoke` with
+  real network/database access to confirm the new isolation checks
+  actually pass against a live database.
+
+**Next up per the Phase 4 order list:** `hr-assistant` (item 11, the final
+Phase 4 module) — the Gemini tool functions (`get_leave_balance`,
+`get_next_payroll`, `get_manager`) must be scoped so the assistant can
+never answer with another company's data. Once this is done, Phase 4 is
+complete and Phase 5 (frontend company context) can start.
