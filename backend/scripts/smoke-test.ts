@@ -788,6 +788,75 @@ async function runSmoke(baseUrl: string): Promise<void> {
     );
   });
 
+  await check("cross-tenant isolation: performance module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Performance employees list: Company B must never see Company A's smoke employee.
+    const secondCompanyPerformanceEmployees = assertSuccess(
+      await request<{ employees: Array<{ employeeCode: string }> }>({
+        baseUrl,
+        path: "/api/performance/employees",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyPerformanceEmployees.employees.some(
+        (employee) => employee.employeeCode === smokeEmployeeCode
+      ),
+      "Company B performance employee list leaked Company A's smoke employee"
+    );
+
+    // Goals: each company's goals must be invisible to the other.
+    const primaryGoals = assertSuccess(
+      await request<{ goals: Array<{ title: string }> }>({
+        baseUrl,
+        path: "/api/goals",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryGoals.goals.some((goal) => goal.title === "Northwind demo tenant-only goal"),
+      "Company A goal list leaked Company B's goal"
+    );
+
+    const secondCompanyGoals = assertSuccess(
+      await request<{ goals: Array<{ title: string; id: string }> }>({
+        baseUrl,
+        path: "/api/goals",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyGoals.goals.some((goal) => goal.title === "Improve HR service delivery"),
+      "Company B goal list leaked Company A's goal"
+    );
+    assert(
+      secondCompanyGoals.goals.some((goal) => goal.title === "Northwind demo tenant-only goal"),
+      "Company B goal list did not return its own seeded goal"
+    );
+
+    // Cross-tenant update attempt: Company B updating Company A's goal id
+    // directly must be rejected as not found, not forbidden.
+    if (primaryGoals.goals.length > 0) {
+      const primaryGoalId = (primaryGoals.goals[0] as { id?: string }).id;
+
+      if (primaryGoalId) {
+        const crossTenantUpdate = await request<unknown>({
+          baseUrl,
+          path: `/api/goals/${primaryGoalId}`,
+          method: "PUT",
+          token: secondCompanyLogin.token,
+          expectedStatus: 404,
+          body: {
+            progress: 99
+          }
+        });
+
+        assertFailure(crossTenantUpdate, "GOAL_NOT_FOUND");
+      }
+    }
+  });
+
   await check("attendance clock-in and clock-out", async () => {
     await request<unknown>({
       baseUrl,

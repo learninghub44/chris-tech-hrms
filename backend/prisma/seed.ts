@@ -1435,6 +1435,34 @@ async function main() {
       isRead: false
     }
   });
+
+  await prisma.goal.upsert({
+    where: {
+      id: "northwind-demo-goal"
+    },
+    update: {
+      employeeId: secondCompanyAdminEmployee.id,
+      title: "Northwind demo tenant-only goal",
+      description: "Exists only for cross-tenant isolation checks.",
+      status: "IN_PROGRESS",
+      progress: 10,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+      dueDate: new Date("2026-06-30T00:00:00.000Z"),
+      createdById: secondCompanyAdminUser.id
+    },
+    create: {
+      id: "northwind-demo-goal",
+      companyId: secondCompany.id,
+      employeeId: secondCompanyAdminEmployee.id,
+      title: "Northwind demo tenant-only goal",
+      description: "Exists only for cross-tenant isolation checks.",
+      status: "IN_PROGRESS",
+      progress: 10,
+      startDate: new Date("2026-05-01T00:00:00.000Z"),
+      dueDate: new Date("2026-06-30T00:00:00.000Z"),
+      createdById: secondCompanyAdminUser.id
+    }
+  });
 }
 
 main()

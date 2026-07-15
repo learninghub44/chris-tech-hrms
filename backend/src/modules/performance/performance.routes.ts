@@ -10,6 +10,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/prisma";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -242,6 +243,20 @@ async function getEmployeeForAuth(req: Request) {
 
 async function assertEmployeeInPerformanceScope(req: Request, employeeId: string): Promise<void> {
   if (canViewAllPerformance(req)) {
+    const employee = await prisma.employee.findFirst({
+      where: {
+        id: employeeId,
+        companyId: companyScope(req).companyId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!employee) {
+      throw new AppError(400, "INVALID_REFERENCE", "The selected employee does not exist");
+    }
+
     return;
   }
 
@@ -255,6 +270,7 @@ async function assertEmployeeInPerformanceScope(req: Request, employeeId: string
     const directReport = await prisma.employee.findFirst({
       where: {
         id: employeeId,
+        companyId: companyScope(req).companyId,
         managerId: ownEmployee.id
       },
       select: {
@@ -274,19 +290,22 @@ async function buildScopedEmployeeWhere(
   req: Request,
   employeeId: string | undefined
 ): Promise<Prisma.EmployeeWhereInput> {
+  const scope = companyScope(req);
+
   if (canViewAllPerformance(req)) {
-    return employeeId ? { id: employeeId } : {};
+    return employeeId ? { id: employeeId, companyId: scope.companyId } : { companyId: scope.companyId };
   }
 
   const ownEmployee = await getEmployeeForAuth(req);
 
   if (employeeId) {
     await assertEmployeeInPerformanceScope(req, employeeId);
-    return { id: employeeId };
+    return { id: employeeId, companyId: scope.companyId };
   }
 
   if (hasPermission(req, "performance:manage")) {
     return {
+      companyId: scope.companyId,
       OR: [
         {
           id: ownEmployee.id
@@ -299,7 +318,8 @@ async function buildScopedEmployeeWhere(
   }
 
   return {
-    id: ownEmployee.id
+    id: ownEmployee.id,
+    companyId: scope.companyId
   };
 }
 
@@ -352,6 +372,7 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 performanceRouter.use(authenticate);
+performanceRouter.use(requireCompanyContext);
 
 performanceRouter.get(
   "/performance/employees",
@@ -463,6 +484,7 @@ performanceRouter.post(
     try {
       const goal = await prisma.goal.create({
         data: {
+          companyId: companyScope(req).companyId,
           employeeId: body.employeeId,
           title: body.title,
           description: body.description,
@@ -493,7 +515,8 @@ performanceRouter.put(
         id: params.id
       },
       select: {
-        employeeId: true
+        employeeId: true,
+        companyId: true
       }
     });
 
@@ -501,6 +524,7 @@ performanceRouter.put(
       throw new AppError(404, "GOAL_NOT_FOUND", "Goal was not found");
     }
 
+    assertSameCompany(existingGoal.companyId, req);
     await assertEmployeeInPerformanceScope(req, existingGoal.employeeId);
 
     try {
@@ -603,6 +627,7 @@ performanceRouter.post(
       });
       const review = await prisma.performanceReview.create({
         data: {
+          companyId: companyScope(req).companyId,
           employeeId: body.employeeId,
           reviewerId: body.reviewerId ?? ownEmployee?.id ?? null,
           cycle: body.cycle,
@@ -636,7 +661,8 @@ performanceRouter.put(
         id: params.id
       },
       select: {
-        employeeId: true
+        employeeId: true,
+        companyId: true
       }
     });
 
@@ -644,6 +670,7 @@ performanceRouter.put(
       throw new AppError(404, "REVIEW_NOT_FOUND", "Performance review was not found");
     }
 
+    assertSameCompany(existingReview.companyId, req);
     await assertEmployeeInPerformanceScope(req, existingReview.employeeId);
 
     try {
@@ -714,6 +741,7 @@ performanceRouter.post(
       });
       const feedback = await prisma.feedback.create({
         data: {
+          companyId: companyScope(req).companyId,
           employeeId: body.employeeId,
           authorId: ownEmployee?.id ?? null,
           category: body.category,
