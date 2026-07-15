@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, Inter } from "next/font/google";
 import hrmsIcon from "@/assets/hrms-icon.png";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
-// Geist is the primary typeface for both headings and body copy, with Inter
-// as an explicit fallback in the CSS font stack (see tailwind.config.ts).
-const geist = Geist({
+// Fraunces is the display serif used for headlines — a high-contrast,
+// editorial face that carries the "premium enterprise" register. Inter
+// handles body copy and UI chrome, where neutrality and legibility matter
+// more than personality (see tailwind.config.ts for the mapping).
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-geist",
+  axes: ["opsz", "SOFT", "WONK"],
+  weight: ["300", "400", "500", "600"],
+  style: ["normal", "italic"],
+  variable: "--font-serif",
   display: "swap"
 });
 
@@ -76,7 +81,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geist.variable} ${inter.variable} ${plexMono.variable}`}
+        className={`${fraunces.variable} ${inter.variable} ${plexMono.variable}`}
         suppressHydrationWarning={true}
       >
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />

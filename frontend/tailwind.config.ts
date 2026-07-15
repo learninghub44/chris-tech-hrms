@@ -20,24 +20,25 @@ const config: Config = {
           700: "#126340"
         },
         ct: {
-          paper: "#f5f7fb",
-          graphite: "#0a0e17",
-          steel: "#141a2b",
-          slate: "#212a42",
-          blue: "#2f6fed",
-          blueDeep: "#0b3fa8",
-          ice: "#7dc4ff"
+          paper: "#f6f3ec",
+          graphite: "#0b0e14",
+          steel: "#11151f",
+          slate: "#1b2130",
+          blue: "#3454d1",
+          blueDeep: "#1e3690",
+          ice: "#c9a567"
         }
       },
       fontFamily: {
-        display: ["var(--font-geist)", "var(--font-inter)", "sans-serif"],
-        body: ["var(--font-geist)", "var(--font-inter)", "sans-serif"],
+        display: ["var(--font-serif)", "Georgia", "serif"],
+        body: ["var(--font-inter)", "system-ui", "sans-serif"],
         inter: ["var(--font-inter)", "sans-serif"],
         mono: ["var(--font-mono)"]
       },
       boxShadow: {
-        soft: "0 12px 30px rgba(23, 33, 29, 0.08)",
-        glow: "0 0 60px rgba(47, 111, 237, 0.35)"
+        soft: "0 12px 30px rgba(11, 14, 20, 0.08)",
+        glow: "0 0 60px rgba(52, 84, 209, 0.35)",
+        gold: "0 0 48px rgba(201, 165, 103, 0.28)"
       }
     }
   },
