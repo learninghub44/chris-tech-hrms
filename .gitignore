@@ -7,6 +7,11 @@ dist/
 build/
 coverage/
 
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+frontend/cloudflare-env.d.ts
+
 # Environment files
 .env
 .env.*

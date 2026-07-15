@@ -257,6 +257,7 @@ A second seeded company (`Northwind Demo Co`, admin login `admin@northwind-demo.
 - npm 10+
 - Docker Desktop, or a local PostgreSQL instance
 - Optional: Groq API key for the HR assistant
+- For deployment: a Render account (backend), a Neon account (database), and a Cloudflare account (frontend — see [Deployment](#deployment))
 
 ### 1. Install Dependencies
 
@@ -468,8 +469,19 @@ This repo is set up for a split deployment:
 ```text
 Backend: Render web service
 Database: Neon PostgreSQL
-Frontend: Vercel Next.js project
+Frontend: Cloudflare Workers (Next.js via the OpenNext adapter)
 ```
+
+Note on "Cloudflare Pages": Cloudflare's native Pages framework preset does
+not run Next.js in server mode on its own — App Router apps with dynamic
+routes and server-rendered pages (this one has both, e.g. `/employees/[id]`,
+`/payroll/[id]`) need a build adapter that translates the Next.js server
+output into a Workers entry point. `@opennextjs/cloudflare` is Cloudflare's
+current recommended path for that (superseding the older
+`@cloudflare/next-on-pages`), and it deploys to Cloudflare Workers rather
+than the Pages product proper. You still get Git-connected deploys, preview
+environments, and a `*.workers.dev` URL (or your own domain) — just via
+Wrangler/Workers Builds instead of the Pages dashboard.
 
 ### Backend On Render
 
@@ -482,17 +494,17 @@ In Render, create a new Blueprint from this repository. Render will read `render
 When Render prompts for environment variables, set:
 
 ```text
-CORS_ORIGIN=https://<your-vercel-project>.vercel.app
+CORS_ORIGIN=https://<your-worker-name>.<your-subdomain>.workers.dev
 DATABASE_URL=<your-neon-postgres-connection-string>
 ```
 
 If you have production, preview, or custom frontend domains, set them as a comma-separated list:
 
 ```text
-CORS_ORIGIN=https://<your-vercel-project>.vercel.app,https://<your-custom-domain>
+CORS_ORIGIN=https://<your-worker-name>.<your-subdomain>.workers.dev,https://<your-custom-domain>
 ```
 
-If you do not know the Vercel URL yet, use the expected project URL first, deploy Vercel, then update `CORS_ORIGIN` in Render and redeploy the backend.
+If you do not know the Workers URL yet, use the expected `*.workers.dev` URL first, deploy to Cloudflare, then update `CORS_ORIGIN` in Render and redeploy the backend.
 
 Render manages these automatically from `render.yaml`:
 
@@ -530,34 +542,56 @@ npm run db:seed --workspace backend
 
 For production, use your Neon data as the source of truth and manage records through the app or Neon dashboard.
 
-### Frontend On Vercel
+### Frontend On Cloudflare Workers
 
-In Vercel, import the same repository and configure the project:
+The frontend uses `@opennextjs/cloudflare` (configured in
+`frontend/wrangler.jsonc` and `frontend/open-next.config.ts`) to build and
+deploy the Next.js app to Cloudflare Workers.
 
-```text
-Root Directory: frontend
-Framework Preset: Next.js
-Build Command: npm run build
-Install Command: npm install
-Output Directory: .next
+**One-time setup:**
+
+```bash
+npx wrangler login
 ```
 
-Add this environment variable in Vercel Project Settings:
+**Local build + deploy** (from `frontend/`):
 
-```text
-NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api
+```bash
+npm run cf:build     # next build, then transforms it into a Worker via OpenNext
+npm run cf:preview   # build, then run the Worker locally via Wrangler
+npm run cf:deploy    # build, then wrangler deploy to Cloudflare
 ```
 
-Deploy the frontend. After deployment, copy the production Vercel URL and make sure Render's backend has the exact same origin in `CORS_ORIGIN`, without a trailing slash:
+Set `NEXT_PUBLIC_API_URL` before building, since it's baked in at build time:
 
-```text
-CORS_ORIGIN=https://<your-vercel-project>.vercel.app
+```bash
+NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api npm run cf:deploy
 ```
 
-If you later add custom domains, update both sides:
+**Git-connected deploys (recommended for CI):** in the Cloudflare dashboard,
+go to Workers & Pages → Create → Workers → connect this repository, with:
 
 ```text
-Vercel NEXT_PUBLIC_API_URL=https://<api-domain>/api
+Root directory: frontend
+Build command: npm run cf:build
+Deploy command: npx wrangler deploy
+```
+
+Add `NEXT_PUBLIC_API_URL` as a build variable in the Cloudflare project
+settings so it's available when `next build` runs.
+
+After deployment, note the Worker's URL (`https://<worker-name>.<subdomain>.workers.dev`,
+or your custom domain if you attach one) and make sure Render's backend has
+the exact same origin in `CORS_ORIGIN`, without a trailing slash:
+
+```text
+CORS_ORIGIN=https://<worker-name>.<subdomain>.workers.dev
+```
+
+If you later add a custom domain, update both sides:
+
+```text
+Cloudflare NEXT_PUBLIC_API_URL=https://<api-domain>/api
 Render CORS_ORIGIN=https://<frontend-domain>
 ```
 
