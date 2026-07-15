@@ -13,6 +13,7 @@ import { prisma } from "../../lib/prisma";
 import { emitNotificationCreated } from "../../lib/realtime";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAnyPermission, requirePermissions } from "../../middleware/authorize";
+import { assertSameCompany, companyScope, requireCompanyContext } from "../../middleware/tenant";
 import { AppError } from "../../middleware/error-handler";
 import { ok } from "../../utils/api-response";
 import { asyncHandler } from "../../utils/async-handler";
@@ -340,6 +341,7 @@ function handlePrismaMutationError(error: unknown): never {
 }
 
 recruitmentRouter.use(authenticate);
+recruitmentRouter.use(requireCompanyContext);
 
 recruitmentRouter.get(
   "/jobs",
@@ -348,6 +350,7 @@ recruitmentRouter.get(
     const query = parseInput(jobQuerySchema, req.query);
     const pagination = getPagination(query);
     const where: Prisma.JobWhereInput = {
+      companyId: companyScope(req).companyId,
       ...(query.status ? { status: query.status } : {}),
       ...(query.departmentId ? { departmentId: query.departmentId } : {})
     };
@@ -379,6 +382,7 @@ recruitmentRouter.post(
     try {
       const job = await prisma.job.create({
         data: {
+          companyId: companyScope(req).companyId,
           title: body.title,
           description: body.description,
           departmentId: body.departmentId,
@@ -414,6 +418,8 @@ recruitmentRouter.get(
       throw new AppError(404, "JOB_NOT_FOUND", "Job was not found");
     }
 
+    assertSameCompany(job.companyId, req);
+
     res.status(200).json(ok({ job }));
   })
 );
@@ -424,7 +430,7 @@ recruitmentRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(candidateQuerySchema, req.query);
     const pagination = getPagination(query);
-    const where: Prisma.CandidateWhereInput = query.search
+    const searchWhere: Prisma.CandidateWhereInput | null = query.search
       ? {
           OR: [
             {
@@ -447,7 +453,11 @@ recruitmentRouter.get(
             }
           ]
         }
-      : {};
+      : null;
+    const where: Prisma.CandidateWhereInput = {
+      companyId: companyScope(req).companyId,
+      ...(searchWhere ?? {})
+    };
     const [total, candidates] = await prisma.$transaction([
       prisma.candidate.count({
         where
@@ -472,11 +482,13 @@ recruitmentRouter.post(
   requirePermissions(["recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(candidateBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const candidate = await prisma.$transaction(async (transaction) => {
         const createdCandidate = await transaction.candidate.create({
           data: {
+            companyId: scope.companyId,
             firstName: body.firstName,
             lastName: body.lastName,
             email: body.email,
@@ -489,8 +501,23 @@ recruitmentRouter.post(
         });
 
         if (body.jobId) {
+          const job = await transaction.job.findFirst({
+            where: {
+              id: body.jobId,
+              companyId: scope.companyId
+            },
+            select: {
+              id: true
+            }
+          });
+
+          if (!job) {
+            throw new AppError(400, "INVALID_REFERENCE", "The selected job does not exist");
+          }
+
           await transaction.jobApplication.create({
             data: {
+              companyId: scope.companyId,
               jobId: body.jobId,
               candidateId: createdCandidate.id,
               status: "APPLIED",
@@ -530,6 +557,8 @@ recruitmentRouter.get(
       throw new AppError(404, "CANDIDATE_NOT_FOUND", "Candidate was not found");
     }
 
+    assertSameCompany(candidate.companyId, req);
+
     res.status(200).json(ok({ candidate }));
   })
 );
@@ -540,9 +569,15 @@ recruitmentRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const where: Prisma.JobApplicationWhereInput = {
+      companyId: companyScope(req).companyId
+    };
     const [total, applications] = await prisma.$transaction([
-      prisma.jobApplication.count(),
+      prisma.jobApplication.count({
+        where
+      }),
       prisma.jobApplication.findMany({
+        where,
         include: applicationInclude,
         orderBy: {
           appliedAt: "desc"
@@ -561,10 +596,42 @@ recruitmentRouter.post(
   requirePermissions(["recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(applicationBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
+      const [job, candidate] = await Promise.all([
+        prisma.job.findFirst({
+          where: {
+            id: body.jobId,
+            companyId: scope.companyId
+          },
+          select: {
+            id: true
+          }
+        }),
+        prisma.candidate.findFirst({
+          where: {
+            id: body.candidateId,
+            companyId: scope.companyId
+          },
+          select: {
+            id: true
+          }
+        })
+      ]);
+
+      if (!job || !candidate) {
+        throw new AppError(400, "INVALID_REFERENCE", "The selected job or candidate does not exist");
+      }
+
       const application = await prisma.jobApplication.create({
-        data: body,
+        data: {
+          companyId: scope.companyId,
+          jobId: body.jobId,
+          candidateId: body.candidateId,
+          status: body.status,
+          notes: body.notes
+        },
         include: applicationInclude
       });
 
@@ -583,6 +650,21 @@ recruitmentRouter.put(
     const body = parseInput(applicationStatusSchema, req.body);
 
     try {
+      const existingApplication = await prisma.jobApplication.findUnique({
+        where: {
+          id: params.id
+        },
+        select: {
+          companyId: true
+        }
+      });
+
+      if (!existingApplication) {
+        throw new AppError(404, "APPLICATION_NOT_FOUND", "Application was not found");
+      }
+
+      assertSameCompany(existingApplication.companyId, req);
+
       const application = await prisma.jobApplication.update({
         where: {
           id: params.id
@@ -607,9 +689,15 @@ recruitmentRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const where: Prisma.InterviewWhereInput = {
+      companyId: companyScope(req).companyId
+    };
     const [total, interviews] = await prisma.$transaction([
-      prisma.interview.count(),
+      prisma.interview.count({
+        where
+      }),
       prisma.interview.findMany({
+        where,
         include: interviewInclude,
         orderBy: {
           scheduledAt: "asc"
@@ -628,12 +716,14 @@ recruitmentRouter.post(
   requirePermissions(["recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(interviewBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const transactionResult = await prisma.$transaction(async (transaction) => {
-        const application = await transaction.jobApplication.findUnique({
+        const application = await transaction.jobApplication.findFirst({
           where: {
-            id: body.applicationId
+            id: body.applicationId,
+            companyId: scope.companyId
           },
           include: {
             candidate: {
@@ -654,8 +744,25 @@ recruitmentRouter.post(
           throw new AppError(404, "APPLICATION_NOT_FOUND", "Application was not found");
         }
 
+        if (body.interviewerId) {
+          const interviewer = await transaction.employee.findFirst({
+            where: {
+              id: body.interviewerId,
+              companyId: scope.companyId
+            },
+            select: {
+              id: true
+            }
+          });
+
+          if (!interviewer) {
+            throw new AppError(400, "INVALID_REFERENCE", "The selected interviewer does not exist");
+          }
+        }
+
         const createdInterview = await transaction.interview.create({
           data: {
+            companyId: scope.companyId,
             applicationId: application.id,
             candidateId: application.candidateId,
             interviewerId: body.interviewerId,
@@ -681,6 +788,7 @@ recruitmentRouter.post(
           if (interviewer?.userId) {
             notification = await transaction.notification.create({
               data: {
+                companyId: scope.companyId,
                 userId: interviewer.userId,
                 title: "Interview scheduled",
                 message: `Interview scheduled for ${getCandidateName(application.candidate)} - ${application.job.title}`,
@@ -728,6 +836,21 @@ recruitmentRouter.put(
     const body = parseInput(interviewStatusSchema, req.body);
 
     try {
+      const existingInterview = await prisma.interview.findUnique({
+        where: {
+          id: params.id
+        },
+        select: {
+          companyId: true
+        }
+      });
+
+      if (!existingInterview) {
+        throw new AppError(404, "INTERVIEW_NOT_FOUND", "Interview was not found");
+      }
+
+      assertSameCompany(existingInterview.companyId, req);
+
       const interview = await prisma.interview.update({
         where: {
           id: params.id
@@ -752,9 +875,15 @@ recruitmentRouter.get(
   asyncHandler(async (req, res) => {
     const query = parseInput(paginationQuerySchema, req.query);
     const pagination = getPagination(query);
+    const where: Prisma.OfferWhereInput = {
+      companyId: companyScope(req).companyId
+    };
     const [total, offers] = await prisma.$transaction([
-      prisma.offer.count(),
+      prisma.offer.count({
+        where
+      }),
       prisma.offer.findMany({
+        where,
         include: offerInclude,
         orderBy: {
           createdAt: "desc"
@@ -777,6 +906,21 @@ recruitmentRouter.put(
 
     try {
       const offer = await prisma.$transaction(async (transaction) => {
+        const existingOffer = await transaction.offer.findUnique({
+          where: {
+            id: params.id
+          },
+          select: {
+            companyId: true
+          }
+        });
+
+        if (!existingOffer) {
+          throw new AppError(404, "OFFER_NOT_FOUND", "Offer was not found");
+        }
+
+        assertSameCompany(existingOffer.companyId, req);
+
         const updatedOffer = await transaction.offer.update({
           where: {
             id: params.id
@@ -816,12 +960,14 @@ recruitmentRouter.post(
   requirePermissions(["recruitment:manage"]),
   asyncHandler(async (req, res) => {
     const body = parseInput(offerBodySchema, req.body);
+    const scope = companyScope(req);
 
     try {
       const offer = await prisma.$transaction(async (transaction) => {
-        const application = await transaction.jobApplication.findUnique({
+        const application = await transaction.jobApplication.findFirst({
           where: {
-            id: body.applicationId
+            id: body.applicationId,
+            companyId: scope.companyId
           }
         });
 
@@ -831,6 +977,7 @@ recruitmentRouter.post(
 
         const createdOffer = await transaction.offer.create({
           data: {
+            companyId: scope.companyId,
             applicationId: application.id,
             candidateId: application.candidateId,
             jobId: application.jobId,
