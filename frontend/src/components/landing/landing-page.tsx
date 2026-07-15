@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
-import ctLogo from "@/assets/brand/chris-tech-logo.png";
+import ctLogo from "@/assets/brand/chris-tech-logo-icon.png";
 import { TrustedCompanies } from "./sections/trusted-companies";
 import { WhyChoose } from "./sections/why-choose";
 import { CoreFeatures } from "./sections/core-features";

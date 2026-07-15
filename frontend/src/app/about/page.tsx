@@ -46,6 +46,12 @@ export default function AboutPage() {
                 He combines African market insights with modern SaaS design to deliver software that
                 works for real teams, not just ideal cases.
               </p>
+              <Link
+                href="/founder"
+                className="mt-4 inline-flex text-sm font-semibold text-ct-blue hover:underline"
+              >
+                Read the founder&apos;s story →
+              </Link>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { Globe, Mail, Phone } from "lucide-react";
-import ctLogo from "@/assets/brand/chris-tech-logo.png";
+import ctLogo from "@/assets/brand/chris-tech-logo-icon.png";
 
 type FooterLink = { label: string; href?: string };
 
@@ -9,6 +9,7 @@ const columns: { title: string; links: FooterLink[] }[] = [
     title: "Company",
     links: [
       { label: "About", href: "/about" },
+      { label: "Founder", href: "/founder" },
       { label: "Portfolio", href: "/portfolio" },
       { label: "Contact", href: "/contact" }
     ]
