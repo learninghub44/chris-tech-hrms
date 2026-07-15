@@ -86,15 +86,7 @@ export function SiteFooter() {
                     </li>
                   ) : (
                     <li key={link.label}>
-                      <span
-                        className="font-inter inline-flex items-center gap-1.5 text-sm text-white/35"
-                        title="Not published yet"
-                      >
-                        {link.label}
-                        <span className="font-inter rounded-full border border-white/15 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/35">
-                          Soon
-                        </span>
-                      </span>
+                      <span className="font-inter text-sm text-white/45">{link.label}</span>
                     </li>
                   )
                 )}

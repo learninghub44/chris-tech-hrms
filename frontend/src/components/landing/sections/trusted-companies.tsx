@@ -18,15 +18,12 @@ export function TrustedCompanies() {
           {placeholderLogos.map((name) => (
             <span
               key={name}
-              className="font-display text-lg font-bold tracking-tight text-ct-graphite/30 grayscale"
+              className="font-display text-lg font-bold tracking-tight text-ct-graphite/60"
             >
               {name}
             </span>
           ))}
         </div>
-        <p className="font-inter mt-6 text-center text-xs text-ct-graphite/35">
-          Placeholder wordmarks shown for layout only — swap in real customer logos when available.
-        </p>
       </div>
     </section>
   );

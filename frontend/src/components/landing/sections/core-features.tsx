@@ -1,61 +1,61 @@
 const features = [
   {
     title: "Employee Management",
-    copy: "Maintain complete employee profiles, contracts, documents, organizational structures, and employment history from a centralized location."
+    copy: "Create a single source of truth for employee profiles, contracts, documents, skills, and career progression."
   },
   {
     title: "Recruitment & Hiring",
-    copy: "Manage job openings, applicants, interviews, offers, and onboarding with a streamlined recruitment process."
+    copy: "Streamline every stage of hiring with job workflows, interview scheduling, and automated offer management."
   },
   {
     title: "Attendance & Time Tracking",
-    copy: "Monitor attendance, working hours, overtime, shifts, and remote work with real-time tracking."
+    copy: "Track time, shifts, remote work, and approvals in real time from a modern attendance console."
   },
   {
     title: "Leave Management",
-    copy: "Automate leave requests, approvals, balances, and company leave policies."
+    copy: "Automate leave requests, approvals, balances, and policy enforcement across all teams."
   },
   {
     title: "Payroll Management",
-    copy: "Process salaries, deductions, bonuses, taxes, and payslips accurately with automated payroll workflows."
+    copy: "Process salaries, bonuses, deductions, taxes, and payslips with audit-ready payroll automation."
   },
   {
     title: "Performance Management",
-    copy: "Set goals, conduct evaluations, monitor progress, and support employee development."
+    copy: "Set goals, review progress, and run evaluations with a streamlined performance hub."
   },
   {
     title: "Employee Self-Service",
-    copy: "Allow employees to manage personal information, submit requests, download payslips, and access company updates from anywhere."
+    copy: "Enable employees with self-service access to payslips, leave, updates, and personal profile changes."
   },
   {
     title: "Analytics & Reporting",
-    copy: "Access real-time workforce insights with customizable dashboards and business reports."
+    copy: "Unlock executive-grade workforce insights with custom dashboards and operational reports."
   }
 ];
 
 export function CoreFeatures() {
   return (
-    <section id="features" className="bg-ct-paper py-24">
+    <section id="features" className="bg-ct-paper py-28">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-14 max-w-2xl">
           <span className="font-mono text-xs uppercase tracking-[0.2em] text-ct-blue">
             Core features
           </span>
           <h2 className="font-display mt-3 text-3xl font-bold tracking-[-0.02em] sm:text-4xl lg:text-5xl">
-            Comprehensive HR solutions
+            Enterprise HR tools that keep your team moving.
           </h2>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {features.map((feature, i) => (
             <div
               key={feature.title}
-              className="ct-cut-sm border border-ct-graphite/10 bg-white p-6 transition hover:border-ct-blue/40 hover:shadow-soft"
+              className="rounded-[32px] border border-ct-graphite/10 bg-white p-7 shadow-soft transition hover:-translate-y-1 hover:border-ct-blue/30"
             >
-              <span className="font-mono text-xs text-ct-blue/60">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-3xl bg-gradient-to-br from-ct-blue to-ct-ice text-sm font-semibold text-white">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <h3 className="font-display mt-3 text-xl font-bold">{feature.title}</h3>
-              <p className="font-inter mt-2 text-sm leading-relaxed text-ct-graphite/70">
+              <h3 className="font-display mt-5 text-xl font-bold text-ink">{feature.title}</h3>
+              <p className="font-inter mt-3 text-sm leading-relaxed text-ink/70">
                 {feature.copy}
               </p>
             </div>
