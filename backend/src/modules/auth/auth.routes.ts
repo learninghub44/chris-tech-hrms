@@ -77,7 +77,8 @@ async function createTokenResponse(userId: string) {
   const token = signAccessToken({
     id: authUser.id,
     email: authUser.email,
-    roles: authUser.roles
+    roles: authUser.roles,
+    companyId: authUser.companyId
   });
 
   return {
@@ -136,6 +137,34 @@ authRouter.post(
       throw new AppError(500, "EMPLOYEE_ROLE_MISSING", "The EMPLOYEE role has not been seeded");
     }
 
+    // Per docs/multi-tenant-design.md decision 4 (admin-provisioned signup for
+    // v1, no self-serve company creation): a companyId can only come from a
+    // pre-existing Employee record that an HR/Super Admin already created with
+    // this work email. workEmail is unique per-company (not globally) since
+    // the Phase 1 migration, so this can match at most one company per email
+    // in practice — if it ever matches more than one, something upstream
+    // (invite process) has gone wrong and this fails loudly rather than
+    // guessing which company to attach the user to.
+    const invitedEmployee = await prisma.employee.findFirst({
+      where: {
+        workEmail: body.email
+      },
+      select: {
+        id: true,
+        companyId: true,
+        userId: true,
+        status: true
+      }
+    });
+
+    if (!invitedEmployee) {
+      throw new AppError(
+        403,
+        "NO_COMPANY_INVITE",
+        "No company has invited this email to register yet. Ask your HR admin to add you as an employee first."
+      );
+    }
+
     const passwordHash = await hashPassword(body.password);
     const user = await prisma.$transaction(async (transaction) => {
       const createdUser = await transaction.user.create({
@@ -143,7 +172,8 @@ authRouter.post(
           email: body.email,
           name: body.name,
           passwordHash,
-          status: "ACTIVE"
+          status: "ACTIVE",
+          companyId: invitedEmployee.companyId
         }
       });
 
@@ -157,7 +187,8 @@ authRouter.post(
       await linkExistingEmployeeForUser({
         transaction,
         userId: createdUser.id,
-        email: createdUser.email
+        email: createdUser.email,
+        companyId: invitedEmployee.companyId
       });
 
       return createdUser;

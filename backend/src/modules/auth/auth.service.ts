@@ -8,6 +8,10 @@ export type AuthUser = {
   name: string;
   email: string;
   status: AccountStatus;
+  // Nullable: PLATFORM_OWNER accounts are cross-company and carry no companyId.
+  // Every other role must have a non-null companyId — enforced via
+  // requireCompanyContext() in src/middleware/tenant.ts on company-scoped routes.
+  companyId: string | null;
   roles: string[];
   permissions: string[];
 };
@@ -17,6 +21,7 @@ type UserAccessRecord = {
   name: string;
   email: string;
   status: AccountStatus;
+  companyId: string | null;
   roles: Array<{
     role: {
       name: string;
@@ -44,6 +49,7 @@ function toAuthUser(user: UserAccessRecord): AuthUser {
     name: user.name,
     email: user.email,
     status: user.status,
+    companyId: user.companyId,
     roles,
     permissions: Array.from(permissions).sort()
   };

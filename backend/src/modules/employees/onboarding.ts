@@ -16,6 +16,12 @@ export async function initializeLeaveBalancesForEmployee(input: {
   employeeId: string;
   year: number;
 }): Promise<void> {
+  // TODO(Phase 4 — leaves module scoping, see MULTI_TENANT_ROADMAP.md): this
+  // query is not yet company-scoped and will pull every active LeaveType
+  // across all companies once more than one company has data. Left as-is
+  // here deliberately — Phase 2 only touches auth/middleware, not module
+  // query bodies. Do not "fix" this in isolation without also scoping the
+  // rest of the leaves module in the same PR.
   const leaveTypes = await input.transaction.leaveType.findMany({
     where: {
       isActive: true
@@ -53,10 +59,14 @@ export async function linkExistingEmployeeForUser(input: {
   transaction: Prisma.TransactionClient;
   userId: string;
   email: string;
+  companyId: string;
 }): Promise<string | null> {
   const employee = await input.transaction.employee.findUnique({
     where: {
-      workEmail: input.email
+      companyId_workEmail: {
+        companyId: input.companyId,
+        workEmail: input.email
+      }
     },
     select: {
       id: true,
