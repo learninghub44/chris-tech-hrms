@@ -154,8 +154,8 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 
 ## Summary Checklist (top-level tracking)
 
-- [ ] Phase 0 — Design decisions documented and approved
-- [ ] Phase 1 — Schema + migration + backfill script
+- [x] Phase 0 — Design decisions documented and approved — see `docs/multi-tenant-design.md`
+- [x] Phase 1 — Schema + migration script written — see `phase-1-schema-migration` branch, PR pending merge to `main`
 - [ ] Phase 2 — Auth/middleware carries and enforces companyId
 - [ ] Phase 3 — Employees module scoped (proof of concept)
 - [ ] Phase 4 — Remaining 10 modules scoped
@@ -163,3 +163,22 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
 Each unchecked box above is a valid unit of work for another agent or engineer to pick up independently, as long as prior phases are merged to `main` first.
+
+---
+
+## Progress Log
+
+### Phase 0 — complete
+- `docs/multi-tenant-design.md` committed to `main` with recommendations on all 5 design questions (tenant identification strategy, user-company relationship, Super Admin scope, signup flow, billing/plan field) plus the confirmed model-scoping list.
+
+### Phase 1 — schema written, migration not yet run
+- Branch: `phase-1-schema-migration` (not yet merged to `main`)
+- `backend/prisma/schema.prisma` updated: new `Company` model, `companyId` added to all 26 tenant-scoped models (`User.companyId` is nullable to support the cross-company `PLATFORM_OWNER` role), global-unique constraints converted to per-company composite uniques.
+- `backend/scripts/backfill-default-company.ts` added with the 3-step migration process for populated databases (add nullable column → backfill → set NOT NULL).
+- **Important caveat:** the schema was verified manually (brace balance, companyId coverage confirmed via script) but `prisma generate` / `prisma migrate dev` could **not** be run in the agent sandbox — it has no network access to `binaries.prisma.sh`. Before Phase 2 starts, someone with full network access needs to:
+  1. Pull the `phase-1-schema-migration` branch
+  2. Run `npx prisma generate` to confirm the schema compiles
+  3. Follow the 3-step process in `backfill-default-company.ts` against a copy of the real dev database (or run a fresh `prisma migrate dev` against an empty database)
+  4. Merge to `main` once confirmed working
+
+### Phase 2 onward — not started
