@@ -2,7 +2,7 @@
 
 **A multi-tenant, full-stack Human Resource Management platform.**
 
-Built and maintained by [Chris Tech / Zetu Business Solutions](https://www.christeck.co.ke).
+Built and maintained by [Chris Tech / Zetu Business Solutions](https://www.christech.co.ke).
 
 Chris Tech HRMS brings core HR workflows into one role-based web application — employee records, attendance, leave, payroll, recruitment, performance management, announcements, notifications, reports, and an AI HR assistant — architected as a company-scoped SaaS product so multiple organizations can each manage their own isolated HR data inside a single deployment.
 
@@ -580,7 +580,7 @@ This project is proprietary software owned by Chris Tech / Zetu Business Solutio
 
 **Chris Tech / Zetu Business Solutions**
 
-- Website: [www.christeck.co.ke](https://www.christeck.co.ke)
+- Website: [www.christech.co.ke](https://www.christech.co.ke)
 - GitHub: [@learninghub44](https://github.com/learninghub44)
 - Email: chrisodhiambo958@gmail.com
 

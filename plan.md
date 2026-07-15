@@ -1,6 +1,6 @@
 # Chris Tech HRMS — Implementation Plan And Project Status
 
-**Owner:** Chris Tech / Zetu Business Solutions ([www.christeck.co.ke](https://www.christeck.co.ke))
+**Owner:** Chris Tech / Zetu Business Solutions ([www.christech.co.ke](https://www.christech.co.ke))
 
 ## 1. Product Goal
 
