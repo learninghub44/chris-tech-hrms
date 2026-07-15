@@ -651,6 +651,82 @@ async function runSmoke(baseUrl: string): Promise<void> {
     );
   });
 
+  await check("cross-tenant isolation: leaves module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Leave types: each company's catalog must be invisible to the other.
+    const primaryLeaveTypes = assertSuccess(
+      await request<{ leaveTypes: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/leave-types",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryLeaveTypes.leaveTypes.some((leaveType) => leaveType.name === "Northwind Compassionate Leave"),
+      "Company A leave-type list leaked Company B's leave type"
+    );
+
+    const secondCompanyLeaveTypes = assertSuccess(
+      await request<{ leaveTypes: Array<{ name: string }> }>({
+        baseUrl,
+        path: "/api/leave-types",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyLeaveTypes.leaveTypes.some((leaveType) => leaveType.name === "Sick Leave"),
+      "Company B leave-type list leaked Company A's leave type"
+    );
+    assert(
+      secondCompanyLeaveTypes.leaveTypes.some(
+        (leaveType) => leaveType.name === "Northwind Compassionate Leave"
+      ),
+      "Company B leave-type list did not return its own seeded leave type"
+    );
+
+    // Leave balances: Company B's approver view must never include Company
+    // A's smoke employee, even without an employeeId filter applied.
+    const secondCompanyBalances = assertSuccess(
+      await request<{ leaveBalances: Array<{ employee: { employeeCode: string } }> }>({
+        baseUrl,
+        path: "/api/leaves/balance",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyBalances.leaveBalances.some(
+        (balance) => balance.employee.employeeCode === smokeEmployeeCode
+      ),
+      "Company B leave balance list leaked Company A's smoke employee"
+    );
+
+    // Leave requests: Company B admin fetching Company A's leave request by
+    // id directly must be rejected as not found, not forbidden.
+    const primaryLeaves = assertSuccess(
+      await request<{ leaveRequests: Array<{ id: string }> }>({
+        baseUrl,
+        path: `/api/leaves?employeeId=${context.employeeId}`,
+        token: context.adminToken
+      })
+    );
+
+    if (primaryLeaves.leaveRequests.length > 0) {
+      const crossTenantApprove = await request<unknown>({
+        baseUrl,
+        path: `/api/leaves/${primaryLeaves.leaveRequests[0].id}/approve`,
+        method: "PUT",
+        token: secondCompanyLogin.token,
+        expectedStatus: 404,
+        body: {
+          decisionNote: "Should not be applied"
+        }
+      });
+
+      assertFailure(crossTenantApprove, "LEAVE_NOT_FOUND");
+    }
+  });
+
   await check("attendance clock-in and clock-out", async () => {
     await request<unknown>({
       baseUrl,
