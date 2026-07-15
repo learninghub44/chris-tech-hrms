@@ -2,10 +2,28 @@ import { PrismaClient, type Role, type User } from "@prisma/client";
 import { hashPassword } from "../src/modules/auth/password";
 
 const prisma = new PrismaClient();
+
 const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin@12345";
 const seedHrPassword = process.env.SEED_HR_PASSWORD ?? "Hr@12345";
 const seedManagerPassword = process.env.SEED_MANAGER_PASSWORD ?? "Manager@12345";
 const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD ?? "Employee@12345";
+const seedSecondCompanyAdminPassword =
+  process.env.SEED_SECOND_COMPANY_ADMIN_PASSWORD ?? "Admin@12345";
+const seedSecondCompanyEmployeePassword =
+  process.env.SEED_SECOND_COMPANY_EMPLOYEE_PASSWORD ?? "Employee@12345";
+
+// Primary tenant. Name/slug intentionally match scripts/backfill-default-company.ts
+// so a fresh `db:seed` run and an already-backfilled existing database converge
+// on the same company row instead of creating a duplicate.
+const PRIMARY_COMPANY_NAME = "Chris Tech Default Co";
+const PRIMARY_COMPANY_SLUG = "chris-tech-default";
+
+// Second tenant. Exists purely so cross-tenant isolation smoke tests (see
+// MULTI_TENANT_ROADMAP.md Phase 3) have a second company's data to assert
+// against. Deliberately small — it only needs to prove Company A never sees
+// Company B's rows, not to mirror the full primary demo dataset.
+const SECOND_COMPANY_NAME = "Northwind Demo Co";
+const SECOND_COMPANY_SLUG = "northwind-demo-co";
 
 const roles = [
   { name: "SUPER_ADMIN", description: "Full system access" },
@@ -207,6 +225,7 @@ async function upsertSeedUser(input: {
   password: string;
   role: Role;
   createdRoles: Role[];
+  companyId: string | null;
 }): Promise<User> {
   const passwordHash = await hashPassword(input.password);
   const user = await prisma.user.upsert({
@@ -216,13 +235,15 @@ async function upsertSeedUser(input: {
     update: {
       name: input.name,
       passwordHash,
-      status: "ACTIVE"
+      status: "ACTIVE",
+      companyId: input.companyId
     },
     create: {
       email: input.email,
       name: input.name,
       passwordHash,
-      status: "ACTIVE"
+      status: "ACTIVE",
+      companyId: input.companyId
     }
   });
 
@@ -232,6 +253,8 @@ async function upsertSeedUser(input: {
 }
 
 async function main() {
+  // ===================== Global RBAC catalog (shared across all companies) =====================
+
   const createdPermissions = await Promise.all(
     permissions.map((permission) =>
       prisma.permission.upsert({
@@ -281,52 +304,81 @@ async function main() {
   const hrAdminRole = getRequiredRole(createdRoles, "HR_ADMIN");
   const managerRole = getRequiredRole(createdRoles, "MANAGER");
   const employeeRole = getRequiredRole(createdRoles, "EMPLOYEE");
+
+  // ===================== Companies =====================
+
+  const primaryCompany = await prisma.company.upsert({
+    where: { slug: PRIMARY_COMPANY_SLUG },
+    update: { name: PRIMARY_COMPANY_NAME },
+    create: { name: PRIMARY_COMPANY_NAME, slug: PRIMARY_COMPANY_SLUG }
+  });
+
+  const secondCompany = await prisma.company.upsert({
+    where: { slug: SECOND_COMPANY_SLUG },
+    update: { name: SECOND_COMPANY_NAME },
+    create: { name: SECOND_COMPANY_NAME, slug: SECOND_COMPANY_SLUG }
+  });
+
+  // ===================== Primary company: full demo dataset =====================
+
   const user = await upsertSeedUser({
     email: "admin@hrms.local",
     name: "Elon Musk",
     password: seedAdminPassword,
     role: superAdmin,
-    createdRoles
+    createdRoles,
+    companyId: primaryCompany.id
   });
   const hrUser = await upsertSeedUser({
     email: "hr@hrms.local",
     name: "Avery Stone",
     password: seedHrPassword,
     role: hrAdminRole,
-    createdRoles
+    createdRoles,
+    companyId: primaryCompany.id
   });
   const managerUser = await upsertSeedUser({
     email: "manager@hrms.local",
     name: "Jordan Lee",
     password: seedManagerPassword,
     role: managerRole,
-    createdRoles
+    createdRoles,
+    companyId: primaryCompany.id
   });
   const selfServiceUser = await upsertSeedUser({
     email: "employee@hrms.local",
     name: "Maya Rao",
     password: seedEmployeePassword,
     role: employeeRole,
-    createdRoles
+    createdRoles,
+    companyId: primaryCompany.id
   });
   const ankitUser = await upsertSeedUser({
     email: "ankit@hrms.local",
     name: "Ankit Kumar",
     password: seedEmployeePassword,
     role: employeeRole,
-    createdRoles
+    createdRoles,
+    companyId: primaryCompany.id
   });
 
   const createdDepartments = await Promise.all(
     departments.map((department) =>
       prisma.department.upsert({
         where: {
-          name: department.name
+          companyId_name: {
+            companyId: primaryCompany.id,
+            name: department.name
+          }
         },
         update: {
           description: department.description
         },
-        create: department
+        create: {
+          name: department.name,
+          description: department.description,
+          companyId: primaryCompany.id
+        }
       })
     )
   );
@@ -343,7 +395,8 @@ async function main() {
 
       return prisma.designation.upsert({
         where: {
-          title_departmentId: {
+          companyId_title_departmentId: {
+            companyId: primaryCompany.id,
             title: designation.title,
             departmentId: department.id
           }
@@ -355,7 +408,8 @@ async function main() {
         create: {
           title: designation.title,
           description: designation.description,
-          departmentId: department.id
+          departmentId: department.id,
+          companyId: primaryCompany.id
         }
       });
     })
@@ -380,7 +434,10 @@ async function main() {
 
   const employee = await prisma.employee.upsert({
     where: {
-      employeeCode: "EMP-0001"
+      companyId_employeeCode: {
+        companyId: primaryCompany.id,
+        employeeCode: "EMP-0001"
+      }
     },
     update: {
       userId: user.id,
@@ -393,6 +450,7 @@ async function main() {
       location: "Head Office"
     },
     create: {
+      companyId: primaryCompany.id,
       employeeCode: "EMP-0001",
       userId: user.id,
       firstName: "Elon",
@@ -408,7 +466,10 @@ async function main() {
 
   const hrEmployee = await prisma.employee.upsert({
     where: {
-      employeeCode: "EMP-0002"
+      companyId_employeeCode: {
+        companyId: primaryCompany.id,
+        employeeCode: "EMP-0002"
+      }
     },
     update: {
       userId: hrUser.id,
@@ -422,6 +483,7 @@ async function main() {
       location: "Head Office"
     },
     create: {
+      companyId: primaryCompany.id,
       employeeCode: "EMP-0002",
       userId: hrUser.id,
       firstName: "Avery",
@@ -438,7 +500,10 @@ async function main() {
 
   const managerEmployee = await prisma.employee.upsert({
     where: {
-      employeeCode: "EMP-0004"
+      companyId_employeeCode: {
+        companyId: primaryCompany.id,
+        employeeCode: "EMP-0004"
+      }
     },
     update: {
       userId: managerUser.id,
@@ -452,6 +517,7 @@ async function main() {
       location: "Head Office"
     },
     create: {
+      companyId: primaryCompany.id,
       employeeCode: "EMP-0004",
       userId: managerUser.id,
       firstName: "Jordan",
@@ -468,7 +534,10 @@ async function main() {
 
   const selfServiceEmployee = await prisma.employee.upsert({
     where: {
-      employeeCode: "EMP-0003"
+      companyId_employeeCode: {
+        companyId: primaryCompany.id,
+        employeeCode: "EMP-0003"
+      }
     },
     update: {
       userId: selfServiceUser.id,
@@ -482,6 +551,7 @@ async function main() {
       location: "Remote"
     },
     create: {
+      companyId: primaryCompany.id,
       employeeCode: "EMP-0003",
       userId: selfServiceUser.id,
       firstName: "Maya",
@@ -498,7 +568,10 @@ async function main() {
 
   const ankitEmployee = await prisma.employee.upsert({
     where: {
-      employeeCode: "EMP-0005"
+      companyId_employeeCode: {
+        companyId: primaryCompany.id,
+        employeeCode: "EMP-0005"
+      }
     },
     update: {
       userId: ankitUser.id,
@@ -512,6 +585,7 @@ async function main() {
       location: "Head Office"
     },
     create: {
+      companyId: primaryCompany.id,
       employeeCode: "EMP-0005",
       userId: ankitUser.id,
       firstName: "Ankit",
@@ -534,6 +608,7 @@ async function main() {
 
   await prisma.emergencyContact.create({
     data: {
+      companyId: primaryCompany.id,
       employeeId: employee.id,
       name: "HR Desk",
       relationship: "Office",
@@ -554,6 +629,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       employeeId: employee.id,
       baseSalary: 120000,
       allowances: 15000,
@@ -575,6 +651,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       employeeId: hrEmployee.id,
       baseSalary: 90000,
       allowances: 10000,
@@ -596,6 +673,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       employeeId: managerEmployee.id,
       baseSalary: 100000,
       allowances: 12000,
@@ -617,6 +695,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       employeeId: selfServiceEmployee.id,
       baseSalary: 70000,
       allowances: 8000,
@@ -638,6 +717,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       employeeId: ankitEmployee.id,
       baseSalary: 72000,
       allowances: 8000,
@@ -649,7 +729,10 @@ async function main() {
 
   await prisma.shift.upsert({
     where: {
-      name: "General Shift"
+      companyId_name: {
+        companyId: primaryCompany.id,
+        name: "General Shift"
+      }
     },
     update: {
       startTime: "09:30",
@@ -660,6 +743,7 @@ async function main() {
       isActive: true
     },
     create: {
+      companyId: primaryCompany.id,
       name: "General Shift",
       startTime: "09:30",
       endTime: "18:30",
@@ -674,14 +758,20 @@ async function main() {
     holidays.map((holiday) =>
       prisma.holiday.upsert({
         where: {
-          date: holiday.date
+          companyId_date: {
+            companyId: primaryCompany.id,
+            date: holiday.date
+          }
         },
         update: {
           name: holiday.name,
           type: holiday.type,
           description: holiday.description
         },
-        create: holiday
+        create: {
+          ...holiday,
+          companyId: primaryCompany.id
+        }
       })
     )
   );
@@ -690,10 +780,16 @@ async function main() {
     leaveTypes.map((leaveType) =>
       prisma.leaveType.upsert({
         where: {
-          name: leaveType.name
+          companyId_name: {
+            companyId: primaryCompany.id,
+            name: leaveType.name
+          }
         },
         update: leaveType,
-        create: leaveType
+        create: {
+          ...leaveType,
+          companyId: primaryCompany.id
+        }
       })
     )
   );
@@ -712,6 +808,7 @@ async function main() {
             },
             update: {},
             create: {
+              companyId: primaryCompany.id,
               employeeId: seedEmployee.id,
               leaveTypeId: leaveType.id,
               year: 2026,
@@ -736,6 +833,7 @@ async function main() {
     },
     create: {
       id: "phase-7-welcome-announcement",
+      companyId: primaryCompany.id,
       title: "Phase 7 dashboard and reports are available",
       message: "Dashboard metrics, reports, notifications, and announcements are now enabled.",
       audience: "ALL",
@@ -757,6 +855,7 @@ async function main() {
     },
     create: {
       id: "seed-hr-workspace-ready",
+      companyId: primaryCompany.id,
       userId: hrUser.id,
       title: "HR workspace ready",
       message: "Employee management, leave approvals, payroll, recruitment, and performance tools are enabled.",
@@ -778,6 +877,7 @@ async function main() {
     },
     create: {
       id: "seed-manager-workspace-ready",
+      companyId: primaryCompany.id,
       userId: managerUser.id,
       title: "Manager workspace ready",
       message: "Team dashboard, leave approvals, attendance, payroll, and performance tools are enabled.",
@@ -799,6 +899,7 @@ async function main() {
     },
     create: {
       id: "seed-employee-self-service-ready",
+      companyId: primaryCompany.id,
       userId: selfServiceUser.id,
       title: "Employee self-service ready",
       message: "Attendance, leave requests, payslips, announcements, and performance pages are enabled.",
@@ -820,6 +921,7 @@ async function main() {
     },
     create: {
       id: "seed-ankit-self-service-ready",
+      companyId: primaryCompany.id,
       userId: ankitUser.id,
       title: "Employee self-service ready",
       message: "Attendance, leave requests, payslips, announcements, and performance pages are enabled.",
@@ -844,6 +946,7 @@ async function main() {
     },
     create: {
       id: "phase-8-software-engineer-job",
+      companyId: primaryCompany.id,
       title: "Software Engineer",
       description: "Builds and maintains HRMS product systems.",
       departmentId: engineering?.id ?? null,
@@ -856,7 +959,10 @@ async function main() {
   });
   const candidate = await prisma.candidate.upsert({
     where: {
-      email: "candidate.phase8@example.com"
+      companyId_email: {
+        companyId: primaryCompany.id,
+        email: "candidate.phase8@example.com"
+      }
     },
     update: {
       firstName: "Phase",
@@ -867,6 +973,7 @@ async function main() {
       currentTitle: "Frontend Engineer"
     },
     create: {
+      companyId: primaryCompany.id,
       firstName: "Phase",
       lastName: "Candidate",
       email: "candidate.phase8@example.com",
@@ -888,6 +995,7 @@ async function main() {
       notes: "Seeded Phase 8 application"
     },
     create: {
+      companyId: primaryCompany.id,
       jobId: job.id,
       candidateId: candidate.id,
       status: "SCREENING",
@@ -904,6 +1012,7 @@ async function main() {
   if (!existingInterview) {
     await prisma.interview.create({
       data: {
+        companyId: primaryCompany.id,
         applicationId: application.id,
         candidateId: candidate.id,
         interviewerId: employee.id,
@@ -931,6 +1040,7 @@ async function main() {
     },
     create: {
       id: "phase-9-admin-goal",
+      companyId: primaryCompany.id,
       employeeId: employee.id,
       title: "Improve HR service delivery",
       description: "Reduce manual follow-up by keeping employee lifecycle records current.",
@@ -961,6 +1071,7 @@ async function main() {
     },
     create: {
       id: "phase-9-admin-review",
+      companyId: primaryCompany.id,
       employeeId: employee.id,
       reviewerId: employee.id,
       cycle: "2026 H1",
@@ -988,6 +1099,7 @@ async function main() {
     },
     create: {
       id: "phase-9-admin-feedback",
+      companyId: primaryCompany.id,
       employeeId: employee.id,
       authorId: employee.id,
       category: "PRAISE",
@@ -995,6 +1107,220 @@ async function main() {
       isPrivate: false
     }
   });
+
+  // ===================== Second company: minimal isolation-test tenant =====================
+  // Deliberately small. Its only job is to give cross-tenant isolation smoke
+  // tests (Phase 3 of MULTI_TENANT_ROADMAP.md) a second company's rows to
+  // assert never leak into Company A's ("Chris Tech Default Co") queries.
+
+  const secondCompanyAdminUser = await upsertSeedUser({
+    email: "admin@northwind-demo.local",
+    name: "Priya Nandan",
+    password: seedSecondCompanyAdminPassword,
+    role: superAdmin,
+    createdRoles,
+    companyId: secondCompany.id
+  });
+  const secondCompanyEmployeeUser = await upsertSeedUser({
+    email: "employee@northwind-demo.local",
+    name: "Sam Okafor",
+    password: seedSecondCompanyEmployeePassword,
+    role: employeeRole,
+    createdRoles,
+    companyId: secondCompany.id
+  });
+
+  const secondCompanyDepartment = await prisma.department.upsert({
+    where: {
+      companyId_name: {
+        companyId: secondCompany.id,
+        name: "Operations"
+      }
+    },
+    update: {
+      description: "Day-to-day operations for the Northwind demo tenant"
+    },
+    create: {
+      name: "Operations",
+      description: "Day-to-day operations for the Northwind demo tenant",
+      companyId: secondCompany.id
+    }
+  });
+
+  const secondCompanyDesignation = await prisma.designation.upsert({
+    where: {
+      companyId_title_departmentId: {
+        companyId: secondCompany.id,
+        title: "Operations Lead",
+        departmentId: secondCompanyDepartment.id
+      }
+    },
+    update: {
+      description: "Owns operations for the Northwind demo tenant",
+      departmentId: secondCompanyDepartment.id
+    },
+    create: {
+      title: "Operations Lead",
+      description: "Owns operations for the Northwind demo tenant",
+      departmentId: secondCompanyDepartment.id,
+      companyId: secondCompany.id
+    }
+  });
+
+  const secondCompanyAdminEmployee = await prisma.employee.upsert({
+    where: {
+      companyId_employeeCode: {
+        companyId: secondCompany.id,
+        employeeCode: "EMP-N001"
+      }
+    },
+    update: {
+      userId: secondCompanyAdminUser.id,
+      firstName: "Priya",
+      lastName: "Nandan",
+      workEmail: secondCompanyAdminUser.email,
+      departmentId: secondCompanyDepartment.id,
+      designationId: secondCompanyDesignation.id,
+      status: "ACTIVE",
+      location: "Head Office"
+    },
+    create: {
+      companyId: secondCompany.id,
+      employeeCode: "EMP-N001",
+      userId: secondCompanyAdminUser.id,
+      firstName: "Priya",
+      lastName: "Nandan",
+      workEmail: secondCompanyAdminUser.email,
+      dateOfJoining: new Date("2026-05-18T00:00:00.000Z"),
+      departmentId: secondCompanyDepartment.id,
+      designationId: secondCompanyDesignation.id,
+      status: "ACTIVE",
+      location: "Head Office"
+    }
+  });
+
+  const secondCompanyEmployee = await prisma.employee.upsert({
+    where: {
+      companyId_employeeCode: {
+        companyId: secondCompany.id,
+        employeeCode: "EMP-N002"
+      }
+    },
+    update: {
+      userId: secondCompanyEmployeeUser.id,
+      firstName: "Sam",
+      lastName: "Okafor",
+      workEmail: secondCompanyEmployeeUser.email,
+      departmentId: secondCompanyDepartment.id,
+      designationId: null,
+      managerId: secondCompanyAdminEmployee.id,
+      status: "ACTIVE",
+      location: "Remote"
+    },
+    create: {
+      companyId: secondCompany.id,
+      employeeCode: "EMP-N002",
+      userId: secondCompanyEmployeeUser.id,
+      firstName: "Sam",
+      lastName: "Okafor",
+      workEmail: secondCompanyEmployeeUser.email,
+      dateOfJoining: new Date("2026-05-19T00:00:00.000Z"),
+      departmentId: secondCompanyDepartment.id,
+      managerId: secondCompanyAdminEmployee.id,
+      status: "ACTIVE",
+      location: "Remote"
+    }
+  });
+
+  await prisma.salary.upsert({
+    where: {
+      employeeId: secondCompanyAdminEmployee.id
+    },
+    update: {
+      baseSalary: 95000,
+      allowances: 9000,
+      deductions: 3000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    },
+    create: {
+      companyId: secondCompany.id,
+      employeeId: secondCompanyAdminEmployee.id,
+      baseSalary: 95000,
+      allowances: 9000,
+      deductions: 3000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    }
+  });
+
+  await prisma.salary.upsert({
+    where: {
+      employeeId: secondCompanyEmployee.id
+    },
+    update: {
+      baseSalary: 65000,
+      allowances: 6000,
+      deductions: 2000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    },
+    create: {
+      companyId: secondCompany.id,
+      employeeId: secondCompanyEmployee.id,
+      baseSalary: 65000,
+      allowances: 6000,
+      deductions: 2000,
+      effectiveFrom: new Date("2026-05-01T00:00:00.000Z"),
+      isActive: true
+    }
+  });
+
+  const secondCompanyLeaveType = await prisma.leaveType.upsert({
+    where: {
+      companyId_name: {
+        companyId: secondCompany.id,
+        name: "Annual Leave"
+      }
+    },
+    update: {
+      description: "Paid planned leave for vacation and personal time",
+      defaultAnnualAllowance: 18,
+      isPaid: true,
+      requiresApproval: true
+    },
+    create: {
+      companyId: secondCompany.id,
+      name: "Annual Leave",
+      description: "Paid planned leave for vacation and personal time",
+      defaultAnnualAllowance: 18,
+      isPaid: true,
+      requiresApproval: true
+    }
+  });
+
+  await Promise.all(
+    [secondCompanyAdminEmployee, secondCompanyEmployee].map((seedEmployee) =>
+      prisma.leaveBalance.upsert({
+        where: {
+          employeeId_leaveTypeId_year: {
+            employeeId: seedEmployee.id,
+            leaveTypeId: secondCompanyLeaveType.id,
+            year: 2026
+          }
+        },
+        update: {},
+        create: {
+          companyId: secondCompany.id,
+          employeeId: seedEmployee.id,
+          leaveTypeId: secondCompanyLeaveType.id,
+          year: 2026,
+          openingBalance: secondCompanyLeaveType.defaultAnnualAllowance,
+          available: secondCompanyLeaveType.defaultAnnualAllowance
+        }
+      })
+    )
+  );
 }
 
 main()
