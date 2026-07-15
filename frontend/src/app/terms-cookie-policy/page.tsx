@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 
 const sections = [
   { id: "acceptance", label: "1. Acceptance of these terms" },
@@ -50,6 +51,10 @@ export default function TermsCookiePolicyPage() {
   return (
     <main className="min-h-screen bg-ct-paper text-ink">
       <section className="mx-auto max-w-6xl px-6 py-20 lg:px-10">
+        <div className="mb-8">
+          <BackButton />
+        </div>
+
         <div className="mb-10">
           <p className="text-sm uppercase tracking-[0.28em] text-ct-blue">Terms &amp; Cookie Policy</p>
           <h1 className="mt-4 text-4xl font-semibold leading-tight sm:text-5xl">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackButton } from "@/components/back-button";
 
 const buildAreas = [
   {
@@ -62,6 +63,10 @@ export default function FounderPage() {
       {/* Hero */}
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-6 py-20 lg:px-10">
+          <div className="mb-8">
+            <BackButton />
+          </div>
+
           <p className="text-sm uppercase tracking-[0.28em] text-ct-blue">Founder</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight sm:text-5xl">
             Chris Odhiambo

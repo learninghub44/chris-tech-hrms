@@ -1,7 +1,13 @@
+import { BackButton } from "@/components/back-button";
+
 export default function ServicesPage() {
   return (
     <main className="min-h-screen bg-ct-paper text-ink">
       <section className="mx-auto max-w-6xl px-6 py-20 lg:px-10">
+        <div className="mb-8">
+          <BackButton />
+        </div>
+
         <div className="mb-12">
           <p className="text-sm uppercase tracking-[0.28em] text-ct-blue">Services</p>
           <h1 className="mt-4 text-4xl font-semibold leading-tight sm:text-5xl">
