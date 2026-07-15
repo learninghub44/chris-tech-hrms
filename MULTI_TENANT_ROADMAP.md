@@ -159,7 +159,7 @@ Each module gets its own PR following the Phase 3 checklist (scope queries, seed
 - [x] Phase 2 — Auth/middleware carries and enforces companyId — merged to `main`
 - [x] Phase 2.5 — `prisma/seed.ts` rewritten with a second seeded company (`Northwind Demo Co`) — merged to `main`, unblocks Phase 3/4 isolation tests
 - [x] Phase 3 — Employees module scoped (proof of concept) — merged to `main`
-- [ ] Phase 4 — Remaining 10 modules scoped (attendance done, see log below; 9 remain)
+- [ ] Phase 4 — Remaining 10 modules scoped (attendance, leaves done; 8 remain)
 - [ ] Phase 5 — Frontend company context
 - [ ] Phase 6 — Hardening, full isolation test suite, docs updated, tagged release
 
@@ -244,10 +244,11 @@ for each module in the Phase 4 order list below.
 
 ### Phase 4 onward — not started
 
-### Phase 4 — attendance module scoped (1 of 11 remaining modules)
+### Phase 4 — attendance module scoped (1 of 10 remaining modules)
 
-- **Branch:** `phase-4-attendance-scoping`, pushed to `origin`, not yet
-  merged to `main` (PR not yet opened).
+- **Branch:** `phase-4-attendance-scoping` — merged to `main` via PR #3.
+  (This entry previously said "not yet merged / PR not yet opened" — that
+  was stale; `git log` on `main` confirms the merge commit.)
 - **Files:** `backend/src/modules/attendance/attendance.routes.ts`,
   `backend/src/modules/attendance/attendance-completion.ts`,
   `backend/src/modules/notifications/announcement-notifications.ts`,
@@ -294,4 +295,49 @@ for each module in the Phase 4 order list below.
   `npm run db:seed`, then `npm run test:smoke` with real network/database
   access.
 
-**Next up per the Phase 4 order list:** `leaves`.
+### Phase 4 — leaves module scoped (2 of 10 remaining modules)
+
+- **Branch:** `phase-4-leaves-scoping` — merged to `main` via PR #4.
+- **Files:** `backend/src/modules/leaves/leaves.routes.ts`,
+  `backend/prisma/seed.ts`, `backend/scripts/smoke-test.ts`.
+- `leaves.routes.ts`: `requireCompanyContext` enforced; leave-types
+  list/create, leave creation, `leaves/me`, `leaves/balance`, the
+  approver leave list, and approve/reject all scoped via `companyScope(req)`.
+  Leave-type lookup on create now verifies the type belongs to the
+  caller's company (`400 INVALID_REFERENCE` otherwise, matching the
+  employees-module pattern). Approve/reject calls `assertSameCompany` on
+  the fetched leave request before acting (404, not 403, on a
+  cross-tenant id).
+- `calculateLeaveDays`: the holiday lookup used to compute working days
+  is now company-scoped — previously it pulled holidays from every
+  tenant when deciding which days counted as leave.
+- `getOrCreateLeaveBalance`: now sets `companyId` on first-created
+  balance rows (required field, was previously missing entirely).
+- Same cross-tenant notification leak class fixed in the attendance PR
+  turned up here too: `createNotificationsForPermission` /
+  `createNotificationForUser` had no company filter on the
+  permission-based approver lookup, so a pending leave request in
+  Company A would have notified approvers in every tenant. Both now
+  require `companyId` and scope accordingly.
+- `seed.ts`: added a distinct leave type for the second company
+  ("Northwind Compassionate Leave") for isolation testing.
+- `smoke-test.ts`: new check
+  `"cross-tenant isolation: leaves module (Phase 4)"` covering leave
+  types, the balance list, and a cross-tenant approve attempt (expects
+  `404 LEAVE_NOT_FOUND`).
+- **Not yet verified in this environment:** same `prisma generate` /
+  `binaries.prisma.sh` sandbox limitation as every prior phase (confirmed
+  again directly in this session — still a 403). `tsc --noEmit` error
+  count in `leaves.routes.ts` is unchanged before/after (23); no new
+  errors introduced beyond the pre-existing stale-client noise. Before
+  merging further work on top of this: run `npx prisma generate`,
+  `npm run db:seed`, `npm run test:smoke` with real network/database
+  access.
+
+**Next up per the Phase 4 order list:** `notifications` / `announcements`
+(items 4–5). Note `notifications.routes.ts`'s `POST /announcements` route
+already picked up company-scoping as a side effect of the attendance PR
+(it shares the `createAnnouncementNotifications` helper), but `GET
+/notifications`, `GET /announcements`, and read-state are still
+unscoped — confirm those explicitly rather than assuming the earlier
+partial touch covered them.
