@@ -1463,6 +1463,71 @@ async function main() {
       createdById: secondCompanyAdminUser.id
     }
   });
+
+  const northwindJob = await prisma.job.upsert({
+    where: {
+      id: "northwind-demo-job"
+    },
+    update: {
+      title: "Northwind demo tenant-only job",
+      description: "Exists only for cross-tenant isolation checks.",
+      location: "Remote",
+      employmentType: "Full-time",
+      status: "OPEN",
+      createdById: secondCompanyAdminUser.id
+    },
+    create: {
+      id: "northwind-demo-job",
+      companyId: secondCompany.id,
+      title: "Northwind demo tenant-only job",
+      description: "Exists only for cross-tenant isolation checks.",
+      location: "Remote",
+      employmentType: "Full-time",
+      status: "OPEN",
+      createdById: secondCompanyAdminUser.id
+    }
+  });
+
+  const northwindCandidate = await prisma.candidate.upsert({
+    where: {
+      companyId_email: {
+        companyId: secondCompany.id,
+        email: "candidate.northwind@example.com"
+      }
+    },
+    update: {
+      firstName: "Northwind",
+      lastName: "Candidate",
+      source: "Seed"
+    },
+    create: {
+      companyId: secondCompany.id,
+      firstName: "Northwind",
+      lastName: "Candidate",
+      email: "candidate.northwind@example.com",
+      source: "Seed"
+    }
+  });
+
+  await prisma.jobApplication.upsert({
+    where: {
+      jobId_candidateId: {
+        jobId: northwindJob.id,
+        candidateId: northwindCandidate.id
+      }
+    },
+    update: {
+      status: "APPLIED",
+      notes: "Northwind demo tenant-only application"
+    },
+    create: {
+      companyId: secondCompany.id,
+      jobId: northwindJob.id,
+      candidateId: northwindCandidate.id,
+      status: "APPLIED",
+      notes: "Northwind demo tenant-only application"
+    }
+  });
 }
 
 main()

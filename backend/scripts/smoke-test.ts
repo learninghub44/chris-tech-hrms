@@ -857,6 +857,88 @@ async function runSmoke(baseUrl: string): Promise<void> {
     }
   });
 
+  await check("cross-tenant isolation: recruitment module (Phase 4)", async () => {
+    const secondCompanyLogin = await login(baseUrl, secondCompanyAdminEmail, secondCompanyAdminPassword);
+
+    // Jobs: each company's job postings must be invisible to the other.
+    const primaryJobs = assertSuccess(
+      await request<{ jobs: Array<{ title: string; id: string }> }>({
+        baseUrl,
+        path: "/api/jobs",
+        token: context.adminToken
+      })
+    );
+    assert(
+      !primaryJobs.jobs.some((job) => job.title === "Northwind demo tenant-only job"),
+      "Company A job list leaked Company B's job"
+    );
+
+    const secondCompanyJobs = assertSuccess(
+      await request<{ jobs: Array<{ title: string }> }>({
+        baseUrl,
+        path: "/api/jobs",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyJobs.jobs.some((job) => job.title === "Software Engineer"),
+      "Company B job list leaked Company A's job"
+    );
+    assert(
+      secondCompanyJobs.jobs.some((job) => job.title === "Northwind demo tenant-only job"),
+      "Company B job list did not return its own seeded job"
+    );
+
+    // Cross-tenant job fetch-by-id must be rejected as not found.
+    if (primaryJobs.jobs.length > 0) {
+      const crossTenantJob = await request<unknown>({
+        baseUrl,
+        path: `/api/jobs/${primaryJobs.jobs[0].id}`,
+        token: secondCompanyLogin.token,
+        expectedStatus: 404
+      });
+
+      assertFailure(crossTenantJob, "JOB_NOT_FOUND");
+    }
+
+    // Candidates: each company's candidate pool must be invisible to the other.
+    const secondCompanyCandidates = assertSuccess(
+      await request<{ candidates: Array<{ email: string }> }>({
+        baseUrl,
+        path: "/api/candidates",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyCandidates.candidates.some(
+        (candidate) => candidate.email === "candidate.phase8@example.com"
+      ),
+      "Company B candidate list leaked Company A's candidate"
+    );
+    assert(
+      secondCompanyCandidates.candidates.some(
+        (candidate) => candidate.email === "candidate.northwind@example.com"
+      ),
+      "Company B candidate list did not return its own seeded candidate"
+    );
+
+    // Applications: Company B's application list must never include
+    // Company A's seeded application.
+    const secondCompanyApplications = assertSuccess(
+      await request<{ applications: Array<{ candidate: { email: string } }> }>({
+        baseUrl,
+        path: "/api/applications",
+        token: secondCompanyLogin.token
+      })
+    );
+    assert(
+      !secondCompanyApplications.applications.some(
+        (application) => application.candidate.email === "candidate.phase8@example.com"
+      ),
+      "Company B application list leaked Company A's application"
+    );
+  });
+
   await check("attendance clock-in and clock-out", async () => {
     await request<unknown>({
       baseUrl,
