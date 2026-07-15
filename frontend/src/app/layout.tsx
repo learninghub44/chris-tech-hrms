@@ -1,32 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Poppins } from "next/font/google";
 import hrmsIcon from "@/assets/hrms-icon.png";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 import "./globals.css";
 
-// Fraunces is the display serif used for headlines — a high-contrast,
-// editorial face that carries the "premium enterprise" register. Inter
-// handles body copy and UI chrome, where neutrality and legibility matter
-// more than personality (see tailwind.config.ts for the mapping).
-const fraunces = Fraunces({
+// Poppins is used site-wide — one rounded, geometric sans for headlines,
+// body copy, and UI labels — for a clean, consistent look across every page.
+const poppins = Poppins({
   subsets: ["latin"],
-  axes: ["opsz", "SOFT", "WONK"],
-  weight: "variable",
+  weight: ["300", "400", "500", "600", "700", "800"],
   style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap"
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap"
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-mono",
+  variable: "--font-poppins",
   display: "swap"
 });
 
@@ -81,7 +65,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${fraunces.variable} ${inter.variable} ${plexMono.variable}`}
+        className={poppins.variable}
         suppressHydrationWarning={true}
       >
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />

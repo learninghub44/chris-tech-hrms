@@ -24,16 +24,16 @@ const config: Config = {
           graphite: "#0b0e14",
           steel: "#11151f",
           slate: "#1b2130",
-          blue: "#3454d1",
-          blueDeep: "#1e3690",
+          blue: "#2954eb",
+          blueDeep: "#1c3bb8",
           ice: "#c9a567"
         }
       },
       fontFamily: {
-        display: ["var(--font-serif)", "Georgia", "serif"],
-        body: ["var(--font-inter)", "system-ui", "sans-serif"],
-        inter: ["var(--font-inter)", "sans-serif"],
-        mono: ["var(--font-mono)"]
+        display: ["var(--font-poppins)", "system-ui", "sans-serif"],
+        body: ["var(--font-poppins)", "system-ui", "sans-serif"],
+        inter: ["var(--font-poppins)", "system-ui", "sans-serif"],
+        mono: ["var(--font-poppins)", "system-ui", "sans-serif"]
       },
       boxShadow: {
         soft: "0 12px 30px rgba(11, 14, 20, 0.08)",
