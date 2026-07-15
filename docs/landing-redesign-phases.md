@@ -1,5 +1,12 @@
 # Landing Page Redesign — Phase Plan
 
+**Status (2026-07-15):** Phases 1–2 done and pushed to `main`. Phase 3
+(section pass) not started. Next agent should pick up there.
+
+**Commit log for this effort:**
+- `8c721fa` — Phase 1: tokens (palette + Fraunces/Inter typography)
+- `6208361` — Phase 2: cinematic hero rebuild (custom video, glass nav, serif headline)
+
 Design reference: visual quality/UX of jrmhd.tech (cinematic hero, premium
 enterprise aesthetic, glassmorphism, elegant typography, generous whitespace).
 No branding, copy, colors, images, or layout are copied from that site — it is
