@@ -7,6 +7,8 @@ import {
   Building2,
   CalendarCheck,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   Clock3,
   DollarSign,
@@ -16,6 +18,9 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
   Send,
   ReceiptText,
   Settings,
@@ -317,6 +322,13 @@ export function AppShell({ user, token, children }: AppShellProps) {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [navFilter, setNavFilter] = useState("");
+  const [headerSearch, setHeaderSearch] = useState("");
+  const [isHeaderSearchOpen, setIsHeaderSearchOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const headerSearchRef = useRef<HTMLDivElement | null>(null);
   const [liveUnreadNotificationCount, setLiveUnreadNotificationCount] = useState<
     number | null
   >(null);
@@ -361,13 +373,95 @@ export function AppShell({ user, token, children }: AppShellProps) {
         .filter((section) => section.items.length > 0),
     [visibleNavItems]
   );
+  const filteredNavSections = useMemo<NavSection[]>(() => {
+    const query = navFilter.trim().toLowerCase();
+
+    if (!query) {
+      return visibleNavSections;
+    }
+
+    return visibleNavSections
+      .map((section) => ({
+        label: section.label,
+        items: section.items.filter((item) => item.label.toLowerCase().includes(query))
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [navFilter, visibleNavSections]);
+  const headerSearchResults = useMemo(() => {
+    const query = headerSearch.trim().toLowerCase();
+
+    if (!query) {
+      return [];
+    }
+
+    return visibleNavItems.filter((item) => item.href && item.label.toLowerCase().includes(query)).slice(0, 8);
+  }, [headerSearch, visibleNavItems]);
+  const breadcrumbSegments = useMemo(() => {
+    const activeHref = pendingHref ?? pathname;
+    const matchedItem = visibleNavItems.find(
+      (item) => item.href && (activeHref === item.href || activeHref.startsWith(`${item.href}/`))
+    );
+
+    if (matchedItem) {
+      return [matchedItem.section, matchedItem.label];
+    }
+
+    const fallback = activeHref
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+
+    return fallback.length > 0 ? fallback : ["Dashboard"];
+  }, [pathname, pendingHref, visibleNavItems]);
 
   useEffect(() => {
     const preferredTheme = getPreferredTheme();
 
     setTheme(preferredTheme);
     applyTheme(preferredTheme);
+
+    const storedCollapsed = window.localStorage.getItem("hrms-sidebar-collapsed");
+
+    if (storedCollapsed === "true") {
+      setIsSidebarCollapsed(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
+
+  useEffect(() => {
+    if (!isHeaderSearchOpen) {
+      return;
+    }
+
+    function handleClickOutside(event: MouseEvent) {
+      if (!headerSearchRef.current?.contains(event.target as Node)) {
+        setIsHeaderSearchOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isHeaderSearchOpen]);
 
   useEffect(() => {
     if (notificationsQuery.data?.success) {
@@ -430,6 +524,25 @@ export function AppShell({ user, token, children }: AppShellProps) {
     applyTheme(nextTheme);
   }
 
+  function goToSearchResult(href: string) {
+    rememberNavScroll();
+    setPendingHref(href);
+    prefetchRoute(href);
+    router.push(href);
+    setHeaderSearch("");
+    setIsHeaderSearchOpen(false);
+  }
+
+  function toggleSidebar() {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+
+      window.localStorage.setItem("hrms-sidebar-collapsed", String(next));
+
+      return next;
+    });
+  }
+
   function prefetchRoute(href: string) {
     router.prefetch(href);
     prefetchNavTargetData(queryClient, token, href);
@@ -451,7 +564,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
     router.push("/login");
   }
 
-  function renderNavItems(items: NavItem[]) {
+  function renderNavItems(items: NavItem[], collapsed = false) {
     const activePathname = pendingHref ?? pathname;
 
     return items.map((item) => {
@@ -459,13 +572,27 @@ export function AppShell({ user, token, children }: AppShellProps) {
       const active = item.href
         ? activePathname === item.href || activePathname.startsWith(`${item.href}/`)
         : false;
-      const className = `flex min-h-10 w-full min-w-0 items-center gap-3 rounded-md border px-3 text-sm transition ${
+      const className = `group relative flex min-h-10 w-full min-w-0 items-center gap-3 rounded-xl px-3 text-sm transition-all duration-150 ${
+        collapsed ? "justify-center px-0" : ""
+      } ${
         active
-          ? "border-slate-200 bg-white font-semibold text-slate-950 shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
-          : "border-transparent text-slate-600 hover:border-slate-200 hover:bg-white"
+          ? "bg-primary-50 font-semibold text-primary-700 dark:bg-primary-600/15 dark:text-primary-500"
+          : "text-ink2-soft hover:translate-x-0.5 hover:bg-slate-100 hover:text-ink2 dark:hover:bg-white/5"
       }`;
 
       const href = item.href;
+      const content = (
+        <>
+          {active ? (
+            <span
+              className="absolute inset-y-1 left-0 w-1 rounded-full bg-primary-600"
+              aria-hidden="true"
+            />
+          ) : null}
+          <Icon className="shrink-0" size={18} aria-hidden="true" />
+          {collapsed ? null : <span className="min-w-0 truncate">{item.label}</span>}
+        </>
+      );
 
       if (href) {
         return (
@@ -474,6 +601,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
             className={className}
             href={href}
             prefetch={false}
+            title={collapsed ? item.label : undefined}
             aria-current={active ? "page" : undefined}
             onFocus={() => prefetchRoute(href)}
             onPointerDown={() => prefetchRoute(href)}
@@ -485,66 +613,133 @@ export function AppShell({ user, token, children }: AppShellProps) {
               setIsMobileNavOpen(false);
             }}
           >
-            <Icon className="shrink-0" size={18} aria-hidden="true" />
-          <span className="min-w-0 truncate">{item.label}</span>
+            {content}
           </Link>
         );
       }
 
       return (
-        <button key={item.label} className={className} type="button" disabled>
-          <Icon className="shrink-0" size={18} aria-hidden="true" />
-          <span className="min-w-0 truncate">{item.label}</span>
+        <button key={item.label} className={className} type="button" title={collapsed ? item.label : undefined} disabled>
+          {content}
         </button>
       );
     });
   }
 
-  function renderNavSections() {
-    return visibleNavSections.map((section) => {
+  function renderNavSections(collapsed = false) {
+    if (filteredNavSections.length === 0) {
+      return (
+        <p className="px-3 text-sm text-ink2-soft">No matching menu items.</p>
+      );
+    }
+
+    return filteredNavSections.map((section) => {
       return (
         <div className="space-y-1.5" key={section.label}>
-          <p className="px-3 text-xs font-medium text-slate-400">{section.label}</p>
-          <div className="space-y-1">{renderNavItems(section.items)}</div>
+          {collapsed ? (
+            <div className="mx-3 h-px bg-edge dark:bg-white/10" aria-hidden="true" />
+          ) : (
+            <p className="px-3 text-xs font-semibold uppercase tracking-wide text-ink2-soft">
+              {section.label}
+            </p>
+          )}
+          <div className="space-y-1">{renderNavItems(section.items, collapsed)}</div>
         </div>
       );
     });
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f4f6f8] text-slate-950">
-      <aside className="fixed inset-y-3 left-3 hidden w-[232px] flex-col overflow-hidden rounded-lg border border-slate-200 bg-[#f8fafc] shadow-[0_18px_45px_rgba(15,23,42,0.08)] lg:flex">
-        <Link
-          href="/dashboard"
-          className="m-2 flex h-12 min-w-0 items-center gap-3 rounded-lg bg-[#020617] px-3 text-white transition hover:bg-[#111827] dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617] dark:hover:bg-[#ffffff]"
-          prefetch={false}
-          onFocus={() => prefetchRoute("/dashboard")}
-          onPointerDown={() => prefetchRoute("/dashboard")}
-          onPointerEnter={() => prefetchRoute("/dashboard")}
-          onClick={() => {
-            rememberNavScroll();
-            setPendingHref("/dashboard");
-          }}
-          aria-label="Go to dashboard"
-        >
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[#ffffff] text-[#020617] dark:bg-[#020617] dark:text-white">
-            <LayoutDashboard size={19} aria-hidden="true" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">HRMS</p>
-            <p className="truncate text-xs text-white/60 dark:text-slate-500">Organization</p>
-          </div>
-        </Link>
+    <main className="min-h-screen overflow-x-hidden bg-canvas text-ink2 dark:bg-[#070c16]">
+      <aside
+        className={`fixed inset-y-3 left-3 hidden flex-col overflow-hidden rounded-2xl border border-edge bg-white shadow-elevated transition-[width] duration-200 ease-out dark:border-white/10 dark:bg-[#0c1424] lg:flex ${
+          isSidebarCollapsed ? "w-[76px]" : "w-[248px]"
+        }`}
+      >
+        <div className="flex items-center gap-2 p-3">
+          <Link
+            href="/dashboard"
+            className={`flex h-12 min-w-0 flex-1 items-center gap-3 rounded-xl bg-primary-600 px-3 text-white shadow-glow transition hover:bg-primary-700 ${
+              isSidebarCollapsed ? "justify-center px-0" : ""
+            }`}
+            prefetch={false}
+            onFocus={() => prefetchRoute("/dashboard")}
+            onPointerDown={() => prefetchRoute("/dashboard")}
+            onPointerEnter={() => prefetchRoute("/dashboard")}
+            onClick={() => {
+              rememberNavScroll();
+              setPendingHref("/dashboard");
+            }}
+            aria-label="Go to dashboard"
+          >
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/15">
+              <LayoutDashboard size={18} aria-hidden="true" />
+            </div>
+            {isSidebarCollapsed ? null : (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold leading-tight">HRMS</p>
+                <p className="truncate text-[11px] leading-tight text-white/70">
+                  {user.companyName ?? "Organization"}
+                </p>
+              </div>
+            )}
+          </Link>
+        </div>
 
-        <nav ref={desktopNavRef} className="flex-1 space-y-5 overflow-y-auto px-2 pb-4 pt-2">
-          {renderNavSections()}
+        {isSidebarCollapsed ? null : (
+          <div className="px-3 pb-2">
+            <label className="relative block">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink2-soft"
+                size={15}
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                value={navFilter}
+                onChange={(event) => setNavFilter(event.target.value)}
+                placeholder="Search menu..."
+                aria-label="Search navigation menu"
+                className="w-full rounded-lg border border-edge bg-canvas py-1.5 pl-8 pr-2 text-xs text-ink2 outline-none transition placeholder:text-ink2-soft focus-visible:border-primary-600 focus-visible:ring-2 focus-visible:ring-primary-600/20 dark:border-white/10 dark:bg-white/5"
+              />
+            </label>
+          </div>
+        )}
+
+        <nav
+          ref={desktopNavRef}
+          className="flex-1 space-y-5 overflow-y-auto px-2 pb-3 pt-1 animate-fade-in"
+        >
+          {renderNavSections(isSidebarCollapsed)}
         </nav>
 
-        <div className="border-t border-slate-200 p-3">
+        <div className="border-t border-edge p-2 dark:border-white/10">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={`mb-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-ink2-soft transition hover:bg-slate-100 hover:text-ink2 dark:hover:bg-white/5 ${
+              isSidebarCollapsed ? "justify-center" : ""
+            }`}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen size={16} aria-hidden="true" />
+            ) : (
+              <>
+                <PanelLeftClose size={16} aria-hidden="true" />
+                <span>Collapse</span>
+              </>
+            )}
+          </button>
+
           <Link
             href="/profile"
-            className="flex min-w-0 items-center gap-3 rounded-md px-2 py-2 transition hover:bg-white"
+            className={`flex min-w-0 items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-slate-100 dark:hover:bg-white/5 ${
+              isSidebarCollapsed ? "justify-center" : ""
+            }`}
             prefetch={false}
+            title={isSidebarCollapsed ? user.name : undefined}
             onFocus={() => prefetchRoute("/profile")}
             onPointerDown={() => prefetchRoute("/profile")}
             onPointerEnter={() => prefetchRoute("/profile")}
@@ -553,13 +748,15 @@ export function AppShell({ user, token, children }: AppShellProps) {
               setPendingHref("/profile");
             }}
           >
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-50 text-primary-700 dark:bg-primary-600/20 dark:text-primary-500">
               <UserCircle size={20} aria-hidden="true" />
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900">{user.name}</p>
-              <p className="truncate text-xs text-slate-500">{user.email}</p>
-            </div>
+            {isSidebarCollapsed ? null : (
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink2">{user.name}</p>
+                <p className="truncate text-xs text-ink2-soft">{user.email}</p>
+              </div>
+            )}
           </Link>
         </div>
       </aside>
@@ -572,11 +769,11 @@ export function AppShell({ user, token, children }: AppShellProps) {
             onClick={() => setIsMobileNavOpen(false)}
             aria-label="Close navigation"
           />
-          <aside className="relative flex h-full w-[min(20rem,calc(100vw-1rem))] max-w-[92vw] flex-col border-r border-slate-200 bg-[#f8fafc] shadow-soft">
-            <div className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-4">
+          <aside className="relative flex h-full w-[min(20rem,calc(100vw-1rem))] max-w-[92vw] flex-col rounded-r-2xl border-r border-edge bg-white shadow-elevated dark:border-white/10 dark:bg-[#0c1424]">
+            <div className="flex min-h-14 items-center justify-between gap-3 border-b border-edge px-4 dark:border-white/10">
               <Link
                 href="/dashboard"
-                className="flex min-w-0 items-center gap-3 rounded-md"
+                className="flex min-w-0 items-center gap-3 rounded-lg"
                 prefetch={false}
                 onFocus={() => prefetchRoute("/dashboard")}
                 onPointerDown={() => prefetchRoute("/dashboard")}
@@ -588,16 +785,16 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 }}
                 aria-label="Go to dashboard"
               >
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#020617] text-white dark:bg-[#f8fafc] dark:text-[#020617]">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary-600 text-white">
                   <LayoutDashboard size={19} aria-hidden="true" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">HRMS</p>
-                  <p className="text-xs text-slate-500">{user.companyName ?? "Organization"}</p>
+                  <p className="text-sm font-semibold text-ink2">HRMS</p>
+                  <p className="text-xs text-ink2-soft">{user.companyName ?? "Organization"}</p>
                 </div>
               </Link>
               <button
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-600"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-edge text-ink2-soft transition hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5"
                 type="button"
                 onClick={() => setIsMobileNavOpen(false)}
                 aria-label="Close navigation"
@@ -605,37 +802,111 @@ export function AppShell({ user, token, children }: AppShellProps) {
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
+            <div className="px-3 pt-3">
+              <label className="relative block">
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink2-soft"
+                  size={15}
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={navFilter}
+                  onChange={(event) => setNavFilter(event.target.value)}
+                  placeholder="Search menu..."
+                  aria-label="Search navigation menu"
+                  className="w-full rounded-lg border border-edge bg-canvas py-1.5 pl-8 pr-2 text-xs text-ink2 outline-none transition placeholder:text-ink2-soft focus-visible:border-primary-600 focus-visible:ring-2 focus-visible:ring-primary-600/20 dark:border-white/10 dark:bg-white/5"
+                />
+              </label>
+            </div>
             <nav ref={mobileNavRef} className="space-y-5 overflow-y-auto p-3">{renderNavSections()}</nav>
           </aside>
         </div>
       ) : null}
 
-      <section className="min-w-0 lg:pl-[252px]">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-[#f4f6f8]/92 px-3 py-2 backdrop-blur sm:px-5 sm:py-3">
-          <div className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 shadow-[0_8px_26px_rgba(15,23,42,0.04)] sm:gap-3 sm:px-4">
+      <section className={`min-w-0 transition-[padding] duration-200 ease-out ${isSidebarCollapsed ? "lg:pl-[92px]" : "lg:pl-[264px]"}`}>
+        <header className="sticky top-0 z-20 border-b border-edge bg-canvas/92 px-3 py-2 backdrop-blur sm:px-5 sm:py-3 dark:border-white/10 dark:bg-[#070c16]/92">
+          <div className="flex min-h-12 items-center justify-between gap-2 rounded-2xl border border-edge bg-white px-2 py-2 shadow-card sm:gap-3 sm:px-4 dark:border-white/10 dark:bg-[#0c1424]">
             <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <button
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 text-slate-600 lg:hidden"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-edge text-ink2-soft transition hover:bg-slate-100 dark:border-white/10 dark:hover:bg-white/5 lg:hidden"
                 type="button"
                 onClick={() => setIsMobileNavOpen(true)}
                 aria-label="Open navigation"
               >
                 <Menu size={18} aria-hidden="true" />
               </button>
+
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-950">
-                  <span className="sm:hidden">HRMS</span>
-                  <span className="hidden sm:inline">{user.companyName ?? "Company Workspace"}</span>
+                <nav aria-label="Breadcrumb" className="hidden items-center gap-1 text-xs text-ink2-soft sm:flex">
+                  {breadcrumbSegments.map((segment, index) => (
+                    <span className="flex items-center gap-1" key={`${segment}-${index}`}>
+                      {index > 0 ? <ChevronRight size={12} aria-hidden="true" /> : null}
+                      <span className={index === breadcrumbSegments.length - 1 ? "font-medium text-ink2" : ""}>
+                        {segment}
+                      </span>
+                    </span>
+                  ))}
+                </nav>
+                <p className="truncate text-sm font-semibold text-ink2 sm:hidden">
+                  {user.companyName ?? "Company Workspace"}
                 </p>
-                <p className="hidden break-all text-xs text-slate-500 sm:block sm:truncate">
-                  {primaryRole ? roleLabels[primaryRole] : "User"} | {user.email}
-                </p>
+              </div>
+
+              <div className="relative ml-1 hidden max-w-sm flex-1 sm:block" ref={headerSearchRef}>
+                <label className="relative block">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink2-soft"
+                    size={15}
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={headerSearch}
+                    onFocus={() => setIsHeaderSearchOpen(true)}
+                    onChange={(event) => {
+                      setHeaderSearch(event.target.value);
+                      setIsHeaderSearchOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && headerSearchResults[0]?.href) {
+                        goToSearchResult(headerSearchResults[0].href);
+                      }
+                      if (event.key === "Escape") {
+                        setIsHeaderSearchOpen(false);
+                      }
+                    }}
+                    placeholder="Search pages..."
+                    aria-label="Search pages"
+                    className="w-full rounded-lg border border-edge bg-canvas py-2 pl-9 pr-3 text-sm text-ink2 outline-none transition placeholder:text-ink2-soft focus-visible:border-primary-600 focus-visible:ring-2 focus-visible:ring-primary-600/20 dark:border-white/10 dark:bg-white/5"
+                  />
+                </label>
+
+                {isHeaderSearchOpen && headerSearchResults.length > 0 ? (
+                  <div className="absolute left-0 top-full z-30 mt-2 w-full min-w-[16rem] overflow-hidden rounded-xl border border-edge bg-white py-1 shadow-elevated animate-fade-in dark:border-white/10 dark:bg-[#0c1424]">
+                    {headerSearchResults.map((item) => {
+                      const Icon = item.icon;
+
+                      return (
+                        <button
+                          key={item.label}
+                          type="button"
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink2 transition hover:bg-slate-100 dark:hover:bg-white/5"
+                          onClick={() => item.href && goToSearchResult(item.href)}
+                        >
+                          <Icon size={15} className="shrink-0 text-ink2-soft" aria-hidden="true" />
+                          <span className="min-w-0 truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <button
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-edge bg-white text-ink2-soft shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-slate-100 hover:text-ink2 sm:h-9 sm:w-9 dark:border-white/10 dark:bg-[#0c1424] dark:hover:bg-white/5 dark:hover:text-white"
                 type="button"
                 onClick={toggleTheme}
                 aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -651,7 +922,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
               </button>
               <Link
                 href="/notifications"
-                className="relative grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
+                className="relative grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-edge bg-white text-ink2-soft shadow-sm transition-transform hover:-translate-y-0.5 hover:bg-slate-100 hover:text-ink2 sm:h-9 sm:w-9 dark:border-white/10 dark:bg-[#0c1424] dark:hover:bg-white/5 dark:hover:text-white"
                 aria-label={
                   hasUnreadNotifications
                     ? `${unreadNotificationCount} unread notifications`
@@ -668,7 +939,7 @@ export function AppShell({ user, token, children }: AppShellProps) {
               >
                 <Bell size={18} aria-hidden="true" />
                 <span
-                  className={`absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-red-600 px-1 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-150 ${
+                  className={`absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold leading-none text-white shadow-sm transition-all duration-150 ${
                     hasUnreadNotifications
                       ? "scale-100 opacity-100"
                       : "pointer-events-none scale-50 opacity-0"
@@ -679,21 +950,70 @@ export function AppShell({ user, token, children }: AppShellProps) {
                   {hasUnreadNotifications ? unreadNotificationLabel : null}
                 </span>
               </Link>
-              <button
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-0 text-sm font-semibold text-slate-700 shadow-sm transition-transform hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:h-9 sm:w-auto sm:px-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900 dark:hover:text-white"
-                type="button"
-                aria-label="Sign out"
-                onClick={signOut}
-                disabled={isSigningOut}
-              >
-                <LogOut size={16} aria-hidden="true" />
-                <span className="hidden sm:inline">Sign out</span>
-              </button>
+
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileMenuOpen}
+                  className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-edge bg-white px-2 text-ink2-soft shadow-sm transition hover:bg-slate-100 hover:text-ink2 sm:h-9 dark:border-white/10 dark:bg-[#0c1424] dark:hover:bg-white/5 dark:hover:text-white"
+                >
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary-50 text-primary-700 dark:bg-primary-600/20 dark:text-primary-500">
+                    <UserCircle size={16} aria-hidden="true" />
+                  </span>
+                  <span className="hidden max-w-[9rem] truncate text-sm font-medium text-ink2 md:inline">
+                    {user.name}
+                  </span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </button>
+
+                {isProfileMenuOpen ? (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-30 mt-2 w-60 overflow-hidden rounded-xl border border-edge bg-white py-1 shadow-elevated animate-fade-in dark:border-white/10 dark:bg-[#0c1424]"
+                  >
+                    <div className="border-b border-edge px-3 py-2.5 dark:border-white/10">
+                      <p className="truncate text-sm font-semibold text-ink2">{user.name}</p>
+                      <p className="truncate text-xs text-ink2-soft">
+                        {primaryRole ? roleLabels[primaryRole] : "User"} · {user.email}
+                      </p>
+                    </div>
+                    <Link
+                      href="/profile"
+                      role="menuitem"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-ink2 transition hover:bg-slate-100 dark:hover:bg-white/5"
+                      prefetch={false}
+                      onClick={() => {
+                        rememberNavScroll();
+                        setPendingHref("/profile");
+                        setIsProfileMenuOpen(false);
+                      }}
+                    >
+                      <UserCircle size={16} className="text-ink2-soft" aria-hidden="true" />
+                      View profile
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        signOut();
+                      }}
+                      disabled={isSigningOut}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <LogOut size={16} aria-hidden="true" />
+                      {isSigningOut ? "Signing out..." : "Sign out"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </header>
 
-        <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-3 sm:px-5">
+        <div className="mx-auto w-full max-w-7xl px-3 pb-6 pt-3 sm:px-5 animate-fade-in">
           {children}
         </div>
       </section>
