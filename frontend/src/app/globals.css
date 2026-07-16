@@ -6,12 +6,48 @@
   color-scheme: light;
   --background: #ffffff;
   --foreground: #17211d;
+
+  /* Premium enterprise SaaS design tokens (redesign) */
+  --sass-primary: #2563eb;
+  --sass-accent: #3b82f6;
+  --sass-bg: #f8fafc;
+  --sass-card: #ffffff;
+  --sass-text: #0f172a;
+  --sass-text-secondary: #64748b;
+  --sass-border: #e2e8f0;
+  --sass-success: #22c55e;
+  --sass-warning: #f59e0b;
+  --sass-danger: #ef4444;
 }
 
 .dark {
   color-scheme: dark;
   --background: #000000;
   --foreground: #f5f5f5;
+
+  --sass-primary: #3b82f6;
+  --sass-accent: #60a5fa;
+  --sass-bg: #0b1220;
+  --sass-card: #111827;
+  --sass-text: #f1f5f9;
+  --sass-text-secondary: #94a3b8;
+  --sass-border: #1f2937;
+  --sass-success: #34d399;
+  --sass-warning: #fbbf24;
+  --sass-danger: #f87171;
+}
+
+/* Loading skeleton utility for the redesign (Phase 3+) */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--sass-border) 25%,
+    color-mix(in srgb, var(--sass-border) 60%, transparent) 37%,
+    var(--sass-border) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 0.5rem;
 }
 
 * {
