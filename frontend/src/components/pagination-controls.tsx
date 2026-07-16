@@ -55,13 +55,14 @@ export function PaginationControls({
   const end = Math.min(values.page * values.pageSize, values.total);
 
   return (
-    <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-4 flex flex-col gap-3 border-t border-edge pt-4 text-sm text-ink2-soft sm:flex-row sm:items-center sm:justify-between">
       <span>
-        Showing {start}-{end} of {values.total}
+        Showing <span className="font-medium text-ink2">{start}-{end}</span> of{" "}
+        <span className="font-medium text-ink2">{values.total}</span>
       </span>
       <div className="flex shrink-0 items-center gap-2">
         <button
-          className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          className="grid h-9 w-9 place-items-center rounded-xl border border-edge bg-white text-ink2-soft transition hover:border-primary/40 hover:bg-primary-50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-edge disabled:hover:bg-white disabled:hover:text-ink2-soft"
           type="button"
           onClick={() => onPageChange(values.page - 1)}
           disabled={isFetching || values.page <= 1}
@@ -69,11 +70,11 @@ export function PaginationControls({
         >
           <ChevronLeft size={16} aria-hidden="true" />
         </button>
-        <span className="min-w-20 shrink-0 text-center text-xs font-medium text-slate-500">
+        <span className="min-w-20 shrink-0 rounded-lg bg-canvas px-2 py-1 text-center text-xs font-medium text-ink2-soft">
           Page {values.page} of {values.totalPages}
         </span>
         <button
-          className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          className="grid h-9 w-9 place-items-center rounded-xl border border-edge bg-white text-ink2-soft transition hover:border-primary/40 hover:bg-primary-50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-edge disabled:hover:bg-white disabled:hover:text-ink2-soft"
           type="button"
           onClick={() => onPageChange(values.page + 1)}
           disabled={isFetching || values.page >= values.totalPages}

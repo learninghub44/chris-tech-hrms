@@ -1,3 +1,5 @@
+import { AlertCircle, Inbox, Loader2 } from "lucide-react";
+
 type QueryStateProps = {
   isLoading: boolean;
   isError: boolean;
@@ -17,7 +19,8 @@ export function QueryState({
 }: QueryStateProps) {
   if (isLoading) {
     return (
-      <div className="rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-edge bg-canvas px-4 py-10 text-center text-sm text-ink2-soft">
+        <Loader2 size={20} className="animate-spin text-primary" aria-hidden="true" />
         {loadingLabel}
       </div>
     );
@@ -25,7 +28,8 @@ export function QueryState({
 
   if (isError) {
     return (
-      <div className="rounded-md border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+      <div className="flex items-center gap-2 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-4 text-sm text-danger">
+        <AlertCircle size={16} className="shrink-0" aria-hidden="true" />
         {errorLabel}
       </div>
     );
@@ -33,7 +37,8 @@ export function QueryState({
 
   if (isEmpty) {
     return (
-      <div className="rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-edge bg-canvas px-4 py-10 text-center text-sm text-ink2-soft">
+        <Inbox size={20} className="text-ink2-soft/70" aria-hidden="true" />
         {emptyLabel}
       </div>
     );

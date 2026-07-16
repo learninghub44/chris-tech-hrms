@@ -1,12 +1,18 @@
 "use client";
 
-import { Save, X } from "lucide-react";
+import { Briefcase, IdCard, Save, ShieldAlert, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import type { EmployeeInput } from "@/lib/api";
 import { employmentStatusLabels } from "@/lib/employee-format";
 import type { Department, Designation, Employee, EmploymentStatus } from "@/types";
+
+const labelClass = "block text-sm font-medium text-ink2-soft";
+const fieldClass =
+  "mt-2 h-11 w-full rounded-xl border border-edge bg-white px-3 text-sm text-ink2 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10";
+const sectionClass = "rounded-2xl border border-edge bg-white p-5 shadow-card";
+const sectionHeaderClass = "flex items-center gap-2 text-lg font-semibold tracking-tight text-ink2";
 
 export type EmployeeFormValues = {
   employeeCode: string;
@@ -148,70 +154,70 @@ export function EmployeeForm({
   return (
     <form className="space-y-6" onSubmit={handleSubmit(submit)}>
       {error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
           {error}
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <h2 className="text-lg font-semibold tracking-normal">Employee</h2>
+      <section className={sectionClass}>
+        <h2 className={sectionHeaderClass}>
+          <IdCard size={18} className="text-primary" aria-hidden="true" />
+          Employee
+        </h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Employee code
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               {...register("employeeCode", { required: true })}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             First name
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               {...register("firstName", { required: true })}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Last name
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               {...register("lastName", { required: true })}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Work email
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               type="email"
               {...register("workEmail", { required: true })}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Personal email
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               type="email"
               {...register("personalEmail")}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Phone
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("phone")}
-            />
+            <input className={fieldClass} {...register("phone")} />
           </label>
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <h2 className="text-lg font-semibold tracking-normal">Employment</h2>
+      <section className={sectionClass}>
+        <h2 className={sectionHeaderClass}>
+          <Briefcase size={18} className="text-primary" aria-hidden="true" />
+          Employment
+        </h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Department
-            <select
-              className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("departmentId")}
-            >
+            <select className={fieldClass} {...register("departmentId")}>
               <option value="">Unassigned</option>
               {departments.map((department) => (
                 <option key={department.id} value={department.id}>
@@ -220,12 +226,9 @@ export function EmployeeForm({
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Designation
-            <select
-              className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("designationId")}
-            >
+            <select className={fieldClass} {...register("designationId")}>
               <option value="">Unassigned</option>
               {filteredDesignations.map((designation) => (
                 <option key={designation.id} value={designation.id}>
@@ -234,12 +237,9 @@ export function EmployeeForm({
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Manager
-            <select
-              className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("managerId")}
-            >
+            <select className={fieldClass} {...register("managerId")}>
               <option value="">Unassigned</option>
               {managers.map((manager) => (
                 <option key={manager.id} value={manager.id}>
@@ -248,12 +248,9 @@ export function EmployeeForm({
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Status
-            <select
-              className="mt-2 h-11 w-full rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("status")}
-            >
+            <select className={fieldClass} {...register("status")}>
               {statuses.map((status) => (
                 <option key={status} value={status}>
                   {employmentStatusLabels[status]}
@@ -261,68 +258,54 @@ export function EmployeeForm({
               ))}
             </select>
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Joining date
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               type="date"
               {...register("dateOfJoining", { required: true })}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Exit date
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              type="date"
-              {...register("dateOfExit")}
-            />
+            <input className={fieldClass} type="date" {...register("dateOfExit")} />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Date of birth
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              type="date"
-              {...register("dateOfBirth")}
-            />
+            <input className={fieldClass} type="date" {...register("dateOfBirth")} />
           </label>
-          <label className="block text-sm font-medium text-slate-700 xl:col-span-2">
+          <label className={`${labelClass} xl:col-span-2`}>
             Location
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("location")}
-            />
+            <input className={fieldClass} {...register("location")} />
           </label>
         </div>
       </section>
 
-      <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
-        <h2 className="text-lg font-semibold tracking-normal">Emergency Contact</h2>
+      <section className={sectionClass}>
+        <h2 className={sectionHeaderClass}>
+          <ShieldAlert size={18} className="text-primary" aria-hidden="true" />
+          Emergency Contact
+        </h2>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Name
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("emergencyContactName")}
-            />
+            <input className={fieldClass} {...register("emergencyContactName")} />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Relationship
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               {...register("emergencyContactRelationship")}
             />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Phone
-            <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
-              {...register("emergencyContactPhone")}
-            />
+            <input className={fieldClass} {...register("emergencyContactPhone")} />
           </label>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className={labelClass}>
             Email
             <input
-              className="mt-2 h-11 w-full rounded-md border border-line px-3 text-sm outline-none transition focus:border-brand-600"
+              className={fieldClass}
               type="email"
               {...register("emergencyContactEmail")}
             />
@@ -332,14 +315,14 @@ export function EmployeeForm({
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-surface"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-edge bg-white px-4 text-sm font-semibold text-ink2-soft transition hover:border-primary/40 hover:bg-primary-50 hover:text-primary"
           href={cancelHref}
         >
           <X size={17} aria-hidden="true" />
           Cancel
         </Link>
         <button
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
           type="submit"
           disabled={isSubmitting}
         >
