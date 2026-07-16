@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  ArrowRight,
   Bell,
   CalendarDays,
   Check,
@@ -49,17 +50,24 @@ const cardIcons: Record<string, LucideIcon> = {
 };
 
 const metricToneClasses: Record<DashboardCard["tone"], string> = {
-  brand: "text-emerald-600",
-  blue: "text-sky-600",
+  brand: "text-brand-600",
+  blue: "text-ct-blue",
   amber: "text-amber-600",
   slate: "text-slate-500"
 };
 
 const metricIconClasses: Record<DashboardCard["tone"], string> = {
-  brand: "bg-emerald-50 text-emerald-700",
-  blue: "bg-sky-50 text-sky-700",
-  amber: "bg-amber-50 text-amber-700",
-  slate: "bg-slate-100 text-slate-700"
+  brand: "bg-brand-50 text-brand-600",
+  blue: "bg-ct-blue/10 text-ct-blue",
+  amber: "bg-amber-50 text-amber-600",
+  slate: "bg-slate-100 text-slate-600"
+};
+
+const metricBarClasses: Record<DashboardCard["tone"], string> = {
+  brand: "bg-brand-600",
+  blue: "bg-ct-blue",
+  amber: "bg-amber-500",
+  slate: "bg-slate-300"
 };
 
 function getCardValue(card: DashboardCard): string {
@@ -179,99 +187,126 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
   return (
     <AppShell user={user} token={token}>
-      <div className="space-y-4">
-        <section className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-col justify-between gap-4 border-b border-slate-200 px-5 py-5 md:flex-row md:items-start">
+      <div className="space-y-5">
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-ct-graphite via-ct-steel to-ct-blueDeep px-5 py-6 text-white shadow-[0_20px_50px_rgba(15,31,61,0.28)] sm:px-8 sm:py-7">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-[0.08]"
+            style={{
+              backgroundImage: "radial-gradient(circle, #ffffff 1px, transparent 1px)",
+              backgroundSize: "20px 20px"
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-ct-blue/30 blur-3xl"
+          />
+
+          <div className="relative flex flex-col justify-between gap-5 md:flex-row md:items-start">
             <div>
-              <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
+                {scopeLabel} overview
+              </p>
+              <h1 className="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">
                 Hey, {getUserFirstName(user.name)}
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-2 max-w-md text-sm text-white/70">
                 Quickly access all information about you, your team, and your members
               </p>
             </div>
-            <div className="inline-flex h-9 items-center gap-2 self-start rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-[0_8px_20px_rgba(15,23,42,0.04)] md:self-auto">
-              <CalendarDays size={16} aria-hidden="true" />
-              {getCurrentDateLabel()}
+            <div className="flex shrink-0 items-center gap-2 self-start md:self-auto">
+              <div className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-3 text-sm font-medium text-white/85 backdrop-blur-sm">
+                <CalendarDays size={16} aria-hidden="true" />
+                {getCurrentDateLabel()}
+              </div>
+              <button
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/15 bg-white/10 text-white/85 backdrop-blur-sm transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                onClick={refreshDashboard}
+                disabled={isRefreshingDashboard}
+                aria-label="Refresh dashboard"
+                aria-busy={isRefreshingDashboard}
+              >
+                <RefreshCw
+                  className={isRefreshingDashboard ? "animate-spin" : undefined}
+                  size={16}
+                  aria-hidden="true"
+                />
+              </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3 text-xs font-semibold uppercase text-slate-400">
-            <span className="rounded-md px-2 py-1">Personal</span>
-            <span className="rounded-md bg-[#020617] px-2 py-1 text-white dark:border dark:border-[#dfe5df] dark:bg-[#f8fafc] dark:text-[#020617]">
+          <div className="relative mt-6 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/55">
+              Personal
+            </span>
+            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-ct-graphite shadow-sm">
               {scopeLabel}
             </span>
-            <span className="rounded-md px-2 py-1">Managed by me</span>
-            <button
-              className="ml-auto grid h-8 w-8 place-items-center rounded-md text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-              type="button"
-              onClick={refreshDashboard}
-              disabled={isRefreshingDashboard}
-              aria-label="Refresh dashboard"
-              aria-busy={isRefreshingDashboard}
-            >
-              <RefreshCw
-                className={isRefreshingDashboard ? "animate-spin" : undefined}
-                size={16}
-                aria-hidden="true"
-              />
-            </button>
+            <span className="rounded-full px-3 py-1.5 text-xs font-semibold text-white/55">
+              Managed by me
+            </span>
           </div>
+        </section>
 
-          <section className="grid sm:grid-cols-2 xl:grid-cols-4">
-            {summaryError ? (
-              <div className="col-span-full border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
-                {summaryError}
-              </div>
-            ) : null}
-            {dashboardError ? (
-              <div className="col-span-full border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
-                {dashboardError}
-              </div>
-            ) : null}
-            {cards.map((card) => {
-              const Icon = cardIcons[card.key] ?? Users;
+        {summaryError ? (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
+            {summaryError}
+          </div>
+        ) : null}
+        {dashboardError ? (
+          <div className="rounded-xl border border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
+            {dashboardError}
+          </div>
+        ) : null}
 
-              return (
-                <article
-                  className="border-b border-slate-200 px-5 py-5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:border-b-0 xl:border-r xl:last:border-r-0"
-                  key={card.key}
-                >
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase text-slate-500">
-                        {card.label}
-                      </p>
-                      <p className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">
-                        {getCardValue(card)}
-                      </p>
-                    </div>
-                    <div
-                      className={`grid h-9 w-9 place-items-center rounded-md ${metricIconClasses[card.tone]}`}
-                    >
-                      <Icon size={18} aria-hidden="true" />
-                    </div>
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {cards.map((card) => {
+            const Icon = cardIcons[card.key] ?? Users;
+
+            return (
+              <article
+                className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(15,23,42,0.08)]"
+                key={card.key}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-0 top-0 h-[3px] ${metricBarClasses[card.tone]}`}
+                />
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {card.label}
+                    </p>
+                    <p className="mt-2 text-3xl font-bold tracking-tight text-ct-graphite">
+                      {getCardValue(card)}
+                    </p>
                   </div>
-                  <p className={`mt-2 text-xs font-medium ${metricToneClasses[card.tone]}`}>
-                    {card.detail}
-                  </p>
-                </article>
-              );
-            })}
+                  <div
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg transition-transform group-hover:scale-105 ${metricIconClasses[card.tone]}`}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                  </div>
+                </div>
+                <p className={`mt-3 text-xs font-medium ${metricToneClasses[card.tone]}`}>
+                  {card.detail}
+                </p>
+              </article>
+            );
+          })}
 
-            {summaryQuery.isLoading && cards.length === 0 ? (
-              <div className="col-span-full px-5 py-12 text-center text-sm text-slate-500">
-                Loading dashboard summary...
-              </div>
-            ) : null}
-          </section>
+          {summaryQuery.isLoading && cards.length === 0 ? (
+            <div className="col-span-full rounded-xl border border-dashed border-slate-200 bg-white px-5 py-12 text-center text-sm text-slate-500">
+              Loading dashboard summary...
+            </div>
+          ) : null}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-          <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold tracking-normal text-slate-950">
+                <h2 className="text-lg font-semibold tracking-tight text-ct-graphite">
                   Notifications
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
@@ -282,10 +317,11 @@ function DashboardContent({ user, token }: DashboardContentProps) {
                 ) : null}
               </div>
               <Link
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-ct-blue transition hover:gap-1.5"
                 href="/notifications"
               >
                 View all
+                <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </div>
 
@@ -295,12 +331,18 @@ function DashboardContent({ user, token }: DashboardContentProps) {
 
                 return (
                 <div key={notification.id} className="flex min-w-0 gap-3 py-4">
-                  <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
+                  <div className="relative mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-ct-blue/10 text-ct-blue">
                     <Bell size={17} aria-hidden="true" />
+                    {!notification.isRead ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-white"
+                      />
+                    ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-start justify-between gap-3">
-                      <p className="font-semibold text-slate-950">{notification.title}</p>
+                      <p className="font-semibold text-ct-graphite">{notification.title}</p>
                       <div className="flex shrink-0 flex-col items-end gap-2">
                         <span className="text-xs text-slate-400">
                           {formatDateTime(notification.createdAt)}
@@ -334,16 +376,16 @@ function DashboardContent({ user, token }: DashboardContentProps) {
               })}
             </div>
             {!summaryQuery.isLoading && notifications.length === 0 ? (
-              <div className="m-5 rounded-md border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+              <div className="m-5 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
                 No notifications found.
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.04)]">
+          <div className="rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex min-w-0 items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold tracking-normal text-slate-950">
+                <h2 className="text-lg font-semibold tracking-tight text-ct-graphite">
                   Announcements
                 </h2>
                 <p className="mt-1 text-xs text-slate-500">
@@ -351,22 +393,23 @@ function DashboardContent({ user, token }: DashboardContentProps) {
                 </p>
               </div>
               <Link
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-ct-blue transition hover:gap-1.5"
                 href="/announcements"
               >
                 View all
+                <ArrowRight size={14} aria-hidden="true" />
               </Link>
             </div>
 
             <div className="divide-y divide-slate-100 px-5">
               {announcements.map((announcement) => (
                 <div key={announcement.id} className="flex min-w-0 gap-3 py-4">
-                  <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
+                  <div className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600">
                     <Megaphone size={17} aria-hidden="true" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-start justify-between gap-3">
-                      <p className="font-semibold text-slate-950">{announcement.title}</p>
+                      <p className="font-semibold text-ct-graphite">{announcement.title}</p>
                       <span className="shrink-0 text-xs text-slate-400">
                         {formatDate(announcement.publishedAt)}
                       </span>
@@ -379,7 +422,7 @@ function DashboardContent({ user, token }: DashboardContentProps) {
               ))}
             </div>
             {!summaryQuery.isLoading && announcements.length === 0 ? (
-              <div className="m-5 rounded-md border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500">
+              <div className="m-5 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center text-sm text-slate-500">
                 No announcements found.
               </div>
             ) : null}
