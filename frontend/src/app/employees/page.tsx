@@ -95,21 +95,21 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
         value: String(employees.length),
         detail: "Total records",
         icon: Users,
-        tone: "brand" as const
+        tone: "primary" as const
       },
       {
         label: "Active",
         value: String(activeEmployees.length),
         detail: "Currently active",
         icon: BriefcaseBusiness,
-        tone: "blue" as const
+        tone: "success" as const
       },
       {
         label: "Departments",
         value: String(assignedDepartments.size),
         detail: "With assigned staff",
         icon: Building2,
-        tone: "amber" as const
+        tone: "warning" as const
       },
       {
         label: "Documents",
@@ -148,13 +148,13 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
       <div className="space-y-6">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <p className="text-sm font-medium text-brand-700">Employees</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal text-ink">
+            <p className="text-sm font-medium text-primary">Employees</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-ink2">
               Employee Records
             </h1>
           </div>
           <Link
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition hover:bg-brand-700"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-700"
             href="/employees/new"
           >
             <Plus size={17} aria-hidden="true" />
@@ -168,24 +168,24 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
           ))}
         </section>
 
-        <section className="rounded-lg border border-line bg-white p-5 shadow-soft">
+        <section className="rounded-2xl border border-edge bg-white p-5 shadow-card">
           <div className="grid gap-3 lg:grid-cols-[1fr_180px_220px]">
-            <label className="relative block text-sm font-medium text-slate-700">
+            <label className="relative block text-sm font-medium text-ink2-soft">
               <span className="sr-only">Search employees</span>
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink2-soft/60"
                 size={17}
                 aria-hidden="true"
               />
               <input
-                className="h-11 w-full rounded-md border border-line pl-10 pr-3 text-sm outline-none transition focus:border-brand-600"
+                className="h-11 w-full rounded-xl border border-edge bg-white pl-10 pr-3 text-sm text-ink2 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
                 placeholder="Search by name, code, or email"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
             </label>
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
+              className="h-11 rounded-xl border border-edge bg-white px-3 text-sm text-ink2 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
               value={status}
               onChange={(event) => setStatus(event.target.value as EmploymentStatus | "")}
               aria-label="Filter by status"
@@ -198,7 +198,7 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
               ))}
             </select>
             <select
-              className="h-11 rounded-md border border-line bg-white px-3 text-sm outline-none transition focus:border-brand-600"
+              className="h-11 rounded-xl border border-edge bg-white px-3 text-sm text-ink2 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
               value={departmentId}
               onChange={(event) => setDepartmentId(event.target.value)}
               aria-label="Filter by department"
@@ -213,14 +213,14 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
           </div>
 
           {actionError ? (
-            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <div className="mt-4 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger">
               {actionError}
             </div>
           ) : null}
 
-          <div className="mt-5 overflow-x-auto">
+          <div className="mt-5 overflow-x-auto rounded-2xl border border-edge">
             <table className="min-w-[760px] w-full text-left text-sm">
-              <thead className="border-b border-line bg-surface text-xs uppercase text-slate-500">
+              <thead className="border-b border-edge bg-canvas text-xs uppercase tracking-wide text-ink2-soft">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Employee</th>
                   <th className="px-4 py-3 font-semibold">Department</th>
@@ -230,47 +230,47 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
                   <th className="px-4 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-edge">
                 {employees.map((employee) => (
-                  <tr key={employee.id}>
+                  <tr key={employee.id} className="transition hover:bg-canvas/60">
                     <td className="px-4 py-4">
-                      <div className="font-medium text-ink">{getEmployeeName(employee)}</div>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="font-medium text-ink2">{getEmployeeName(employee)}</div>
+                      <div className="mt-1 text-xs text-ink2-soft">
                         {employee.employeeCode} | {employee.workEmail}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-slate-600">
+                    <td className="px-4 py-4 text-ink2-soft">
                       {employee.department?.name ?? "Unassigned"}
                     </td>
-                    <td className="px-4 py-4 text-slate-600">
+                    <td className="px-4 py-4 text-ink2-soft">
                       {employee.designation?.title ?? "Unassigned"}
                     </td>
                     <td className="px-4 py-4">
-                      <span className="rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
+                      <span className="rounded-lg bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700">
                         {employmentStatusLabels[employee.status]}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-slate-600">
+                    <td className="px-4 py-4 text-ink2-soft">
                       {employee.documents.length}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
                         <Link
-                          className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface"
+                          className="grid h-9 w-9 place-items-center rounded-xl border border-edge text-ink2-soft transition hover:border-primary/40 hover:bg-primary-50 hover:text-primary"
                           href={`/employees/${employee.id}`}
                           aria-label={`View ${getEmployeeName(employee)}`}
                         >
                           <Eye size={16} aria-hidden="true" />
                         </Link>
                         <Link
-                          className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface"
+                          className="grid h-9 w-9 place-items-center rounded-xl border border-edge text-ink2-soft transition hover:border-primary/40 hover:bg-primary-50 hover:text-primary"
                           href={`/employees/${employee.id}/edit`}
                           aria-label={`Edit ${getEmployeeName(employee)}`}
                         >
                           <Pencil size={16} aria-hidden="true" />
                         </Link>
                         <button
-                          className="grid h-9 w-9 place-items-center rounded-md border border-line text-slate-600 transition hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+                          className="grid h-9 w-9 place-items-center rounded-xl border border-edge text-ink2-soft transition hover:border-danger/40 hover:bg-danger/5 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-edge disabled:hover:bg-transparent disabled:hover:text-ink2-soft"
                           type="button"
                           onClick={() => deactivate(employee.id)}
                           disabled={employee.status === "INACTIVE"}
@@ -287,7 +287,7 @@ function EmployeesContent({ user, token }: EmployeesContentProps) {
           </div>
 
           {!employeesQuery.isLoading && employees.length === 0 ? (
-            <div className="mt-5 rounded-md border border-dashed border-line px-4 py-8 text-center text-sm text-slate-500">
+            <div className="mt-5 rounded-2xl border border-dashed border-edge bg-canvas px-4 py-8 text-center text-sm text-ink2-soft">
               No employee records found.
             </div>
           ) : null}
