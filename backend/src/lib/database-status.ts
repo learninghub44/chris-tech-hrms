@@ -45,7 +45,7 @@ export function getDatabaseUnavailableDetails(
     database: "disconnected",
     target: getDatabaseTarget(databaseUrl),
     hint:
-      "Start PostgreSQL for DATABASE_URL, then run npm run prisma:migrate and npm run db:seed.",
+      "Start PostgreSQL for DATABASE_URL, then run npm run prisma:migrate:deploy and npm run db:seed (use prisma:migrate instead only against a local dev database).",
     uptimeSeconds: Math.round(process.uptime()),
     responseTimeMs: Date.now() - startedAt
   };
@@ -61,7 +61,7 @@ export function getDatabaseSchemaNotReadyDetails(
     database: "connected",
     target: getDatabaseTarget(databaseUrl),
     hint:
-      "The database is reachable, but the schema is not ready. Run npm run prisma:migrate and npm run db:seed.",
+      "The database is reachable, but the schema is not ready. Run npm run prisma:migrate:deploy and npm run db:seed (prisma:migrate is for local dev only — it runs 'prisma migrate dev', which is unsafe against a hosted production database).",
     uptimeSeconds: Math.round(process.uptime()),
     responseTimeMs: Date.now() - startedAt
   };
